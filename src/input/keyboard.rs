@@ -199,10 +199,10 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         handle_dialog_submit(app, dialog_clone, selected_item);
                     }
                 }
-                KeyCode::Up | KeyCode::Char('k') => {
+                KeyCode::Up => {
                     *selected = selected.saturating_sub(1);
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
+                KeyCode::Down => {
                     let filtered_count = if filter.is_empty() {
                         items.len()
                     } else {
