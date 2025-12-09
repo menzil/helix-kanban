@@ -83,6 +83,59 @@ impl SplitNode {
         }
     }
 
+    /// 关闭指定ID的面板，返回是否成功关闭
+    /// 如果关闭的是唯一的面板，返回 false
+    /// 如果成功关闭，用兄弟节点替换父节点，返回 true
+    pub fn close_pane(&mut self, id: usize) -> bool {
+        match self {
+            SplitNode::Leaf { id: leaf_id, .. } if *leaf_id == id => {
+                // 不能关闭唯一的面板
+                false
+            }
+            SplitNode::Horizontal { left, right, .. } => {
+                // 检查左侧是否包含要关闭的面板
+                if let SplitNode::Leaf { id: left_id, .. } = left.as_ref() {
+                    if *left_id == id {
+                        // 关闭左侧，用右侧替换整个节点
+                        *self = *right.clone();
+                        return true;
+                    }
+                }
+                // 检查右侧是否包含要关闭的面板
+                if let SplitNode::Leaf { id: right_id, .. } = right.as_ref() {
+                    if *right_id == id {
+                        // 关闭右侧，用左侧替换整个节点
+                        *self = *left.clone();
+                        return true;
+                    }
+                }
+                // 递归查找
+                left.close_pane(id) || right.close_pane(id)
+            }
+            SplitNode::Vertical { top, bottom, .. } => {
+                // 检查上方是否包含要关闭的面板
+                if let SplitNode::Leaf { id: top_id, .. } = top.as_ref() {
+                    if *top_id == id {
+                        // 关闭上方，用下方替换整个节点
+                        *self = *bottom.clone();
+                        return true;
+                    }
+                }
+                // 检查下方是否包含要关闭的面板
+                if let SplitNode::Leaf { id: bottom_id, .. } = bottom.as_ref() {
+                    if *bottom_id == id {
+                        // 关闭下方，用上方替换整个节点
+                        *self = *top.clone();
+                        return true;
+                    }
+                }
+                // 递归查找
+                top.close_pane(id) || bottom.close_pane(id)
+            }
+            _ => false,
+        }
+    }
+
     /// 获取所有叶子节点的ID列表
     pub fn collect_pane_ids(&self) -> Vec<usize> {
         match self {

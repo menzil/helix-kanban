@@ -542,6 +542,18 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.focused_pane = new_pane_id;
             }
         }
+        Command::ClosePane => {
+            // 关闭当前面板
+            let current_pane = app.focused_pane;
+            if app.split_tree.close_pane(current_pane) {
+                // 关闭成功，需要重新聚焦到一个有效的面板
+                let all_panes = app.split_tree.collect_pane_ids();
+                if let Some(&first_pane) = all_panes.first() {
+                    app.focused_pane = first_pane;
+                }
+            }
+            // 如果关闭失败（比如只有一个面板），不做任何操作
+        }
         // TODO: 实现其他命令
         _ => {}
     }
