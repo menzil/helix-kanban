@@ -1,0 +1,64 @@
+/// 应用命令枚举
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    // ===== 退出 =====
+    Quit,
+
+    // ===== 分屏管理 (Space w 前缀) =====
+    /// 水平分割当前面板
+    SplitHorizontal,
+    /// 垂直分割当前面板
+    SplitVertical,
+    /// 关闭当前面板
+    ClosePane,
+    /// 聚焦左侧面板
+    FocusLeft,
+    /// 聚焦右侧面板
+    FocusRight,
+    /// 聚焦上方面板
+    FocusUp,
+    /// 聚焦下方面板
+    FocusDown,
+
+    // ===== 任务操作 =====
+    /// 将任务移到左边的状态列
+    MoveTaskLeft,
+    /// 将任务移到右边的状态列
+    MoveTaskRight,
+    /// 任务在当前列中上移
+    MoveTaskUp,
+    /// 任务在当前列中下移
+    MoveTaskDown,
+    /// 选择上一个任务
+    TaskUp,
+    /// 选择下一个任务
+    TaskDown,
+    /// 切换到左边的列
+    ColumnLeft,
+    /// 切换到右边的列
+    ColumnRight,
+    /// 删除当前任务
+    DeleteTask,
+    /// 创建新任务
+    NewTask,
+    /// 编辑当前任务
+    EditTask,
+
+    // ===== 项目操作 (Space p 前缀) =====
+    /// 打开项目
+    OpenProject,
+    /// 创建新项目
+    NewProject,
+    /// 删除项目
+    DeleteProject,
+    /// 重命名项目
+    RenameProject,
+
+    // ===== 模式切换 =====
+    /// 进入命令模式
+    EnterCommandMode,
+    /// 进入正常模式
+    EnterNormalMode,
+    /// 取消当前操作
+    Cancel,
+}

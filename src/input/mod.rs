@@ -1,3 +1,5 @@
-// Input handling and keybindings
+mod commands;
+mod keyboard;
 
-pub mod keybindings;
+pub use commands::Command;
+pub use keyboard::{handle_key_input, match_key_sequence};

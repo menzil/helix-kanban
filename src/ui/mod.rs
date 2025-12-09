@@ -1,10 +1,120 @@
-// UI components
+pub mod command_menu;
+pub mod dialogs;
+pub mod help;
+mod kanban;
+pub mod layout;
+mod sidebar;
+mod statusbar;
 
-pub mod board;
-pub mod components;
-pub mod grid;
-pub mod list;
+use crate::app::App;
+use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::Frame;
 
-pub use board::render_board;
-pub use components::render_input_dialog;
-pub use list::render_project_list;
+/// 主渲染函数
+pub fn render(f: &mut Frame, app: &App) {
+    let main_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(20),  // 左侧边栏固定宽度20列
+            Constraint::Min(0),      // 主内容区域
+        ])
+        .split(f.area());
+
+    let right_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(0),     // 主内容区
+            Constraint::Length(1),  // 状态栏
+        ])
+        .split(main_chunks[1]);
+
+    // 渲染左侧边栏
+    sidebar::render(f, main_chunks[0], app);
+
+    // 渲染分屏内容
+    render_split_tree(f, right_chunks[0], &app.split_tree, app);
+
+    // 渲染状态栏
+    statusbar::render(f, right_chunks[1], app);
+
+    // 渲染对话框（如果有）
+    if let Some(dialog) = &app.dialog {
+        dialogs::render_dialog(f, dialog);
+    }
+
+    // 渲染帮助面板（如果处于帮助模式）
+    if app.mode == crate::app::Mode::Help {
+        help::render(f, f.area());
+    }
+
+    // 渲染命令菜单（如果处于空格菜单模式）
+    if app.mode == crate::app::Mode::SpaceMenu {
+        command_menu::render(f, f.area(), app);
+    }
+}
+
+/// 递归渲染分屏树
+fn render_split_tree(f: &mut Frame, area: ratatui::layout::Rect, node: &layout::SplitNode, app: &App) {
+    use layout::SplitNode;
+
+    match node {
+        SplitNode::Leaf { project_id, id } => {
+            let is_focused = *id == app.focused_pane;
+            if let Some(pid) = project_id {
+                if let Some(project) = app.projects.iter().find(|p| &p.name == pid) {
+                    kanban::render(f, area, project, is_focused, app);
+                } else {
+                    render_empty_pane(f, area, "项目未找到", is_focused);
+                }
+            } else {
+                render_empty_pane(f, area, "无项目 - 按 Space p o 打开项目", is_focused);
+            }
+        }
+        SplitNode::Horizontal { left, right, ratio } => {
+            let chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Percentage((ratio * 100.0) as u16),
+                    Constraint::Percentage(((1.0 - ratio) * 100.0) as u16),
+                ])
+                .split(area);
+
+            render_split_tree(f, chunks[0], left, app);
+            render_split_tree(f, chunks[1], right, app);
+        }
+        SplitNode::Vertical { top, bottom, ratio } => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Percentage((ratio * 100.0) as u16),
+                    Constraint::Percentage(((1.0 - ratio) * 100.0) as u16),
+                ])
+                .split(area);
+
+            render_split_tree(f, chunks[0], top, app);
+            render_split_tree(f, chunks[1], bottom, app);
+        }
+    }
+}
+
+/// 渲染空面板
+fn render_empty_pane(f: &mut Frame, area: ratatui::layout::Rect, message: &str, is_focused: bool) {
+    use ratatui::style::{Color, Style};
+    use ratatui::widgets::{Block, Borders, Paragraph};
+
+    let border_style = if is_focused {
+        Style::default().fg(Color::Cyan)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(border_style);
+
+    let paragraph = Paragraph::new(message)
+        .block(block)
+        .style(Style::default().fg(Color::Gray));
+
+    f.render_widget(paragraph, area);
+}
