@@ -1,0 +1,9 @@
+[package]
+name = "kanban"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rxtui = { path = "./rxtui/rxtui" }
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
