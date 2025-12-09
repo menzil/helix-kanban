@@ -392,18 +392,20 @@ fn execute_command(app: &mut App, cmd: Command) {
 
     match cmd {
         Command::SplitHorizontal => {
+            // 水平分割线 = 上下分屏
             if let Some(pane) = app.split_tree.find_pane_mut(app.focused_pane) {
                 let new_pane_id = app.next_pane_id;
-                pane.split_horizontal(new_pane_id);
+                pane.split_vertical(new_pane_id);  // split_vertical 创建上下分屏
                 app.next_pane_id += 1;
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
             }
         }
         Command::SplitVertical => {
+            // 垂直分割线 = 左右分屏
             if let Some(pane) = app.split_tree.find_pane_mut(app.focused_pane) {
                 let new_pane_id = app.next_pane_id;
-                pane.split_vertical(new_pane_id);
+                pane.split_horizontal(new_pane_id);  // split_horizontal 创建左右分屏
                 app.next_pane_id += 1;
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
