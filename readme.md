@@ -18,7 +18,7 @@
 ### 从 crates.io 安装
 
 ```bash
-cargo install kanban
+cargo install helix-kanban
 ```
 
 ### 从源码构建
@@ -34,26 +34,26 @@ cargo build --release
 首次运行会显示欢迎对话框，自动检测系统编辑器和 Markdown 预览器：
 
 ```bash
-kanban
+hxk
 ```
 
 ### 配置管理
 
 查看当前配置：
 ```bash
-kanban config show
+hxk config show
 ```
 
 设置编辑器：
 ```bash
-kanban config editor nvim
-kanban config editor "code --wait"
+hxk config editor nvim
+hxk config editor "code --wait"
 ```
 
 设置 Markdown 预览器：
 ```bash
-kanban config viewer glow
-kanban config viewer "open -a Marked 2"
+hxk config viewer glow
+hxk config viewer "open -a Marked 2"
 ```
 
 ## 键位绑定
