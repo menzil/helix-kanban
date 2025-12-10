@@ -20,6 +20,10 @@ exclude = [
     "src/ui/board.rs",
 ]
 
+[[bin]]
+name = "hxk"
+path = "src/main.rs"
+
 [dependencies]
 # TUI framework
 ratatui = "0.28"
