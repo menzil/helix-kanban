@@ -261,6 +261,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "helix-kanban"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "crossterm",
+ "directories",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -345,20 +359,6 @@ checksum = "464a3709c7f55f1f721e5389aa6ea4e3bc6aba669353300af094b29ffbdde1d8"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kanban"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "chrono",
- "crossterm",
- "directories",
- "ratatui",
- "serde",
- "serde_json",
- "toml",
 ]
 
 [[package]]
