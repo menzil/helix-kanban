@@ -1,0 +1,14 @@
+name = "task log"
+created = "1765352565"
+
+[statuses]
+order = ["todo", "doing", "done"]
+
+[statuses.todo]
+display = "Todo"
+
+[statuses.doing]
+display = "Doing"
+
+[statuses.done]
+display = "Done"

@@ -1,4 +1,5 @@
 use crate::app::App;
+use crate::models::ProjectType;
 use crate::ui::layout::SplitNode;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
@@ -27,10 +28,27 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
             // 计算任务数量
             let task_count = project.tasks.len();
 
+            // 项目类型标签
+            let type_tag = match project.project_type {
+                ProjectType::Global => "[G]",
+                ProjectType::Local => "[L]",
+            };
+            let tag_color = match project.project_type {
+                ProjectType::Global => Color::Rgb(136, 192, 208), // 蓝色
+                ProjectType::Local => Color::Rgb(163, 190, 140),  // 绿色
+            };
+
             // 构建列表项内容
             let content = if is_selected {
                 Line::from(vec![
-                    Span::raw("  "),
+                    Span::raw(" "),
+                    Span::styled(
+                        type_tag,
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" "),
                     Span::styled(
                         &project.name,
                         Style::default()
@@ -48,7 +66,14 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 ])
             } else {
                 Line::from(vec![
-                    Span::raw("  "),
+                    Span::raw(" "),
+                    Span::styled(
+                        type_tag,
+                        Style::default()
+                            .fg(tag_color)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(" "),
                     Span::styled(&project.name, Style::default().fg(Color::Gray)),
                     Span::raw("  "),
                     Span::styled(
@@ -78,7 +103,8 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                     .add_modifier(Modifier::BOLD),
             )
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::DarkGray)),
+            .border_style(Style::default().fg(Color::DarkGray))
+            .border_type(ratatui::widgets::BorderType::Rounded),
     );
 
     f.render_widget(list, area);

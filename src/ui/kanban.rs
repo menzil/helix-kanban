@@ -11,7 +11,7 @@ use ratatui::{
 /// 渲染看板视图
 pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, app: &App) {
     let border_style = if is_focused {
-        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+        Style::default().fg(Color::White)
     } else {
         Style::default().fg(Color::DarkGray)
     };
@@ -22,22 +22,14 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
     let done_count = project.tasks.iter().filter(|t| t.status == "done").count();
     let total_count = project.tasks.len();
 
-    let title = if is_focused {
-        format!(" 📋 {} ({}/{} 完成) ", project.name, done_count, total_count)
-    } else {
-        format!(" {} ({}/{}) ", project.name, done_count, total_count)
-    };
+    let title = format!(" {} ({}/{}) ", project.name, done_count, total_count);
 
     let block = Block::default()
         .title(title)
         .title_alignment(ratatui::layout::Alignment::Center)
         .borders(Borders::ALL)
         .border_style(border_style)
-        .border_type(if is_focused {
-            ratatui::widgets::BorderType::Double
-        } else {
-            ratatui::widgets::BorderType::Rounded
-        });
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -76,20 +68,11 @@ fn render_column(
     let current_column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
     let is_column_focused = is_pane_focused && current_column == column_idx;
 
-    // 根据列类型使用不同的配色
+    // 简洁配色：聚焦=白色，非聚焦=灰色
     let (border_color, title_style) = if is_column_focused {
-        (Color::Yellow, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        (Color::White, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
     } else {
-        let column_color = match column_idx {
-            0 => Color::Blue,    // 待办 - 蓝色
-            1 => Color::Magenta, // 进行中 - 品红
-            2 => Color::Green,   // 已完成 - 绿色
-            _ => Color::Gray,
-        };
-        (
-            if is_pane_focused { column_color } else { Color::DarkGray },
-            Style::default().fg(column_color),
-        )
+        (Color::DarkGray, Style::default().fg(Color::Gray))
     };
 
     let items: Vec<ListItem> = tasks
@@ -99,61 +82,53 @@ fn render_column(
             let selected_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
             let is_selected = is_column_focused && i == selected_idx;
 
-            let (bg_color, fg_color) = if is_selected {
-                (Color::DarkGray, Color::White)
+            // 只有选中的任务高亮，其他使用默认样式
+            let style = if is_selected {
+                Style::default()
+                    .bg(Color::Rgb(41, 98, 218))
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD)
             } else {
-                (Color::Reset, Color::Gray)
+                Style::default()
             };
-
-            let style = Style::default()
-                .bg(bg_color)
-                .fg(fg_color)
-                .add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() });
 
             // 优先级指示器
             let priority_indicator = match task.priority.as_deref() {
-                Some("high") => Span::styled("🔴 ", Style::default().fg(Color::Red)),
-                Some("medium") => Span::styled("🟡 ", Style::default().fg(Color::Yellow)),
-                Some("low") => Span::styled("🔵 ", Style::default().fg(Color::Blue)),
-                _ => Span::raw("   "),
+                Some("high") => Span::styled("● ", Style::default().fg(Color::Red)),
+                Some("medium") => Span::styled("● ", Style::default().fg(Color::Yellow)),
+                Some("low") => Span::styled("● ", Style::default().fg(Color::Blue)),
+                _ => Span::raw("  "),
             };
 
             // 选中指示器
             let selection_indicator = if is_selected {
-                Span::styled("▶ ", Style::default().fg(Color::Yellow))
+                Span::styled("▶ ", Style::default().fg(Color::White))
             } else {
                 Span::raw("  ")
             };
 
             ListItem::new(Line::from(vec![
+                Span::raw(" "),
                 selection_indicator,
                 priority_indicator,
                 Span::raw(&task.title),
+                Span::raw(" "),
             ]))
             .style(style)
         })
         .collect();
 
-    // 列标题带图标
-    let title_with_icon = match column_idx {
-        0 => format!(" 📝 {} ({}) ", title, tasks.len()),
-        1 => format!(" ⚡ {} ({}) ", title, tasks.len()),
-        2 => format!(" ✅ {} ({}) ", title, tasks.len()),
-        _ => format!(" {} ({}) ", title, tasks.len()),
-    };
+    // 列标题
+    let title_with_count = format!(" {} ({}) ", title, tasks.len());
 
     let list = List::new(items).block(
         Block::default()
-            .title(title_with_icon)
+            .title(title_with_count)
             .title_alignment(ratatui::layout::Alignment::Center)
             .title_style(title_style)
             .borders(Borders::ALL)
             .border_style(Style::default().fg(border_color))
-            .border_type(if is_column_focused {
-                ratatui::widgets::BorderType::Double
-            } else {
-                ratatui::widgets::BorderType::Rounded
-            }),
+            .border_type(ratatui::widgets::BorderType::Rounded),
     );
 
     f.render_widget(list, area);

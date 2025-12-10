@@ -5,6 +5,15 @@ use std::path::PathBuf;
 use super::status::Status;
 use super::task::Task;
 
+/// 项目类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectType {
+    /// 全局项目 (~/.kanban/projects)
+    Global,
+    /// 本地项目 (./kanban)
+    Local,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectConfig {
     pub name: String,
@@ -30,15 +39,17 @@ pub struct Project {
     pub path: PathBuf,
     pub statuses: Vec<Status>,
     pub tasks: Vec<Task>,
+    pub project_type: ProjectType,
 }
 
 impl Project {
-    pub fn new(name: String, path: PathBuf) -> Self {
+    pub fn new(name: String, path: PathBuf, project_type: ProjectType) -> Self {
         Self {
             name,
             path,
             statuses: Vec::new(),
             tasks: Vec::new(),
+            project_type,
         }
     }
 

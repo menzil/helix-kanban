@@ -3,24 +3,35 @@ pub mod project;
 pub mod task;
 
 pub use project::{
-    create_project, get_data_dir, get_projects_dir, init_data_dir, list_project_dirs,
-    load_project, load_project_config, rename_project,
+    create_project, create_local_project, get_data_dir, get_projects_dir, get_local_kanban_dir,
+    init_data_dir, list_local_project_dirs, list_project_dirs, load_project,
+    load_project_config, load_project_with_type, rename_project,
 };
 pub use task::{delete_task, get_next_task_id, load_task, move_task, save_task};
 
-use crate::models::Project;
+use crate::models::{Project, ProjectType};
 use anyhow::Result;
 
-/// 加载所有项目
+/// 加载所有项目（全局 + 本地）
 pub fn load_all_projects() -> Result<Vec<Project>> {
     init_data_dir()?;
-    let project_dirs = list_project_dirs()?;
     let mut projects = Vec::new();
 
-    for dir_name in project_dirs {
-        match load_project(&dir_name) {
+    // 加载全局项目 (~/.kanban/projects)
+    let global_project_dirs = list_project_dirs()?;
+    for dir_name in global_project_dirs {
+        match load_project_with_type(&dir_name, ProjectType::Global) {
             Ok(project) => projects.push(project),
-            Err(e) => eprintln!("警告: 无法加载项目 {}: {}", dir_name.display(), e),
+            Err(e) => eprintln!("警告: 无法加载全局项目 {}: {}", dir_name.display(), e),
+        }
+    }
+
+    // 加载本地项目 (./kanban/*)
+    let local_project_dirs = list_local_project_dirs()?;
+    for dir_name in local_project_dirs {
+        match load_project_with_type(&dir_name, ProjectType::Local) {
+            Ok(project) => projects.push(project),
+            Err(e) => eprintln!("警告: 无法加载本地项目 {}: {}", dir_name.display(), e),
         }
     }
 

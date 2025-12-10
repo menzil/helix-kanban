@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::models::{Project, ProjectConfig, Status};
+use crate::models::{Project, ProjectConfig, ProjectType, Status};
 
 /// Get the kanban data directory (~/.kanban)
 pub fn get_data_dir() -> PathBuf {
@@ -14,6 +14,13 @@ pub fn get_projects_dir() -> PathBuf {
     get_data_dir().join("projects")
 }
 
+/// Get the local kanban directory (.kanban in current directory)
+pub fn get_local_kanban_dir() -> PathBuf {
+    std::env::current_dir()
+        .expect("Failed to get current directory")
+        .join(".kanban")
+}
+
 /// Initialize the kanban data directory structure
 pub fn init_data_dir() -> std::io::Result<()> {
     let projects_dir = get_projects_dir();
@@ -23,7 +30,7 @@ pub fn init_data_dir() -> std::io::Result<()> {
     Ok(())
 }
 
-/// List all project directories
+/// List all global project directories
 pub fn list_project_dirs() -> std::io::Result<Vec<PathBuf>> {
     let projects_dir = get_projects_dir();
 
@@ -48,6 +55,22 @@ pub fn list_project_dirs() -> std::io::Result<Vec<PathBuf>> {
     Ok(project_paths)
 }
 
+/// List all local project directories (.kanban if exists)
+pub fn list_local_project_dirs() -> std::io::Result<Vec<PathBuf>> {
+    let local_kanban_dir = get_local_kanban_dir();
+
+    if !local_kanban_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    // 检查是否有 .kanban.toml 文件
+    if local_kanban_dir.join(".kanban.toml").exists() {
+        Ok(vec![local_kanban_dir])
+    } else {
+        Ok(Vec::new())
+    }
+}
+
 /// Load project configuration from .kanban.toml
 pub fn load_project_config(project_path: &Path) -> Result<ProjectConfig, String> {
     let config_path = project_path.join(".kanban.toml");
@@ -64,6 +87,11 @@ pub fn load_project_config(project_path: &Path) -> Result<ProjectConfig, String>
 
 /// Load a project with all its tasks
 pub fn load_project(project_path: &Path) -> Result<Project, String> {
+    load_project_with_type(project_path, ProjectType::Global)
+}
+
+/// Load a project with all its tasks, specifying project type
+pub fn load_project_with_type(project_path: &Path, project_type: ProjectType) -> Result<Project, String> {
     let config = load_project_config(project_path)?;
 
     let mut statuses = Vec::new();
@@ -76,7 +104,7 @@ pub fn load_project(project_path: &Path) -> Result<Project, String> {
         }
     }
 
-    let mut project = Project::new(config.name.clone(), project_path.to_path_buf());
+    let mut project = Project::new(config.name.clone(), project_path.to_path_buf(), project_type);
     project.statuses = statuses;
 
     // Load tasks from all status directories
@@ -103,6 +131,58 @@ pub fn create_project(name: &str) -> Result<PathBuf, String> {
     // Create project directory
     fs::create_dir_all(&project_dir)
         .map_err(|e| format!("Failed to create project directory: {}", e))?;
+
+    // Create default statuses directories
+    let default_statuses = vec!["todo", "doing", "done"];
+    for status in &default_statuses {
+        fs::create_dir_all(project_dir.join(status))
+            .map_err(|e| format!("Failed to create status directory: {}", e))?;
+    }
+
+    // Create .kanban.toml with default configuration
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let config = format!(
+        concat!(
+            "name = \"{}\"\n",
+            "created = \"{}\"\n",
+            "\n",
+            "[statuses]\n",
+            "order = [\"todo\", \"doing\", \"done\"]\n",
+            "\n",
+            "[statuses.todo]\n",
+            "display = \"Todo\"\n",
+            "\n",
+            "[statuses.doing]\n",
+            "display = \"Doing\"\n",
+            "\n",
+            "[statuses.done]\n",
+            "display = \"Done\"\n"
+        ),
+        name, timestamp
+    );
+
+    fs::write(project_dir.join(".kanban.toml"), config)
+        .map_err(|e| format!("Failed to write config: {}", e))?;
+
+    Ok(project_dir)
+}
+
+/// Create a new local project in .kanban directory
+pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
+    let project_dir = get_local_kanban_dir();
+
+    // Check if .kanban already exists
+    if project_dir.exists() {
+        return Err("本地看板已存在，一个目录只能有一个本地项目".to_string());
+    }
+
+    // Create .kanban directory
+    fs::create_dir_all(&project_dir)
+        .map_err(|e| format!("Failed to create .kanban directory: {}", e))?;
 
     // Create default statuses directories
     let default_statuses = vec!["todo", "doing", "done"];

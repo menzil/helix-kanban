@@ -1,10 +1,13 @@
+pub mod command_completion;
 pub mod command_menu;
 pub mod dialogs;
 pub mod help;
 mod kanban;
 pub mod layout;
+pub mod preview;
 mod sidebar;
 mod statusbar;
+pub mod welcome;
 
 use crate::app::App;
 use ratatui::layout::{Constraint, Direction, Layout};
@@ -47,9 +50,24 @@ pub fn render(f: &mut Frame, app: &App) {
         help::render(f, f.area());
     }
 
+    // 渲染预览面板（如果处于预览模式）
+    if app.mode == crate::app::Mode::Preview {
+        preview::render(f, f.area(), app);
+    }
+
     // 渲染命令菜单（如果处于空格菜单模式）
     if app.mode == crate::app::Mode::SpaceMenu {
         command_menu::render(f, f.area(), app);
+    }
+
+    // 渲染命令补全（如果处于命令模式且有输入）
+    if app.mode == crate::app::Mode::Command {
+        command_completion::render(f, f.area(), app);
+    }
+
+    // 渲染欢迎对话框（如果是首次运行）
+    if app.show_welcome_dialog {
+        welcome::render(f, f.area(), &app.config);
     }
 }
 
@@ -110,7 +128,8 @@ fn render_empty_pane(f: &mut Frame, area: ratatui::layout::Rect, message: &str, 
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(border_style);
+        .border_style(border_style)
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let paragraph = Paragraph::new(message)
         .block(block)

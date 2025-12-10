@@ -11,6 +11,8 @@ pub enum Command {
     SplitVertical,
     /// 关闭当前面板
     ClosePane,
+    /// 切换到下一个窗口
+    FocusNextPane,
     /// 聚焦左侧面板
     FocusLeft,
     /// 聚焦右侧面板
@@ -43,12 +45,22 @@ pub enum Command {
     NewTask,
     /// 编辑当前任务
     EditTask,
+    /// 用外部编辑器编辑任务
+    EditTaskInEditor,
+    /// 预览任务（内部 TUI）
+    ViewTask,
+    /// 用外部工具预览任务
+    ViewTaskExternal,
 
     // ===== 项目操作 (Space p 前缀) =====
     /// 打开项目
     OpenProject,
-    /// 创建新项目
+    /// 创建新项目（根据上下文决定全局或本地）
     NewProject,
+    /// 创建新的本地项目
+    NewLocalProject,
+    /// 创建新的全局项目
+    NewGlobalProject,
     /// 删除项目
     DeleteProject,
     /// 重命名项目

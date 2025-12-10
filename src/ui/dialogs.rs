@@ -80,7 +80,8 @@ fn render_input_dialog(
     let block = Block::default()
         .title(format!(" {} ", title))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(Color::Cyan))
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -102,7 +103,8 @@ fn render_input_dialog(
     // 输入框
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow));
+        .border_style(Style::default().fg(Color::Yellow))
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let input_inner = input_block.inner(chunks[1]);
     f.render_widget(input_block, chunks[1]);
@@ -141,7 +143,8 @@ fn render_select_dialog(
     let block = Block::default()
         .title(format!(" {} ", title))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(Color::Cyan))
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -159,7 +162,8 @@ fn render_select_dialog(
     let search_block = Block::default()
         .title(" 搜索 ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow));
+        .border_style(Style::default().fg(Color::Yellow))
+        .border_type(ratatui::widgets::BorderType::Rounded);
     let search_inner = search_block.inner(chunks[0]);
     f.render_widget(search_block, chunks[0]);
     let search_text = Paragraph::new(format!("{}_", filter));
@@ -226,7 +230,8 @@ fn render_confirm_dialog(
     let block = Block::default()
         .title(format!(" {} ", title))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow));
+        .border_style(Style::default().fg(Color::Yellow))
+        .border_type(ratatui::widgets::BorderType::Rounded);
 
     let inner = block.inner(area);
     f.render_widget(block, area);

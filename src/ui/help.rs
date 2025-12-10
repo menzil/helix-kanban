@@ -2,14 +2,20 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
 
 /// 渲染帮助面板
 pub fn render(f: &mut Frame, area: Rect) {
+    // 渲染半透明背景遮罩
+    render_backdrop(f, area);
+
     // 创建居中的弹窗区域
     let popup_area = centered_rect(80, 85, area);
+
+    // 清空弹窗区域
+    f.render_widget(Clear, popup_area);
 
     // 清空背景
     let block = Block::default()
@@ -17,6 +23,7 @@ pub fn render(f: &mut Frame, area: Rect) {
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
+        .border_type(ratatui::widgets::BorderType::Rounded)
         .style(Style::default().bg(Color::Black));
 
     f.render_widget(block.clone(), popup_area);
@@ -130,6 +137,10 @@ pub fn render(f: &mut Frame, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
+            Span::styled("Space w w", Style::default().fg(Color::Cyan)),
+            Span::raw("   下一个窗口"),
+        ]),
+        Line::from(vec![
             Span::styled("Space w v", Style::default().fg(Color::Cyan)),
             Span::raw("   垂直分屏"),
         ]),
@@ -138,8 +149,8 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("   水平分屏"),
         ]),
         Line::from(vec![
-            Span::styled("Space w c", Style::default().fg(Color::Cyan)),
-            Span::raw("   关闭面板"),
+            Span::styled("Space w q", Style::default().fg(Color::Cyan)),
+            Span::raw("   关闭窗口"),
         ]),
         Line::from(vec![
             Span::styled("Space w h", Style::default().fg(Color::Cyan)),
@@ -241,6 +252,12 @@ pub fn render(f: &mut Frame, area: Rect) {
     f.render_widget(nav_widget, columns[0]);
     f.render_widget(proj_widget, columns[1]);
     f.render_widget(dialog_widget, columns[2]);
+}
+
+/// 渲染半透明背景遮罩
+fn render_backdrop(f: &mut Frame, area: Rect) {
+    let block = Block::default().style(Style::default().bg(Color::Rgb(0, 0, 0)));
+    f.render_widget(block, area);
 }
 
 /// 创建一个居中的矩形区域

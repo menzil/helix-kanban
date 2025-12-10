@@ -29,7 +29,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         Some(MenuState::Project) => (
             vec![
                 CommandItem { key: "o", label: "打开项目" },
-                CommandItem { key: "n", label: "新建项目" },
+                CommandItem { key: "", label: "" },
+                CommandItem { key: "n", label: "新建本地项目 [L]" },
+                CommandItem { key: "N", label: "新建全局项目 [G]" },
+                CommandItem { key: "", label: "" },
                 CommandItem { key: "d", label: "删除项目" },
                 CommandItem { key: "r", label: "重命名项目" },
             ],
@@ -37,9 +40,11 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         ),
         Some(MenuState::Window) => (
             vec![
+                CommandItem { key: "w", label: "下一个窗口" },
+                CommandItem { key: "", label: "" },
                 CommandItem { key: "v", label: "垂直分屏" },
                 CommandItem { key: "s", label: "水平分屏" },
-                CommandItem { key: "c", label: "关闭面板" },
+                CommandItem { key: "q", label: "关闭当前窗口" },
                 CommandItem { key: "", label: "" },
                 CommandItem { key: "h", label: "聚焦左侧" },
                 CommandItem { key: "l", label: "聚焦右侧" },
@@ -52,6 +57,11 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
             vec![
                 CommandItem { key: "n", label: "新建任务" },
                 CommandItem { key: "e", label: "编辑任务" },
+                CommandItem { key: "E", label: "用编辑器编辑" },
+                CommandItem { key: "", label: "" },
+                CommandItem { key: "v", label: "预览任务" },
+                CommandItem { key: "V", label: "外部预览" },
+                CommandItem { key: "", label: "" },
                 CommandItem { key: "d", label: "删除任务" },
             ],
             " 任务操作 "
@@ -65,6 +75,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "t", label: "任务操作..." },
                 CommandItem { key: "", label: "" },
                 CommandItem { key: "?", label: "显示帮助" },
+                CommandItem { key: "q", label: "退出" },
             ],
             " 命令菜单 "
         ),

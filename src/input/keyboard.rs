@@ -5,6 +5,12 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 /// 处理键盘输入
 /// 返回 false 表示应该退出应用
 pub fn handle_key_input(app: &mut App, key: KeyEvent) -> bool {
+    // 如果显示欢迎对话框，任意按键都关闭它
+    if app.show_welcome_dialog {
+        app.show_welcome_dialog = false;
+        return true;
+    }
+
     match app.mode {
         Mode::Normal => handle_normal_mode(app, key),
         Mode::Command => handle_command_mode(app, key),
@@ -12,6 +18,7 @@ pub fn handle_key_input(app: &mut App, key: KeyEvent) -> bool {
         Mode::Dialog => handle_dialog_mode(app, key),
         Mode::Help => handle_help_mode(app, key),
         Mode::SpaceMenu => handle_space_menu_mode(app, key),
+        Mode::Preview => handle_preview_mode(app, key),
     }
 }
 
@@ -72,9 +79,10 @@ fn handle_command_mode(app: &mut App, key: KeyEvent) -> bool {
         }
         KeyCode::Enter => {
             // 执行命令
-            execute_text_command(app, &app.command_input.clone());
+            let should_continue = execute_text_command(app, &app.command_input.clone());
             app.command_input.clear();
             app.mode = Mode::Normal;
+            return should_continue;
         }
         KeyCode::Backspace => {
             app.command_input.pop();
@@ -283,7 +291,26 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 // 创建新项目
                 if !value.is_empty() {
                     log_debug(format!("调试: 准备创建项目 '{}'", value));
-                    match crate::fs::create_project(&value) {
+
+                    // 根据标题判断是本地项目还是全局项目
+                    let is_local = title.contains("[L]");
+                    let is_global = title.contains("[G]");
+
+                    let result = if is_local {
+                        // 创建本地项目
+                        log_debug("调试: 创建本地项目".to_string());
+                        crate::fs::create_local_project(&value)
+                    } else if is_global {
+                        // 创建全局项目
+                        log_debug("调试: 创建全局项目".to_string());
+                        crate::fs::create_project(&value)
+                    } else {
+                        // 默认创建全局项目（向后兼容）
+                        log_debug("调试: 创建默认项目（全局）".to_string());
+                        crate::fs::create_project(&value)
+                    };
+
+                    match result {
                         Ok(path) => {
                             log_debug(format!("调试: 项目创建成功于 {:?}", path));
                             // 重新加载项目列表
@@ -319,6 +346,11 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 if !value.is_empty() {
                     update_task_title(app, value);
                 }
+            } else if title.contains("重命名项目") {
+                // 重命名项目
+                if !value.is_empty() {
+                    rename_current_project(app, value);
+                }
             }
         }
         DialogType::Select { title, .. } => {
@@ -333,7 +365,25 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 // TODO: 实现项目删除逻辑
             } else if title.contains("删除任务") {
                 // 删除任务
-                // TODO: 实现任务删除逻辑
+                if let Some(task) = get_selected_task(app) {
+                    let task_file = task.file_path.clone();
+
+                    // 删除任务文件
+                    if let Err(e) = std::fs::remove_file(&task_file) {
+                        log_debug(format!("删除任务文件失败: {}", e));
+                    } else {
+                        // 重新加载当前项目
+                        if let Err(e) = app.reload_current_project() {
+                            log_debug(format!("重新加载项目失败: {}", e));
+                        }
+
+                        // 调整选中的任务索引
+                        let task_idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
+                        if *task_idx > 0 {
+                            *task_idx -= 1;
+                        }
+                    }
+                }
             }
         }
     }
@@ -345,7 +395,7 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
 pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
     match (buffer, key.code, key.modifiers) {
         // ===== 单键命令（空缓冲区）=====
-        ([], KeyCode::Char('q'), KeyModifiers::NONE) => Some(Command::Quit),
+        // 注意：移除了 'q' 键退出，改用 ':q' 命令或 Space q
         ([], KeyCode::Char('j'), KeyModifiers::NONE) => Some(Command::TaskDown),
         ([], KeyCode::Char('k'), KeyModifiers::NONE) => Some(Command::TaskUp),
         ([], KeyCode::Char('h'), KeyModifiers::NONE) => Some(Command::ColumnLeft),
@@ -358,7 +408,12 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Esc, _) => Some(Command::EnterNormalMode),
         ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask),
         ([], KeyCode::Char('a'), KeyModifiers::NONE) => Some(Command::NewTask),
+        ([], KeyCode::Char('n'), KeyModifiers::NONE) => Some(Command::NewLocalProject),
+        ([], KeyCode::Char('N'), KeyModifiers::SHIFT) => Some(Command::NewGlobalProject),
         ([], KeyCode::Char('e'), KeyModifiers::NONE) => Some(Command::EditTask),
+        ([], KeyCode::Char('E'), KeyModifiers::SHIFT) => Some(Command::EditTaskInEditor),
+        ([], KeyCode::Char('v'), KeyModifiers::NONE) => Some(Command::ViewTask),
+        ([], KeyCode::Char('V'), KeyModifiers::SHIFT) => Some(Command::ViewTaskExternal),
 
         ([], KeyCode::Down, _) => Some(Command::TaskDown),
         ([], KeyCode::Up, _) => Some(Command::TaskUp),
@@ -465,6 +520,24 @@ fn execute_command(app: &mut App, cmd: Command) {
                 cursor_pos: 0,
             });
         }
+        Command::NewLocalProject => {
+            app.mode = Mode::Dialog;
+            app.dialog = Some(DialogType::Input {
+                title: "创建新本地项目 [L]".to_string(),
+                prompt: "请输入项目名称:".to_string(),
+                value: String::new(),
+                cursor_pos: 0,
+            });
+        }
+        Command::NewGlobalProject => {
+            app.mode = Mode::Dialog;
+            app.dialog = Some(DialogType::Input {
+                title: "创建新全局项目 [G]".to_string(),
+                prompt: "请输入项目名称:".to_string(),
+                value: String::new(),
+                cursor_pos: 0,
+            });
+        }
         Command::OpenProject => {
             app.mode = Mode::Dialog;
             let project_names: Vec<String> = app.projects.iter().map(|p| p.name.clone()).collect();
@@ -474,6 +547,20 @@ fn execute_command(app: &mut App, cmd: Command) {
                 selected: 0,
                 filter: String::new(),
             });
+        }
+        Command::RenameProject => {
+            // 获取当前项目名
+            if let Some(project) = app.get_focused_project() {
+                let current_name = project.name.clone();
+                let cursor_pos = current_name.chars().count();
+                app.mode = Mode::Dialog;
+                app.dialog = Some(DialogType::Input {
+                    title: "重命名项目".to_string(),
+                    prompt: "请输入新的项目名称:".to_string(),
+                    value: current_name,
+                    cursor_pos,
+                });
+            }
         }
         Command::NewTask => {
             app.mode = Mode::Dialog;
@@ -509,6 +596,16 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::MoveTaskDown => {
             move_task_in_column(app, 1);
+        }
+        Command::FocusNextPane => {
+            // 获取所有窗格 ID 并找到下一个
+            let all_panes = app.split_tree.collect_pane_ids();
+            if all_panes.len() > 1 {
+                if let Some(current_idx) = all_panes.iter().position(|&id| id == app.focused_pane) {
+                    let next_idx = (current_idx + 1) % all_panes.len();
+                    app.focused_pane = all_panes[next_idx];
+                }
+            }
         }
         Command::FocusLeft => {
             if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
@@ -554,15 +651,97 @@ fn execute_command(app: &mut App, cmd: Command) {
             }
             // 如果关闭失败（比如只有一个面板），不做任何操作
         }
+        Command::EditTaskInEditor => {
+            // 用外部编辑器编辑当前选中的任务
+            if let Some(task) = get_selected_task(app) {
+                // 设置待打开的文件路径
+                app.pending_editor_file = Some(task.file_path.to_string_lossy().to_string());
+            }
+        }
+        Command::ViewTaskExternal => {
+            // 用外部工具预览当前选中的任务
+            if let Some(task) = get_selected_task(app) {
+                // 设置待预览的文件路径
+                app.pending_preview_file = Some(task.file_path.to_string_lossy().to_string());
+            }
+        }
+        Command::ViewTask => {
+            // TUI 内预览当前选中的任务
+            if let Some(task) = get_selected_task(app) {
+                // 读取任务文件内容
+                if let Ok(content) = std::fs::read_to_string(&task.file_path) {
+                    app.preview_content = content;
+                    app.preview_scroll = 0;
+                    app.mode = Mode::Preview;
+                } else {
+                    log_debug("读取任务文件失败".to_string());
+                }
+            }
+        }
+        Command::DeleteTask => {
+            // 删除当前选中的任务
+            if let Some(task) = get_selected_task(app) {
+                let task_title = task.title.clone();
+
+                // 显示确认对话框
+                app.mode = Mode::Dialog;
+                app.dialog = Some(DialogType::Confirm {
+                    title: "删除任务".to_string(),
+                    message: format!("确定要删除任务 \"{}\" 吗？", task_title),
+                    yes_selected: true,
+                });
+            }
+        }
         // TODO: 实现其他命令
         _ => {}
     }
 }
 
 /// 执行文本命令（从命令模式输入）
-fn execute_text_command(app: &mut App, _cmd: &str) {
-    // TODO: 解析和执行文本命令
-    // 例如: "split v", "open project-name", "new task title"
+/// 返回 false 表示应该退出应用
+fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
+    let cmd_str = cmd_str.trim();
+
+    // 查找命令定义
+    let cmd_def = app.command_registry.find_exact(cmd_str);
+
+    if let Some(cmd_def) = cmd_def {
+        // 根据命令名执行对应操作
+        match cmd_def.name {
+            "quit" => {
+                return false; // 退出应用
+            }
+            "project-open" => execute_command(app, Command::OpenProject),
+            "project-new" => execute_command(app, Command::NewGlobalProject),
+            "project-new-local" => execute_command(app, Command::NewLocalProject),
+            "project-delete" => execute_command(app, Command::DeleteProject),
+            "project-rename" => execute_command(app, Command::RenameProject),
+            "task-new" => execute_command(app, Command::NewTask),
+            "task-edit" => execute_command(app, Command::EditTask),
+            "task-delete" => execute_command(app, Command::DeleteTask),
+            "task-view" => execute_command(app, Command::ViewTask),
+            "task-view-external" => execute_command(app, Command::ViewTaskExternal),
+            "task-edit-external" => execute_command(app, Command::EditTaskInEditor),
+            "split-horizontal" => execute_command(app, Command::SplitHorizontal),
+            "split-vertical" => execute_command(app, Command::SplitVertical),
+            "close-pane" => execute_command(app, Command::ClosePane),
+            "focus-next" => execute_command(app, Command::FocusNextPane),
+            "focus-left" => execute_command(app, Command::FocusLeft),
+            "focus-right" => execute_command(app, Command::FocusRight),
+            "focus-up" => execute_command(app, Command::FocusUp),
+            "focus-down" => execute_command(app, Command::FocusDown),
+            "help" => {
+                app.mode = Mode::Help;
+            }
+            _ => {
+                log_debug(format!("未实现的命令: {}", cmd_def.name));
+            }
+        }
+    } else {
+        log_debug(format!("未知命令: {}", cmd_str));
+    }
+
+    true // 继续运行
 }
 
 /// 获取当前选中的任务
@@ -640,9 +819,8 @@ fn move_task_to_status(app: &mut App, direction: i32) {
             let old_status = task.status.clone();
             task.status = new_status.to_string();
 
-            // 移动文件到新的状态目录
-            let projects_dir = crate::fs::get_projects_dir();
-            let project_path = projects_dir.join(&project.name);
+            // 移动文件到新的状态目录（使用项目的实际路径）
+            let project_path = project.path.clone();
 
             match crate::fs::move_task(&project_path, task, new_status) {
                 Ok(new_path) => {
@@ -730,8 +908,13 @@ fn create_new_task(app: &mut App, title: String) {
         return;
     };
 
-    let projects_dir = crate::fs::get_projects_dir();
-    let project_path = projects_dir.join(&project_name);
+    // 获取项目路径（支持本地和全局项目）
+    let project_path = if let Some(project) = app.projects.iter().find(|p| &p.name == &project_name) {
+        project.path.clone()
+    } else {
+        log_debug("调试: 在项目列表中找不到项目".to_string());
+        return;
+    };
 
     // 获取下一个任务 ID
     if let Ok(next_id) = crate::fs::get_next_task_id(&project_path) {
@@ -789,6 +972,60 @@ fn create_new_task(app: &mut App, title: String) {
     }
 }
 
+/// 重命名当前项目
+fn rename_current_project(app: &mut App, new_name: String) {
+    // 获取当前项目名
+    let old_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+        app.split_tree.find_pane(app.focused_pane) {
+        if let Some(name) = project_id {
+            name.clone()
+        } else {
+            return;
+        }
+    } else {
+        return;
+    };
+
+    if old_name == new_name {
+        return; // 名称没有变化
+    }
+
+    // 找到项目
+    if let Some(project) = app.projects.iter().find(|p| p.name == old_name).cloned() {
+        let old_path = project.path.clone();
+        let new_path = old_path.parent().unwrap().join(&new_name);
+
+        // 重命名目录
+        if let Err(e) = std::fs::rename(&old_path, &new_path) {
+            log_debug(format!("重命名项目目录失败: {}", e));
+            return;
+        }
+
+        // 更新配置文件中的项目名
+        let config_path = new_path.join(".kanban.toml");
+        if let Ok(mut content) = std::fs::read_to_string(&config_path) {
+            // 简单替换项目名（第一行）
+            let lines: Vec<&str> = content.lines().collect();
+            if !lines.is_empty() {
+                content = format!("name = \"{}\"\n{}", new_name, lines[1..].join("\n"));
+                let _ = std::fs::write(&config_path, content);
+            }
+        }
+
+        // 重新加载所有项目
+        match crate::fs::load_all_projects() {
+            Ok(projects) => {
+                app.projects = projects;
+                // 更新当前面板的项目ID
+                app.set_focused_project(new_name);
+            }
+            Err(e) => {
+                log_debug(format!("重新加载项目失败: {}", e));
+            }
+        }
+    }
+}
+
 /// 更新任务标题
 fn update_task_title(app: &mut App, new_title: String) {
     // 获取任务 ID
@@ -816,9 +1053,8 @@ fn update_task_title(app: &mut App, new_title: String) {
             let old_title = task.title.clone();
             task.title = new_title;
 
-            // 保存到文件
-            let projects_dir = crate::fs::get_projects_dir();
-            let project_path = projects_dir.join(&project.name);
+            // 保存到文件（使用项目的实际路径）
+            let project_path = project.path.clone();
             if let Err(e) = crate::fs::save_task(&project_path, task) {
                 log_debug(format!("保存任务失败: {}", e));
                 task.title = old_title; // 回滚
@@ -871,6 +1107,14 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                             app.key_buffer.clear();
                             execute_command(app, Command::OpenProject);
                         }
+                        'q' => {
+                            // 退出应用
+                            app.mode = Mode::Normal;
+                            app.menu_state = None;
+                            app.key_buffer.clear();
+                            execute_command(app, Command::Quit);
+                            return false;
+                        }
                         '?' => {
                             app.mode = Mode::Help;
                             app.menu_state = None;
@@ -883,7 +1127,8 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                     // 项目子菜单：立即执行命令并退出菜单
                     let cmd = match c {
                         'o' => Some(Command::OpenProject),
-                        'n' => Some(Command::NewProject),
+                        'n' => Some(Command::NewLocalProject),
+                        'N' => Some(Command::NewGlobalProject),
                         'd' => Some(Command::DeleteProject),
                         'r' => Some(Command::RenameProject),
                         _ => None,
@@ -898,9 +1143,10 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                 Some(MenuState::Window) => {
                     // 窗口子菜单：立即执行命令并退出菜单
                     let cmd = match c {
+                        'w' => Some(Command::FocusNextPane),
                         'v' => Some(Command::SplitVertical),
                         's' => Some(Command::SplitHorizontal),
-                        'c' => Some(Command::ClosePane),
+                        'q' => Some(Command::ClosePane),
                         'h' => Some(Command::FocusLeft),
                         'l' => Some(Command::FocusRight),
                         'k' => Some(Command::FocusUp),
@@ -919,6 +1165,9 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                     let cmd = match c {
                         'n' => Some(Command::NewTask),
                         'e' => Some(Command::EditTask),
+                        'E' => Some(Command::EditTaskInEditor),
+                        'v' => Some(Command::ViewTask),
+                        'V' => Some(Command::ViewTaskExternal),
                         'd' => Some(Command::DeleteTask),
                         _ => None,
                     };
@@ -937,3 +1186,23 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
     true
 }
 
+/// 处理预览模式的按键
+fn handle_preview_mode(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Esc => {
+            app.mode = Mode::Normal;
+            app.preview_content.clear();
+            app.preview_scroll = 0;
+        }
+        KeyCode::Char('j') | KeyCode::Down => {
+            // 向下滚动
+            app.preview_scroll = app.preview_scroll.saturating_add(1);
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            // 向上滚动
+            app.preview_scroll = app.preview_scroll.saturating_sub(1);
+        }
+        _ => {}
+    }
+    true
+}

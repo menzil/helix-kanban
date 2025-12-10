@@ -1,3 +1,4 @@
+use crate::input::CommandRegistry;
 use crate::models::{Project, Task};
 use crate::ui::layout::SplitNode;
 use crate::ui::dialogs::DialogType;
@@ -19,6 +20,8 @@ pub enum Mode {
     Help,
     /// 空格菜单模式 - 显示命令菜单
     SpaceMenu,
+    /// 预览模式 - 显示任务内容
+    Preview,
 }
 
 /// 空格菜单状态
@@ -60,11 +63,28 @@ pub struct App {
     pub dialog: Option<DialogType>,
     /// 空格菜单状态 (None = 关闭)
     pub menu_state: Option<MenuState>,
+    /// 待打开的编辑器文件路径（用于外部编辑器调用）
+    pub pending_editor_file: Option<String>,
+    /// 待预览的文件路径（用于外部预览工具调用）
+    pub pending_preview_file: Option<String>,
+    /// 预览模式的内容
+    pub preview_content: String,
+    /// 预览模式的滚动位置
+    pub preview_scroll: u16,
+    /// 命令注册表
+    pub command_registry: CommandRegistry,
+    /// 应用配置
+    pub config: crate::config::Config,
+    /// 是否显示首次运行欢迎对话框
+    pub show_welcome_dialog: bool,
 }
 
 impl App {
     /// 创建新的应用实例
     pub fn new() -> Result<Self> {
+        // 检查首次运行并加载配置
+        let (config, is_first_run) = crate::config::check_first_run()?;
+
         // 加载所有项目
         let projects = crate::fs::load_all_projects()?;
 
@@ -76,7 +96,7 @@ impl App {
             }
         }
 
-        Ok(Self {
+        let mut app = Self {
             projects,
             split_tree,
             focused_pane: 0,
@@ -89,7 +109,21 @@ impl App {
             should_quit: false,
             dialog: None,
             menu_state: None,
-        })
+            pending_editor_file: None,
+            pending_preview_file: None,
+            preview_content: String::new(),
+            preview_scroll: 0,
+            command_registry: CommandRegistry::new(),
+            config,
+            show_welcome_dialog: is_first_run,
+        };
+
+        // 尝试加载保存的状态
+        if let Ok(state) = crate::state::load_state() {
+            crate::state::apply_state(&mut app, state);
+        }
+
+        Ok(app)
     }
 
     /// 处理键盘输入
@@ -144,5 +178,27 @@ impl App {
             self.selected_task_index.insert(self.focused_pane, 0);
             self.selected_column.insert(self.focused_pane, 0);
         }
+    }
+
+    /// 重新加载当前聚焦面板的项目（用于外部编辑器保存后刷新）
+    pub fn reload_current_project(&mut self) -> Result<()> {
+        if let Some(SplitNode::Leaf { project_id, .. }) = self.split_tree.find_pane(self.focused_pane)
+        {
+            if let Some(pid) = project_id {
+                // 从项目列表中找到项目路径和类型
+                if let Some(project) = self.projects.iter().find(|p| &p.name == pid) {
+                    let project_path = project.path.clone();
+                    let project_type = project.project_type;
+
+                    // 重新加载项目
+                    if let Ok(updated_project) = crate::fs::load_project_with_type(&project_path, project_type) {
+                        if let Some(project) = self.projects.iter_mut().find(|p| &p.name == pid) {
+                            *project = updated_project;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
