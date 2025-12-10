@@ -10,6 +10,15 @@ repository = "https://github.com/menzil/helix-kanban"
 license = "MIT OR Apache-2.0"
 keywords = ["kanban", "todo", "tui", "terminal", "productivity"]
 categories = ["command-line-utilities"]
+exclude = [
+    ".kanban/",
+    "*.md",
+    "!README.md",
+    "*.pdf",
+    "*.sh",
+    "*.bak",
+    "src/ui/board.rs",
+]
 
 [dependencies]
 # TUI framework
