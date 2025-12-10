@@ -1,126 +1,212 @@
-# Kanban TUI
+# Kanban
 
-一个基于终端的看板应用，使用 Rust 和 rxtui 构建。
+一个终端看板应用，灵感来自 [Helix 编辑器](https://helix-editor.com/)的键位设计。
 
 ## 特性
 
-- 📁 **文件存储** - 使用 Markdown 和 TOML 文件存储数据（非 JSON）
-- 🎯 **多项目支持** - 可创建和管理多个项目
-- ⌨️  **Helix 风格快捷键** - 类 Vim 的键盘导航
-- 🎨 **Nord 配色** - 美观的终端界面
-- 🚀 **极简依赖** - 仅依赖 rxtui、serde、toml
+- 📁 **基于文件存储** - 使用 Markdown 文件和 TOML 配置，易于版本控制
+- 🎯 **多项目支持** - 支持全局项目和本地项目（`.kanban/`）
+- ⌨️  **Helix 风格键位** - 符合直觉的键盘快捷键
+- 🪟 **窗口管理** - 支持垂直/水平分屏，同时查看多个项目
+- 🎨 **现代 TUI** - 基于 ratatui 的美观终端界面
+- 📝 **Markdown 支持** - 任务使用 Markdown 格式，支持外部编辑器
+- 🔍 **任务预览** - 内置预览和外部预览工具支持
+- ⚙️  **自动配置** - 首次运行自动检测编辑器和预览器
 
-## 安装与运行
+## 安装
+
+### 从 crates.io 安装
 
 ```bash
-# 构建项目
-cargo build --release
-
-# 运行
-cargo run --release
-
-# 或使用脚本
-./run.sh
+cargo install kanban
 ```
+
+### 从源码构建
+
+```bash
+git clone https://github.com/menzil/helix-kanban.git
+cd helix-kanban
+cargo build --release
+```
+
+## 快速开始
+
+首次运行会显示欢迎对话框，自动检测系统编辑器和 Markdown 预览器：
+
+```bash
+kanban
+```
+
+### 配置管理
+
+查看当前配置：
+```bash
+kanban config show
+```
+
+设置编辑器：
+```bash
+kanban config editor nvim
+kanban config editor "code --wait"
+```
+
+设置 Markdown 预览器：
+```bash
+kanban config viewer glow
+kanban config viewer "open -a Marked 2"
+```
+
+## 键位绑定
+
+### 基础导航
+
+| 键位 | 功能 |
+|------|------|
+| `j` / `↓` | 下一个任务 |
+| `k` / `↑` | 上一个任务 |
+| `h` / `←` | 左边的列 |
+| `l` / `→` | 右边的列 |
+| `q` | 退出程序 |
+| `ESC` | 取消/返回 |
+| `:` | 命令模式 |
+| `?` | 显示帮助 |
+| `Space` | 打开命令菜单 |
+
+### 任务操作
+
+| 键位 | 功能 |
+|------|------|
+| `a` | 创建新任务 |
+| `e` | 编辑任务标题 |
+| `E` | 用外部编辑器编辑任务 |
+| `v` | 预览任务（TUI 内） |
+| `V` | 用外部工具预览任务 |
+| `d` | 删除任务 |
+| `H` | 任务移到左列 |
+| `L` | 任务移到右列 |
+| `J` | 任务在列内下移 |
+| `K` | 任务在列内上移 |
+
+### 项目管理
+
+| 键位 | 功能 |
+|------|------|
+| `n` | 新建本地项目 [L] |
+| `N` | 新建全局项目 [G] |
+| `Space p o` | 打开项目 |
+| `Space p n` | 创建新项目 |
+| `Space p d` | 删除项目 |
+| `Space p r` | 重命名项目 |
+
+### 窗口管理
+
+| 键位 | 功能 |
+|------|------|
+| `Space w w` | 下一个窗口 |
+| `Space w v` | 垂直分屏 |
+| `Space w s` | 水平分屏 |
+| `Space w q` | 关闭窗口 |
+| `Space w h` | 聚焦左面板 |
+| `Space w l` | 聚焦右面板 |
+| `Space w j` | 聚焦下面板 |
+| `Space w k` | 聚焦上面板 |
+
+### 命令模式
+
+按 `:` 进入命令模式，支持的命令：
+
+- `:q` / `:quit` - 退出应用
+- `:open` / `:po` - 打开项目
+- `:new` / `:pn` - 创建新项目（全局）
+- `:new-local` / `:pnl` - 创建新项目（本地）
+- `:add` / `:tn` - 创建新任务
+- `:edit` / `:te` - 编辑任务
+- `:view` / `:tv` - 预览任务
+- `:vsplit` / `:sv` - 垂直分屏
+- `:hsplit` / `:sh` - 水平分屏
+- `:help` / `:h` - 显示帮助
 
 ## 数据存储
 
-数据存储在 `~/.kanban/` 目录：
+### 全局项目
+
+全局项目存储在 `~/.kanban/projects/` 目录下。
+
+### 本地项目
+
+在任何目录下按 `n` 创建本地项目，会在当前目录的 `.kanban/` 下存储：
 
 ```
-~/.kanban/
-└── projects/
-    └── demo-project/
-        ├── .kanban.toml    # 项目配置
-        ├── todo/
-        │   └── 001.md      # 任务文件
-        ├── doing/
-        │   └── 002.md
-        └── done/
-            └── 003.md
+your-project/
+├── .kanban/
+│   └── kanban-project/
+│       ├── .kanban.toml
+│       ├── todo/
+│       ├── doing/
+│       └── done/
+└── ... (你的其他文件)
 ```
 
-### 任务文件格式 (Markdown)
+### 项目结构
+
+```
+project-name/
+├── .kanban.toml          # 项目配置
+├── todo/                 # Todo 任务
+│   ├── 001.md
+│   └── 002.md
+├── doing/                # 进行中任务
+│   └── 003.md
+└── done/                 # 完成的任务
+    └── 004.md
+```
+
+### 任务文件格式
+
+任务以 Markdown 格式存储：
 
 ```markdown
 # 任务标题
 
-created: 1733659200
+created: 2025-12-10T10:30:00+08:00
 priority: high
 
-任务详细描述内容...
+任务的详细描述内容...
+
+## 子任务
+
+- [ ] 子任务 1
+- [x] 子任务 2
 ```
 
-### 项目配置 (TOML)
+### 配置文件
+
+配置文件存储在 `~/.kanban/config.toml`：
 
 ```toml
-name = "项目名称"
-created = "1733659200"
-
-[statuses]
-order = ["todo", "doing", "done"]
-
-[statuses.todo]
-display = "待办"
-
-[statuses.doing]
-display = "进行中"
-
-[statuses.done]
-display = "完成"
+editor = "nvim"
+markdown_viewer = "glow"
 ```
-
-## 快捷键
-
-### 项目列表
-- `j`/`k` 或 `↑`/`↓` - 导航
-- `Enter` - 打开项目
-- `q` 或 `ESC` - 退出
-
-### 看板视图
-- `ESC` - 返回项目列表
-- `h`/`l` - 切换列（计划中）
-- `a` - 添加任务（计划中）
-- `m` - 移动任务（计划中）
-
-## 当前进度
-
-### ✅ 已完成
-- 文件系统存储层
-- Markdown 解析器（无外部依赖）
-- 数据模型（Project, Status, Task）
-- 项目列表视图
-- 看板视图
-- 基础键盘导航
-
-### 🚧 待实现
-- 任务创建/编辑
-- 任务状态移动
-- 项目创建
-- 网格分屏视图
-- 完整的 Helix 风格快捷键
-- 任务删除
-- 优先级编辑
-
-## 技术栈
-
-- **Rust** - 系统编程语言
-- **rxtui** - 响应式终端 UI 框架
-- **File System** - 简单可靠的数据存储
-
-## 架构设计
-
-采用文件系统存储而非 JSON/数据库的优势：
-
-1. **人类可读** - 可直接编辑 Markdown 文件
-2. **Git 友好** - 可追踪变更历史
-3. **极简** - 无需数据库依赖
-4. **便携** - 纯文本，跨平台
 
 ## 开发
 
-参见 [CLAUDE.md](./CLAUDE.md) 获取详细的开发指南。
+```bash
+# 运行开发版本
+cargo run
 
-## License
+# 运行测试
+cargo test
 
-MIT
+# 构建 release 版本
+cargo build --release
+```
+
+## 致谢
+
+- 键位设计灵感来自 [Helix Editor](https://helix-editor.com/)
+- UI 框架使用 [ratatui](https://github.com/ratatui-org/ratatui)
+
+## 许可证
+
+MIT OR Apache-2.0
+

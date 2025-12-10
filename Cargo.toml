@@ -2,6 +2,14 @@
 name = "kanban"
 version = "0.2.0"
 edition = "2021"
+authors = ["Ruzaji Yasin <menzil@live.cn>"]
+description = "A terminal-based kanban board with file-based storage, multi-project support, and Helix-style keybindings"
+readme = "README.md"
+homepage = "https://github.com/menzil/helix-kanban"
+repository = "https://github.com/menzil/helix-kanban"
+license = "MIT OR Apache-2.0"
+keywords = ["kanban", "todo", "tui", "terminal", "productivity"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 # TUI framework
