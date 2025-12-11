@@ -121,21 +121,44 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
             DialogType::Input {
                 value,
                 cursor_pos,
+                title,
                 ..
-            } => match key.code {
-                KeyCode::Esc => {
-                    app.dialog = None;
-                    app.mode = Mode::Normal;
-                }
-                KeyCode::Enter => {
-                    // 执行对话框操作
-                    let input_value = value.clone();
-                    let dialog_clone = dialog.clone();
-                    app.dialog = None;
-                    app.mode = Mode::Normal;
-                    handle_dialog_submit(app, dialog_clone, input_value);
-                }
-                KeyCode::Backspace => {
+            } => {
+                // 判断是否是任务输入（支持多行）
+                let is_task_input = title.contains("任务");
+
+                match key.code {
+                    KeyCode::Esc => {
+                        app.dialog = None;
+                        app.mode = Mode::Normal;
+                    }
+                    KeyCode::Enter => {
+                        if is_task_input {
+                            // 任务输入：Enter 提交，Ctrl+Enter 换行
+                            if key.modifiers.contains(KeyModifiers::CONTROL) {
+                                // Ctrl+Enter 换行
+                                let mut chars: Vec<char> = value.chars().collect();
+                                chars.insert(*cursor_pos, '\n');
+                                *value = chars.into_iter().collect();
+                                *cursor_pos += 1;
+                            } else {
+                                // Enter 提交
+                                let input_value = value.clone();
+                                let dialog_clone = dialog.clone();
+                                app.dialog = None;
+                                app.mode = Mode::Normal;
+                                handle_dialog_submit(app, dialog_clone, input_value);
+                            }
+                        } else {
+                            // 普通输入：Enter 直接提交
+                            let input_value = value.clone();
+                            let dialog_clone = dialog.clone();
+                            app.dialog = None;
+                            app.mode = Mode::Normal;
+                            handle_dialog_submit(app, dialog_clone, input_value);
+                        }
+                    }
+                    KeyCode::Backspace => {
                     if *cursor_pos > 0 {
                         // 使用 chars() 正确处理多字节字符
                         let mut chars: Vec<char> = value.chars().collect();
@@ -176,7 +199,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     *cursor_pos += 1;
                 }
                 _ => {}
-            },
+                }
+            }
             DialogType::Select {
                 items,
                 selected,
@@ -753,8 +777,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                 });
             }
         }
-        // TODO: 实现其他命令
-        _ => {}
+        // 未实现的命令：静默忽略（不报错，不执行）
+        _ => {
+            // 不做任何处理，避免报错
+        }
     }
 }
 
@@ -795,11 +821,11 @@ fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
                 app.mode = Mode::Help;
             }
             _ => {
-                log_debug(format!("未实现的命令: {}", cmd_def.name));
+                // 未实现的命令：静默忽略
             }
         }
     } else {
-        log_debug(format!("未知命令: {}", cmd_str));
+        // 未知命令：静默忽略
     }
 
     true // 继续运行

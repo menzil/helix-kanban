@@ -77,6 +77,9 @@ fn render_input_dialog(
     value: &str,
     cursor_pos: usize,
 ) {
+    // 判断是否是任务输入（需要更大的输入框）
+    let is_task_input = title.contains("任务");
+
     let block = Block::default()
         .title(format!(" {} ", title))
         .borders(Borders::ALL)
@@ -86,18 +89,34 @@ fn render_input_dialog(
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    // 分割内部区域
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(2), // 提示文本
-            Constraint::Length(3), // 输入框
-            Constraint::Length(2), // 帮助文本
-        ])
-        .split(inner);
+    // 分割内部区域 - 任务输入使用更大的输入框
+    let chunks = if is_task_input {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(2),  // 提示文本
+                Constraint::Min(10),    // 大输入框（多行）
+                Constraint::Length(3),  // 帮助文本
+            ])
+            .split(inner)
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(2), // 提示文本
+                Constraint::Length(3), // 普通输入框
+                Constraint::Length(2), // 帮助文本
+            ])
+            .split(inner)
+    };
 
     // 提示文本
-    let prompt_text = Paragraph::new(prompt).style(Style::default().fg(Color::Gray));
+    let prompt_text = if is_task_input {
+        Paragraph::new(format!("{}\n（支持多行输入，包含任务的所有内容）", prompt))
+            .style(Style::default().fg(Color::Gray))
+    } else {
+        Paragraph::new(prompt).style(Style::default().fg(Color::Gray))
+    };
     f.render_widget(prompt_text, chunks[0]);
 
     // 输入框
@@ -109,7 +128,7 @@ fn render_input_dialog(
     let input_inner = input_block.inner(chunks[1]);
     f.render_widget(input_block, chunks[1]);
 
-    // 渲染输入内容和光标
+    // 渲染输入内容和光标（支持多行）
     let chars: Vec<char> = value.chars().collect();
     let input_with_cursor = if cursor_pos >= chars.len() {
         // 光标在末尾
@@ -121,11 +140,18 @@ fn render_input_dialog(
         display_chars.into_iter().collect()
     };
 
-    let input_text = Paragraph::new(input_with_cursor);
+    let input_text = Paragraph::new(input_with_cursor)
+        .wrap(Wrap { trim: false });  // 支持自动换行
     f.render_widget(input_text, input_inner);
 
     // 帮助文本
-    let help = Paragraph::new("Enter: 确认 | ESC: 取消")
+    let help_text = if is_task_input {
+        "Enter: 确认 | Ctrl+Enter: 换行 | ESC: 取消"
+    } else {
+        "Enter: 确认 | ESC: 取消"
+    };
+
+    let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Center);
     f.render_widget(help, chunks[2]);
@@ -170,10 +196,10 @@ fn render_select_dialog(
             .collect()
     };
 
-    // 列表项 - 支持多行显示
+    // 列表项 - 支持多行显示，添加分隔线
     let list_items: Vec<ListItem> = filtered_items
         .iter()
-        .map(|(idx, item)| {
+        .flat_map(|(idx, item)| {
             let is_selected = *idx == selected;
 
             // 分割成多行
@@ -183,9 +209,14 @@ fn render_select_dialog(
 
             let mut content_lines = vec![];
 
+            // 添加空行（上间距）
+            if *idx > 0 {
+                content_lines.push(Line::from(""));
+            }
+
             if is_selected {
                 // 选中项：蓝色背景，带序号
-                let sequence_num = format!("{}", idx + 1);
+                let sequence_num = format!("{}", *idx + 1);
 
                 content_lines.push(Line::from(vec![
                     Span::raw("  "),
@@ -228,6 +259,16 @@ fn render_select_dialog(
                 ]));
             }
 
+            // 添加分隔线（除了最后一项）
+            if *idx < filtered_items.len() - 1 {
+                content_lines.push(Line::from(vec![
+                    Span::styled(
+                        "  ────────────────────────────────────────────────────────",
+                        Style::default().fg(Color::Rgb(76, 86, 106)),  // 灰色分隔线
+                    ),
+                ]));
+            }
+
             let style = if is_selected {
                 Style::default()
                     .bg(Color::Rgb(59, 66, 82))  // Nord 深蓝背景
@@ -235,7 +276,7 @@ fn render_select_dialog(
                 Style::default()
             };
 
-            ListItem::new(content_lines).style(style)
+            vec![ListItem::new(content_lines).style(style)]
         })
         .collect();
 
