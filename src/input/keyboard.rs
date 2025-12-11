@@ -354,15 +354,45 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
             }
         }
         DialogType::Select { title, .. } => {
-            if title.contains("选择项目") || title.contains("打开项目") {
+            if title.contains("选择项目") || title.contains("打开项目") || title.contains("切换项目") {
+                // 从格式化的字符串中提取项目名
+                // 格式: "[G/L] 项目名\n    路径"
+                let project_name = value
+                    .lines()
+                    .next()
+                    .unwrap_or(&value)
+                    .trim_start_matches("[G] ")
+                    .trim_start_matches("[L] ")
+                    .trim();
+
                 // 打开选中的项目
-                app.set_focused_project(value);
+                app.set_focused_project(project_name.to_string());
             }
         }
         DialogType::Confirm { title, .. } => {
             if title.contains("删除项目") {
                 // 删除项目
-                // TODO: 实现项目删除逻辑
+                if let Some(project) = app.get_focused_project() {
+                    let project_name = project.name.clone();
+                    let project_type = project.project_type.clone();
+
+                    // 删除项目目录
+                    if let Err(e) = crate::fs::delete_project(&project_name, &project_type) {
+                        log_debug(format!("删除项目失败: {}", e));
+                    } else {
+                        log_debug(format!("成功删除项目: {}", project_name));
+
+                        // 从项目列表中移除
+                        app.projects.retain(|p| p.name != project_name);
+
+                        // 清除当前面板的项目引用
+                        if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+                            app.split_tree.find_pane_mut(app.focused_pane)
+                        {
+                            *project_id = None;
+                        }
+                    }
+                }
             } else if title.contains("删除任务") {
                 // 删除任务
                 if let Some(task) = get_selected_task(app) {
@@ -407,6 +437,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char(':'), KeyModifiers::NONE) => Some(Command::EnterCommandMode),
         ([], KeyCode::Esc, _) => Some(Command::EnterNormalMode),
         ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask),
+        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject),
         ([], KeyCode::Char('a'), KeyModifiers::NONE) => Some(Command::NewTask),
         ([], KeyCode::Char('n'), KeyModifiers::NONE) => Some(Command::NewLocalProject),
         ([], KeyCode::Char('N'), KeyModifiers::SHIFT) => Some(Command::NewGlobalProject),
@@ -540,10 +571,26 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::OpenProject => {
             app.mode = Mode::Dialog;
-            let project_names: Vec<String> = app.projects.iter().map(|p| p.name.clone()).collect();
+            // 生成格式化的项目列表：[G/L] 项目名\n    路径
+            let project_items: Vec<String> = app.projects.iter().map(|p| {
+                let type_marker = match p.project_type {
+                    crate::models::ProjectType::Global => "[G]",
+                    crate::models::ProjectType::Local => "[L]",
+                };
+                let path = match &p.project_type {
+                    crate::models::ProjectType::Global => {
+                        format!("~/.kanban/projects/{}", p.name)
+                    }
+                    crate::models::ProjectType::Local => {
+                        format!(".kanban/{}", p.name)
+                    }
+                };
+                format!("{} {}\n    {}", type_marker, p.name, path)
+            }).collect();
+
             app.dialog = Some(DialogType::Select {
-                title: "选择项目".to_string(),
-                items: project_names,
+                title: "快速切换项目...".to_string(),
+                items: project_items,
                 selected: 0,
                 filter: String::new(),
             });
@@ -559,6 +606,20 @@ fn execute_command(app: &mut App, cmd: Command) {
                     prompt: "请输入新的项目名称:".to_string(),
                     value: current_name,
                     cursor_pos,
+                });
+            }
+        }
+        Command::DeleteProject => {
+            // 删除当前项目
+            if let Some(project) = app.get_focused_project() {
+                let project_name = project.name.clone();
+
+                // 显示确认对话框
+                app.mode = Mode::Dialog;
+                app.dialog = Some(DialogType::Confirm {
+                    title: "删除项目".to_string(),
+                    message: format!("确定要删除项目 \"{}\" 吗？\n这将删除项目的所有任务！", project_name),
+                    yes_selected: true,
                 });
             }
         }

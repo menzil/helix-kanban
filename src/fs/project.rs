@@ -260,3 +260,21 @@ pub fn rename_project(old_name: &str, new_name: &str) -> Result<(), String> {
 
     Ok(())
 }
+
+/// 删除项目（包括所有任务）
+pub fn delete_project(project_name: &str, project_type: &ProjectType) -> Result<(), String> {
+    let project_dir = match project_type {
+        ProjectType::Global => get_projects_dir().join(project_name),
+        ProjectType::Local => get_local_kanban_dir().join(project_name),
+    };
+
+    if !project_dir.exists() {
+        return Err(format!("项目 '{}' 不存在", project_name));
+    }
+
+    // 删除整个项目目录及其所有内容
+    std::fs::remove_dir_all(&project_dir)
+        .map_err(|e| format!("删除项目目录失败: {}", e))?;
+
+    Ok(())
+}

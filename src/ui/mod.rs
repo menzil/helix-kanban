@@ -16,29 +16,18 @@ use ratatui::Frame;
 /// 主渲染函数
 pub fn render(f: &mut Frame, app: &App) {
     let main_chunks = Layout::default()
-        .direction(Direction::Horizontal)
+        .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(20),  // 左侧边栏固定宽度20列
             Constraint::Min(0),      // 主内容区域
+            Constraint::Length(1),  // 状态栏
         ])
         .split(f.area());
 
-    let right_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(0),     // 主内容区
-            Constraint::Length(1),  // 状态栏
-        ])
-        .split(main_chunks[1]);
-
-    // 渲染左侧边栏
-    sidebar::render(f, main_chunks[0], app);
-
     // 渲染分屏内容
-    render_split_tree(f, right_chunks[0], &app.split_tree, app);
+    render_split_tree(f, main_chunks[0], &app.split_tree, app);
 
     // 渲染状态栏
-    statusbar::render(f, right_chunks[1], app);
+    statusbar::render(f, main_chunks[1], app);
 
     // 渲染对话框（如果有）
     if let Some(dialog) = &app.dialog {

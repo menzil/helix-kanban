@@ -92,6 +92,10 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("          删除任务"),
         ]),
         Line::from(vec![
+            Span::styled("D", Style::default().fg(Color::Cyan)),
+            Span::raw("          删除项目"),
+        ]),
+        Line::from(vec![
             Span::styled("H", Style::default().fg(Color::Cyan)),
             Span::raw("          任务移到左列"),
         ]),

@@ -141,10 +141,12 @@ fn render_select_dialog(
     filter: &str,
 ) {
     let block = Block::default()
-        .title(format!(" {} ", title))
+        .title(format!("  {}  ", title))
+        .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan))
-        .border_type(ratatui::widgets::BorderType::Rounded);
+        .border_style(Style::default().fg(Color::Rgb(76, 86, 106)))  // Nord border color
+        .border_type(ratatui::widgets::BorderType::Rounded)
+        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -152,22 +154,10 @@ fn render_select_dialog(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // 搜索框
             Constraint::Min(0),    // 列表
             Constraint::Length(1), // 帮助
         ])
         .split(inner);
-
-    // 搜索框
-    let search_block = Block::default()
-        .title(" 搜索 ")
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow))
-        .border_type(ratatui::widgets::BorderType::Rounded);
-    let search_inner = search_block.inner(chunks[0]);
-    f.render_widget(search_block, chunks[0]);
-    let search_text = Paragraph::new(format!("{}_", filter));
-    f.render_widget(search_text, search_inner);
 
     // 过滤项目列表
     let filtered_items: Vec<_> = if filter.is_empty() {
@@ -180,43 +170,96 @@ fn render_select_dialog(
             .collect()
     };
 
-    // 列表项
+    // 列表项 - 支持多行显示
     let list_items: Vec<ListItem> = filtered_items
         .iter()
         .map(|(idx, item)| {
             let is_selected = *idx == selected;
+
+            // 分割成多行
+            let lines: Vec<&str> = item.lines().collect();
+            let main_line = lines.get(0).unwrap_or(&"");
+            let sub_line = lines.get(1);
+
+            let mut content_lines = vec![];
+
+            if is_selected {
+                // 选中项：蓝色背景，带序号
+                let sequence_num = format!("{}", idx + 1);
+
+                content_lines.push(Line::from(vec![
+                    Span::raw("  "),
+                    Span::styled(
+                        sequence_num,
+                        Style::default()
+                            .fg(Color::White)
+                            .bg(Color::Rgb(94, 129, 172))  // 蓝色序号标记
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw("  "),
+                    Span::styled(
+                        *main_line,
+                        Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw("  "),
+                    Span::styled("✓", Style::default().fg(Color::Rgb(163, 190, 140))),  // 绿色勾
+                    Span::raw("  "),
+                    Span::styled(
+                        "Enter",
+                        Style::default()
+                            .fg(Color::Black)
+                            .bg(Color::Rgb(136, 192, 208)),
+                    ),
+                ]));
+            } else {
+                // 未选中项：正常显示
+                content_lines.push(Line::from(format!("      {}", main_line)));
+            }
+
+            // 添加子行（路径）
+            if let Some(sub) = sub_line {
+                let sub_style = if is_selected {
+                    Style::default().fg(Color::Rgb(216, 222, 233))
+                } else {
+                    Style::default().fg(Color::Rgb(129, 161, 193))
+                };
+                content_lines.push(Line::from(vec![
+                    Span::styled(*sub, sub_style),
+                ]));
+            }
+
             let style = if is_selected {
                 Style::default()
-                    .bg(Color::Rgb(41, 98, 218))  // 蓝色高亮背景
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD)
+                    .bg(Color::Rgb(59, 66, 82))  // Nord 深蓝背景
             } else {
                 Style::default()
             };
 
-            let content = if is_selected {
-                Line::from(vec![
-                    Span::raw("  ✓ "),
-                    Span::styled(item.as_str(), Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-                    Span::raw("  "),
-                    Span::styled("Enter", Style::default().fg(Color::Cyan)),
-                ])
-            } else {
-                Line::from(format!("    {}", item))
-            };
-
-            ListItem::new(content).style(style)
+            ListItem::new(content_lines).style(style)
         })
         .collect();
 
     let list = List::new(list_items);
-    f.render_widget(list, chunks[1]);
+    f.render_widget(list, chunks[0]);
 
-    // 帮助文本
-    let help = Paragraph::new("↑/↓: 选择 | Enter: 确认 | ESC: 取消")
-        .style(Style::default().fg(Color::DarkGray))
+    // 帮助文本 - 右上角显示总数
+    let help_text = format!("↑↓ 导航   Enter 切换选择   Esc 关闭   最多选择 1 个项目");
+    let help_paragraph = Paragraph::new(help_text)
+        .style(Style::default().fg(Color::Rgb(129, 161, 193)))  // Nord frost color
         .alignment(Alignment::Center);
-    f.render_widget(help, chunks[2]);
+    f.render_widget(help_paragraph, chunks[1]);
+
+    // 右上角显示计数
+    let count_text = format!("{}/{}", filtered_items.len(), items.len());
+    let count_area = Rect {
+        x: area.x + area.width.saturating_sub(count_text.len() as u16 + 3),
+        y: area.y,
+        width: count_text.len() as u16 + 2,
+        height: 1,
+    };
+    let count_paragraph = Paragraph::new(count_text)
+        .style(Style::default().fg(Color::Rgb(129, 161, 193)));
+    f.render_widget(count_paragraph, count_area);
 }
 
 /// 渲染确认对话框
