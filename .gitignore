@@ -16,3 +16,7 @@
 !README.md
 !readme.md
 !CLAUDE.md
+
+# 备份文件和参考文档
+*.bak
+*.pdf
