@@ -43,6 +43,8 @@ pub enum Command {
     DeleteTask,
     /// 创建新任务
     NewTask,
+    /// 用外部编辑器创建新任务
+    NewTaskInEditor,
     /// 编辑当前任务
     EditTask,
     /// 用外部编辑器编辑任务
@@ -61,7 +63,9 @@ pub enum Command {
     NewLocalProject,
     /// 创建新的全局项目
     NewGlobalProject,
-    /// 删除项目
+    /// 隐藏项目（软删除 - 只对全局项目）
+    HideProject,
+    /// 删除项目（硬删除 - 删除文件）
     DeleteProject,
     /// 重命名项目
     RenameProject,

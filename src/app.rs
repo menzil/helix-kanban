@@ -65,6 +65,8 @@ pub struct App {
     pub menu_state: Option<MenuState>,
     /// 待打开的编辑器文件路径（用于外部编辑器调用）
     pub pending_editor_file: Option<String>,
+    /// 标识待编辑文件是否是新任务（true=新任务，false=编辑现有任务）
+    pub is_new_task_file: bool,
     /// 待预览的文件路径（用于外部预览工具调用）
     pub pending_preview_file: Option<String>,
     /// 预览模式的内容
@@ -112,6 +114,7 @@ impl App {
             dialog: None,
             menu_state: None,
             pending_editor_file: None,
+            is_new_task_file: false,
             pending_preview_file: None,
             preview_content: String::new(),
             preview_scroll: 0,

@@ -6,6 +6,14 @@ use ratatui::{
     Frame,
 };
 
+/// 确认操作类型
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConfirmAction {
+    DeleteTask,
+    DeleteProject,
+    HideProject,
+}
+
 /// 对话框类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum DialogType {
@@ -28,6 +36,7 @@ pub enum DialogType {
         title: String,
         message: String,
         yes_selected: bool,
+        action: ConfirmAction,  // 添加操作类型
     },
 }
 
@@ -58,6 +67,7 @@ pub fn render_dialog(f: &mut Frame, dialog: &DialogType) {
             title,
             message,
             yes_selected,
+            ..
         } => render_confirm_dialog(f, area, title, message, *yes_selected),
     }
 }
@@ -81,10 +91,12 @@ fn render_input_dialog(
     let is_task_input = title.contains("任务");
 
     let block = Block::default()
-        .title(format!(" {} ", title))
+        .title(format!("  {}  ", title))
+        .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan))
-        .border_type(ratatui::widgets::BorderType::Rounded);
+        .border_style(Style::default().fg(Color::Rgb(76, 86, 106)))  // Nord border color
+        .border_type(ratatui::widgets::BorderType::Rounded)
+        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -113,16 +125,16 @@ fn render_input_dialog(
     // 提示文本
     let prompt_text = if is_task_input {
         Paragraph::new(format!("{}\n（支持多行输入，包含任务的所有内容）", prompt))
-            .style(Style::default().fg(Color::Gray))
+            .style(Style::default().fg(Color::Rgb(129, 161, 193)))  // Nord frost color
     } else {
-        Paragraph::new(prompt).style(Style::default().fg(Color::Gray))
+        Paragraph::new(prompt).style(Style::default().fg(Color::Rgb(129, 161, 193)))
     };
     f.render_widget(prompt_text, chunks[0]);
 
     // 输入框
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow))
+        .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))  // Nord cyan
         .border_type(ratatui::widgets::BorderType::Rounded);
 
     let input_inner = input_block.inner(chunks[1]);
@@ -146,7 +158,7 @@ fn render_input_dialog(
 
     // 帮助文本
     let help_text = if is_task_input {
-        "Enter: 确认 | Ctrl+Enter: 换行 | ESC: 取消"
+        "Ctrl+J: 换行 | Enter: 确认 | ESC: 取消"
     } else {
         "Enter: 确认 | ESC: 取消"
     };
@@ -180,10 +192,36 @@ fn render_select_dialog(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(3), // 搜索框
             Constraint::Min(0),    // 列表
             Constraint::Length(1), // 帮助
         ])
         .split(inner);
+
+    // 渲染搜索框
+    let search_text = if filter.is_empty() {
+        "🔍 输入搜索...".to_string()
+    } else {
+        format!("🔍 {}", filter)
+    };
+
+    let search_style = if filter.is_empty() {
+        Style::default().fg(Color::Rgb(129, 161, 193))  // 灰色提示
+    } else {
+        Style::default().fg(Color::Rgb(136, 192, 208))  // 高亮搜索文本
+    };
+
+    let search_block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))
+        .border_type(ratatui::widgets::BorderType::Rounded);
+
+    let search_inner = search_block.inner(chunks[0]);
+    f.render_widget(search_block, chunks[0]);
+
+    let search_paragraph = Paragraph::new(search_text)
+        .style(search_style);
+    f.render_widget(search_paragraph, search_inner);
 
     // 过滤项目列表
     let filtered_items: Vec<_> = if filter.is_empty() {
@@ -292,14 +330,14 @@ fn render_select_dialog(
 
     list_state.select(Some(filtered_selected));
 
-    f.render_stateful_widget(list, chunks[0], &mut list_state);
+    f.render_stateful_widget(list, chunks[1], &mut list_state);
 
-    // 帮助文本 - 右上角显示总数
-    let help_text = format!("↑↓ 导航   Enter 切换选择   Esc 关闭   最多选择 1 个项目");
+    // 帮助文本 - 简化提示（搜索框已经在顶部显示）
+    let help_text = format!("↑↓ 导航  Enter 确认  Esc 取消  [{}/{}]", filtered_items.len(), items.len());
     let help_paragraph = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Rgb(129, 161, 193)))  // Nord frost color
         .alignment(Alignment::Center);
-    f.render_widget(help_paragraph, chunks[1]);
+    f.render_widget(help_paragraph, chunks[2]);
 
     // 右上角显示计数
     let count_text = format!("{}/{}", filtered_items.len(), items.len());
@@ -323,10 +361,12 @@ fn render_confirm_dialog(
     yes_selected: bool,
 ) {
     let block = Block::default()
-        .title(format!(" {} ", title))
+        .title(format!("  {}  ", title))
+        .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow))
-        .border_type(ratatui::widgets::BorderType::Rounded);
+        .border_style(Style::default().fg(Color::Rgb(235, 203, 139)))  // Nord yellow for warnings
+        .border_type(ratatui::widgets::BorderType::Rounded)
+        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -342,10 +382,11 @@ fn render_confirm_dialog(
     // 消息文本
     let message_text = Paragraph::new(message)
         .wrap(Wrap { trim: true })
-        .alignment(Alignment::Center);
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Rgb(216, 222, 233)));  // Nord snow storm
     f.render_widget(message_text, chunks[0]);
 
-    // 按钮区域
+    // 按钮区域 - 添加快捷键提示
     let button_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -356,33 +397,37 @@ fn render_confirm_dialog(
         ])
         .split(chunks[1]);
 
-    // 是按钮
-    let yes_style = if yes_selected {
-        Style::default()
-            .bg(Color::Green)
-            .fg(Color::Black)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::Green)
-    };
-    let yes_button = Paragraph::new("[ 是 ]")
-        .style(yes_style)
-        .alignment(Alignment::Center);
-    f.render_widget(yes_button, button_chunks[1]);
-
-    // 否按钮
+    // 否按钮 (n) - 放在左侧
     let no_style = if !yes_selected {
         Style::default()
-            .bg(Color::Red)
-            .fg(Color::Black)
+            .bg(Color::Rgb(191, 97, 106))   // Nord 柔和红色
+            .fg(Color::Rgb(46, 52, 64))      // Nord 深色背景
             .add_modifier(Modifier::BOLD)
     } else {
-        Style::default().fg(Color::Red)
+        Style::default()
+            .fg(Color::Rgb(191, 97, 106))
+            .add_modifier(Modifier::DIM)
     };
-    let no_button = Paragraph::new("[ 否 ]")
+    let no_button = Paragraph::new("[ n ] 否")
         .style(no_style)
         .alignment(Alignment::Center);
-    f.render_widget(no_button, button_chunks[2]);
+    f.render_widget(no_button, button_chunks[1]);
+
+    // 是按钮 (y) - 放在右侧
+    let yes_style = if yes_selected {
+        Style::default()
+            .bg(Color::Rgb(163, 190, 140))  // Nord 柔和绿色
+            .fg(Color::Rgb(46, 52, 64))      // Nord 深色背景
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(Color::Rgb(163, 190, 140))
+            .add_modifier(Modifier::DIM)
+    };
+    let yes_button = Paragraph::new("[ y ] 是")
+        .style(yes_style)
+        .alignment(Alignment::Center);
+    f.render_widget(yes_button, button_chunks[2]);
 }
 
 /// 创建一个居中的矩形区域

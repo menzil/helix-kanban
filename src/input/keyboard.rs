@@ -127,6 +127,12 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 // 判断是否是任务输入（支持多行）
                 let is_task_input = title.contains("任务");
 
+                // 调试：记录按键信息
+                log_debug(format!(
+                    "对话框按键: code={:?}, modifiers={:?}, is_task_input={}",
+                    key.code, key.modifiers, is_task_input
+                ));
+
                 match key.code {
                     KeyCode::Esc => {
                         app.dialog = None;
@@ -134,17 +140,28 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         // 退出对话框，保存用户输入法并切换回英文
                         app.ime_state.exit_dialog();
                     }
+                    KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) && is_task_input => {
+                        // Ctrl+J 换行（用于任务输入）
+                        log_debug("检测到 Ctrl+J，插入换行".to_string());
+                        let mut chars: Vec<char> = value.chars().collect();
+                        chars.insert(*cursor_pos, '\n');
+                        *value = chars.into_iter().collect();
+                        *cursor_pos += 1;
+                    }
                     KeyCode::Enter => {
                         if is_task_input {
-                            // 任务输入：Enter 提交，Ctrl+Enter 换行
-                            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                                // Ctrl+Enter 换行
+                            // 任务输入：Enter 提交，Shift+Enter 或 Ctrl+J 换行
+                            log_debug(format!("Enter 键，modifiers={:?}", key.modifiers));
+                            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                // Shift+Enter 换行（如果终端支持）
+                                log_debug("检测到 Shift+Enter，插入换行".to_string());
                                 let mut chars: Vec<char> = value.chars().collect();
                                 chars.insert(*cursor_pos, '\n');
                                 *value = chars.into_iter().collect();
                                 *cursor_pos += 1;
                             } else {
                                 // Enter 提交
+                                log_debug("普通 Enter，提交任务".to_string());
                                 let input_value = value.clone();
                                 let dialog_clone = dialog.clone();
                                 app.dialog = None;
@@ -191,11 +208,31 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     let char_count = value.chars().count();
                     *cursor_pos = (*cursor_pos + 1).min(char_count);
                 }
+                KeyCode::Up if is_task_input => {
+                    // 上移到上一行
+                    *cursor_pos = move_cursor_vertical(value, *cursor_pos, -1);
+                }
+                KeyCode::Down if is_task_input => {
+                    // 下移到下一行
+                    *cursor_pos = move_cursor_vertical(value, *cursor_pos, 1);
+                }
                 KeyCode::Home => {
-                    *cursor_pos = 0;
+                    if is_task_input {
+                        // 多行输入：移到当前行首
+                        *cursor_pos = get_line_start(value, *cursor_pos);
+                    } else {
+                        // 单行输入：移到开头
+                        *cursor_pos = 0;
+                    }
                 }
                 KeyCode::End => {
-                    *cursor_pos = value.chars().count();
+                    if is_task_input {
+                        // 多行输入：移到当前行尾
+                        *cursor_pos = get_line_end(value, *cursor_pos);
+                    } else {
+                        // 单行输入：移到结尾
+                        *cursor_pos = value.chars().count();
+                    }
                 }
                 KeyCode::Char(c) => {
                     // 使用 chars() 正确插入字符
@@ -284,10 +321,10 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     }
                 }
                 KeyCode::Left | KeyCode::Char('h') => {
-                    *yes_selected = true;
+                    *yes_selected = false;  // 左边是"否"
                 }
                 KeyCode::Right | KeyCode::Char('l') => {
-                    *yes_selected = false;
+                    *yes_selected = true;   // 右边是"是"
                 }
                 KeyCode::Char('y') => {
                     let dialog_clone = dialog.clone();
@@ -409,48 +446,86 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 app.set_focused_project(project_name.to_string());
             }
         }
-        DialogType::Confirm { title, .. } => {
-            if title.contains("删除项目") {
-                // 删除项目
-                if let Some(project) = app.get_focused_project() {
-                    let project_name = project.name.clone();
-                    let project_type = project.project_type.clone();
+        DialogType::Confirm { action, .. } => {
+            match action {
+                crate::ui::dialogs::ConfirmAction::HideProject => {
+                    // 隐藏项目（软删除）
+                    if let Some(project) = app.get_focused_project() {
+                        let project_name = project.name.clone();
 
-                    // 删除项目目录
-                    if let Err(e) = crate::fs::delete_project(&project_name, &project_type) {
-                        log_debug(format!("删除项目失败: {}", e));
-                    } else {
-                        log_debug(format!("成功删除项目: {}", project_name));
+                        // 添加到隐藏列表
+                        if let Err(e) = crate::config::hide_project(&mut app.config, &project_name) {
+                            log_debug(format!("隐藏项目失败: {}", e));
+                        } else {
+                            log_debug(format!("成功隐藏项目: {}", project_name));
 
-                        // 从项目列表中移除
-                        app.projects.retain(|p| p.name != project_name);
+                            // 从项目列表中移除
+                            app.projects.retain(|p| p.name != project_name);
 
-                        // 清除当前面板的项目引用
-                        if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-                            app.split_tree.find_pane_mut(app.focused_pane)
-                        {
-                            *project_id = None;
+                            // 清除当前面板的项目引用
+                            if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+                                app.split_tree.find_pane_mut(app.focused_pane)
+                            {
+                                *project_id = None;
+                            }
                         }
                     }
                 }
-            } else if title.contains("删除任务") {
-                // 删除任务
-                if let Some(task) = get_selected_task(app) {
-                    let task_file = task.file_path.clone();
+                crate::ui::dialogs::ConfirmAction::DeleteProject => {
+                    // 删除项目文件（硬删除）
+                    log_debug("收到 DeleteProject 确认".to_string());
+                    if let Some(project) = app.get_focused_project() {
+                        let project_name = project.name.clone();
+                        let project_type = project.project_type.clone();
+                        let project_path = project.path.clone();
 
-                    // 删除任务文件
-                    if let Err(e) = std::fs::remove_file(&task_file) {
-                        log_debug(format!("删除任务文件失败: {}", e));
-                    } else {
-                        // 重新加载当前项目
-                        if let Err(e) = app.reload_current_project() {
-                            log_debug(format!("重新加载项目失败: {}", e));
+                        log_debug(format!("准备删除项目: 名称='{}', 类型={:?}, 路径={:?}",
+                            project_name, project_type, project_path));
+
+                        // 删除项目目录
+                        match crate::fs::delete_project(&project_name, &project_type) {
+                            Err(e) => {
+                                log_debug(format!("删除项目失败: {}", e));
+                            }
+                            Ok(_) => {
+                                log_debug(format!("成功删除项目: {}", project_name));
+
+                                // 从项目列表中移除
+                                app.projects.retain(|p| p.name != project_name);
+                                log_debug(format!("已从项目列表移除，剩余项目数: {}", app.projects.len()));
+
+                                // 清除当前面板的项目引用
+                                if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+                                    app.split_tree.find_pane_mut(app.focused_pane)
+                                {
+                                    *project_id = None;
+                                    log_debug("已清除当前面板的项目引用".to_string());
+                                }
+                            }
                         }
+                    } else {
+                        log_debug("无法获取当前聚焦的项目".to_string());
+                    }
+                }
+                crate::ui::dialogs::ConfirmAction::DeleteTask => {
+                    // 删除任务
+                    if let Some(task) = get_selected_task(app) {
+                        let task_file = task.file_path.clone();
 
-                        // 调整选中的任务索引
-                        let task_idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
-                        if *task_idx > 0 {
-                            *task_idx -= 1;
+                        // 删除任务文件
+                        if let Err(e) = std::fs::remove_file(&task_file) {
+                            log_debug(format!("删除任务文件失败: {}", e));
+                        } else {
+                            // 重新加载当前项目
+                            if let Err(e) = app.reload_current_project() {
+                                log_debug(format!("重新加载项目失败: {}", e));
+                            }
+
+                            // 调整选中的任务索引
+                            let task_idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
+                            if *task_idx > 0 {
+                                *task_idx -= 1;
+                            }
                         }
                     }
                 }
@@ -476,9 +551,10 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('K'), KeyModifiers::SHIFT) => Some(Command::MoveTaskUp),
         ([], KeyCode::Char(':'), KeyModifiers::NONE) => Some(Command::EnterCommandMode),
         ([], KeyCode::Esc, _) => Some(Command::EnterNormalMode),
-        ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask),
-        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject),
+        ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask),  // 删除任务
+        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject),  // 硬删除项目
         ([], KeyCode::Char('a'), KeyModifiers::NONE) => Some(Command::NewTask),
+        ([], KeyCode::Char('A'), KeyModifiers::SHIFT) => Some(Command::NewTaskInEditor),  // 外部编辑器创建任务
         ([], KeyCode::Char('n'), KeyModifiers::NONE) => Some(Command::NewLocalProject),
         ([], KeyCode::Char('N'), KeyModifiers::SHIFT) => Some(Command::NewGlobalProject),
         ([], KeyCode::Char('e'), KeyModifiers::NONE) => Some(Command::EditTask),
@@ -654,8 +730,36 @@ fn execute_command(app: &mut App, cmd: Command) {
                 });
             }
         }
+        Command::HideProject => {
+            // 隐藏当前项目（软删除）
+            if let Some(project) = app.get_focused_project() {
+                let project_name = project.name.clone();
+                let project_type = project.project_type.clone();
+                let project_path = project.path.clone();
+
+                // 检查是否是当前工作目录的本地项目
+                if project_type == crate::models::ProjectType::Local {
+                    let current_local_dir = crate::fs::get_local_kanban_dir();
+                    // 如果项目路径是当前目录的 .kanban，则不支持软删除
+                    if project_path.starts_with(&current_local_dir) {
+                        log_debug("当前目录的本地项目不支持软删除，请使用 D 键删除项目文件".to_string());
+                        return;
+                    }
+                }
+
+                // 其他项目（全局项目或其他目录的本地项目）：显示确认对话框
+                app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();
+                app.dialog = Some(DialogType::Confirm {
+                    title: "隐藏项目".to_string(),
+                    message: format!("确定要隐藏项目 \"{}\" 吗？\n项目文件不会被删除，下次从该目录启动时会重新加载。", project_name),
+                    yes_selected: true,
+                    action: crate::ui::dialogs::ConfirmAction::HideProject,
+                });
+            }
+        }
         Command::DeleteProject => {
-            // 删除当前项目
+            // 删除当前项目（硬删除）
             if let Some(project) = app.get_focused_project() {
                 let project_name = project.name.clone();
 
@@ -663,9 +767,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.mode = Mode::Dialog;
                 app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Confirm {
-                    title: "删除项目".to_string(),
-                    message: format!("确定要删除项目 \"{}\" 吗？\n这将删除项目的所有任务！", project_name),
-                    yes_selected: true,
+                    title: "删除项目文件".to_string(),
+                    message: format!("确定要彻底删除项目 \"{}\" 吗？\n这将永久删除项目的所有文件和任务！此操作不可恢复！", project_name),
+                    yes_selected: false,  // 默认选择"否"，更安全
+                    action: crate::ui::dialogs::ConfirmAction::DeleteProject,
                 });
             }
         }
@@ -678,6 +783,28 @@ fn execute_command(app: &mut App, cmd: Command) {
                 value: String::new(),
                 cursor_pos: 0,
             });
+        }
+        Command::NewTaskInEditor => {
+            // 用外部编辑器创建新任务
+            // 创建临时文件
+            use std::io::Write;
+
+            let temp_dir = std::env::temp_dir();
+            let temp_file = temp_dir.join(format!("kanban_new_task_{}.md",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()));
+
+            // 写入模板内容
+            let template = "# 任务标题\n\n任务描述内容...\n\n## 子任务\n\n- [ ] 子任务 1\n- [ ] 子任务 2\n";
+            if let Ok(mut file) = std::fs::File::create(&temp_file) {
+                let _ = file.write_all(template.as_bytes());
+            }
+
+            // 设置待打开的文件路径和新任务标志（main.rs 会处理）
+            app.pending_editor_file = Some(temp_file.to_string_lossy().to_string());
+            app.is_new_task_file = true;
         }
         Command::EditTask => {
             // 获取当前选中的任务
@@ -799,6 +926,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                     title: "删除任务".to_string(),
                     message: format!("确定要删除任务 \"{}\" 吗？", task_title),
                     yes_selected: true,
+                    action: crate::ui::dialogs::ConfirmAction::DeleteTask,
                 });
             }
         }
@@ -1241,7 +1369,8 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'o' => Some(Command::OpenProject),
                         'n' => Some(Command::NewLocalProject),
                         'N' => Some(Command::NewGlobalProject),
-                        'd' => Some(Command::DeleteProject),
+                        'd' => Some(Command::HideProject),     // 小写d = 软删除（隐藏）
+                        'D' => Some(Command::DeleteProject),   // 大写D = 硬删除
                         'r' => Some(Command::RenameProject),
                         _ => None,
                     };
@@ -1317,4 +1446,83 @@ fn handle_preview_mode(app: &mut App, key: KeyEvent) -> bool {
         _ => {}
     }
     true
+}
+
+/// 获取当前光标所在行的起始位置
+fn get_line_start(text: &str, cursor_pos: usize) -> usize {
+    let chars: Vec<char> = text.chars().collect();
+
+    // 从光标位置向前查找换行符
+    let mut pos = cursor_pos;
+    while pos > 0 {
+        if chars[pos - 1] == '\n' {
+            return pos;
+        }
+        pos -= 1;
+    }
+    0 // 第一行的起始位置
+}
+
+/// 获取当前光标所在行的结束位置
+fn get_line_end(text: &str, cursor_pos: usize) -> usize {
+    let chars: Vec<char> = text.chars().collect();
+    let len = chars.len();
+
+    // 从光标位置向后查找换行符
+    let mut pos = cursor_pos;
+    while pos < len {
+        if chars[pos] == '\n' {
+            return pos;
+        }
+        pos += 1;
+    }
+    len // 最后一行的结束位置
+}
+
+/// 垂直移动光标（上下移动行）
+/// direction: -1 表示上移，1 表示下移
+fn move_cursor_vertical(text: &str, cursor_pos: usize, direction: i32) -> usize {
+    let chars: Vec<char> = text.chars().collect();
+    let len = chars.len();
+
+    if len == 0 {
+        return 0;
+    }
+
+    // 获取当前行的起始和结束位置
+    let current_line_start = get_line_start(text, cursor_pos);
+    let current_line_end = get_line_end(text, cursor_pos);
+
+    // 计算当前列位置
+    let column = cursor_pos - current_line_start;
+
+    if direction < 0 {
+        // 向上移动
+        if current_line_start == 0 {
+            // 已经在第一行，移动到行首
+            return 0;
+        }
+
+        // 找到上一行的起始位置（current_line_start - 1 是上一行的换行符）
+        let prev_line_end = current_line_start - 1;
+        let prev_line_start = get_line_start(text, prev_line_end.saturating_sub(1));
+        let prev_line_len = prev_line_end - prev_line_start;
+
+        // 移动到上一行的相同列位置，或行尾（如果上一行更短）
+        prev_line_start + column.min(prev_line_len)
+    } else {
+        // 向下移动
+        if current_line_end >= len {
+            // 已经在最后一行，移动到行尾
+            return len;
+        }
+
+        // 找到下一行的起始位置（current_line_end 是当前行的换行符）
+        let next_line_start = current_line_end + 1;
+        let next_line_end = get_line_end(text, next_line_start);
+        let next_line_len = next_line_end - next_line_start;
+
+        // 移动到下一行的相同列位置，或行尾（如果下一行更短）
+        next_line_start + column.min(next_line_len)
+    }
 }

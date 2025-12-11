@@ -26,18 +26,42 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
     // 根据菜单状态显示不同的命令列表
     let (commands, title) = match app.menu_state {
-        Some(MenuState::Project) => (
-            vec![
+        Some(MenuState::Project) => {
+            // 检查当前项目是否是当前目录的本地项目
+            let is_current_local_project = if let Some(project) = app.get_focused_project() {
+                if project.project_type == crate::models::ProjectType::Local {
+                    let current_local_dir = crate::fs::get_local_kanban_dir();
+                    project.path.starts_with(&current_local_dir)
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+
+            let mut commands = vec![
                 CommandItem { key: "o", label: "打开项目" },
                 CommandItem { key: "", label: "" },
                 CommandItem { key: "n", label: "新建本地项目 [L]" },
                 CommandItem { key: "N", label: "新建全局项目 [G]" },
                 CommandItem { key: "", label: "" },
-                CommandItem { key: "d", label: "删除项目" },
-                CommandItem { key: "r", label: "重命名项目" },
-            ],
-            " 项目操作 "
-        ),
+            ];
+
+            // 根据项目类型决定显示哪些删除选项
+            if is_current_local_project {
+                // 当前目录的本地项目：只能硬删除
+                commands.push(CommandItem { key: "D", label: "删除项目文件" });
+            } else {
+                // 全局项目或其他目录的本地项目：可以软删除或硬删除
+                commands.push(CommandItem { key: "d", label: "隐藏项目（软删除）" });
+                commands.push(CommandItem { key: "D", label: "删除项目文件" });
+            }
+
+            commands.push(CommandItem { key: "", label: "" });
+            commands.push(CommandItem { key: "r", label: "重命名项目" });
+
+            (commands, " 项目操作 ")
+        },
         Some(MenuState::Window) => (
             vec![
                 CommandItem { key: "w", label: "下一个窗口" },
@@ -110,12 +134,13 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
             .title(title)
             .title_style(
                 Style::default()
-                    .fg(Color::Yellow)
+                    .fg(Color::Rgb(235, 203, 139))  // Nord yellow
                     .add_modifier(Modifier::BOLD),
             )
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
-            .border_type(ratatui::widgets::BorderType::Rounded),
+            .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))  // Nord cyan
+            .border_type(ratatui::widgets::BorderType::Rounded)
+            .style(Style::default().bg(Color::Rgb(46, 52, 64))),  // Nord background
     );
 
     f.render_widget(list, popup_area);

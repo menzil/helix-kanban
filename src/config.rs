@@ -9,6 +9,9 @@ pub struct Config {
     pub editor: String,
     /// Markdown 预览器命令
     pub markdown_viewer: String,
+    /// 隐藏的全局项目列表（软删除）
+    #[serde(default)]
+    pub hidden_projects: Vec<String>,
 }
 
 impl Default for Config {
@@ -16,6 +19,7 @@ impl Default for Config {
         Self {
             editor: detect_editor(),
             markdown_viewer: detect_markdown_viewer(),
+            hidden_projects: Vec::new(),
         }
     }
 }
@@ -54,6 +58,27 @@ pub fn save_config(config: &Config) -> Result<()> {
     std::fs::write(config_path, content)?;
 
     Ok(())
+}
+
+/// 隐藏项目（软删除 - 只对全局项目有效）
+pub fn hide_project(config: &mut Config, project_name: &str) -> Result<()> {
+    if !config.hidden_projects.contains(&project_name.to_string()) {
+        config.hidden_projects.push(project_name.to_string());
+        save_config(config)?;
+    }
+    Ok(())
+}
+
+/// 显示项目（取消隐藏）
+pub fn unhide_project(config: &mut Config, project_name: &str) -> Result<()> {
+    config.hidden_projects.retain(|p| p != project_name);
+    save_config(config)?;
+    Ok(())
+}
+
+/// 检查项目是否被隐藏
+pub fn is_project_hidden(config: &Config, project_name: &str) -> bool {
+    config.hidden_projects.contains(&project_name.to_string())
 }
 
 /// 检测系统编辑器

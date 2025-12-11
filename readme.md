@@ -7,7 +7,7 @@
 - 📁 **基于文件存储** - 使用 Markdown 文件和 TOML 配置，易于版本控制
 - 🎯 **多项目支持** - 支持全局项目和本地项目（`.kanban/`）
 - ⌨️  **Helix 风格键位** - 符合直觉的键盘快捷键
-- 🪟 **窗口管理** - 支持垂直/水平分屏，同时查看多个项目
+- 🪟 **窗口管理** - 支持垂直/水平分屏，同时查看多个项目，自动保存和恢复工作区布局
 - 🎨 **现代 TUI** - 基于 ratatui 的美观终端界面
 - 📝 **Markdown 支持** - 任务使用 Markdown 格式，支持外部编辑器
 - 🔍 **任务预览** - 内置预览和外部预览工具支持
@@ -197,11 +197,60 @@ priority: high
 
 ### 配置文件
 
-配置文件存储在 `~/.kanban/config.toml`：
+应用配置存储在 `~/.kanban/config.toml`：
 
 ```toml
 editor = "nvim"
 markdown_viewer = "glow"
+
+# 隐藏的全局项目列表（软删除）
+hidden_projects = ["old-project", "archived-project"]
+```
+
+### 工作区状态保存
+
+应用会自动保存窗口布局和工作状态，下次启动时恢复：
+
+**保存内容**：
+- 分屏结构（垂直/水平分割）
+- 每个窗格打开的项目
+- 当前选中的列和任务
+- 聚焦的窗格
+
+**保存位置**：
+- 全局工作区：`~/.kanban/workspace.toml` - 在任何目录启动时使用
+- 本地工作区：`.kanban/workspace.toml` - 在项目目录下启动时优先使用
+
+**使用场景**：
+- 经常需要同时查看多个项目？设置好分屏布局后，下次启动自动恢复
+- 在不同项目目录工作？每个目录都有自己独立的工作区布局
+- 想要重置布局？使用命令 `:reset-layout` 恢复默认单窗格
+
+**示例工作区配置** (`workspace.toml`)：
+```toml
+# 自动生成，通常无需手动编辑
+focused_pane = 2
+next_pane_id = 4
+
+[[panes]]
+id = 0
+type = "horizontal_split"
+left = 1
+right = 2
+
+[[panes]]
+id = 1
+type = "leaf"
+project = "work-project"
+selected_column = 1
+selected_task_index = 0
+
+[[panes]]
+id = 2
+type = "leaf"
+project = "personal-project"
+selected_column = 0
+selected_task_index = 2
 ```
 
 ## 开发
