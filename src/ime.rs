@@ -1,6 +1,7 @@
 /// 输入法切换模块
 ///
 /// 在正常模式下使用英文输入法，在对话框模式下使用用户的默认输入法
+/// 使用 macism 工具进行输入法切换（https://github.com/laishulu/macism）
 
 use std::process::Command;
 
@@ -80,8 +81,8 @@ impl ImeState {
     /// 获取当前输入法
     fn get_current_ime(&self) -> Option<String> {
         if cfg!(target_os = "macos") {
-            // 尝试使用 im-select 工具
-            if let Ok(output) = Command::new("im-select").output() {
+            // 使用 macism 工具获取当前输入法
+            if let Ok(output) = Command::new("macism").output() {
                 if output.status.success() {
                     return String::from_utf8(output.stdout)
                         .ok()
@@ -95,8 +96,8 @@ impl ImeState {
     /// 切换输入法
     fn switch_ime(&self, ime_id: &str) -> Result<(), String> {
         if cfg!(target_os = "macos") {
-            // 尝试使用 im-select 工具
-            match Command::new("im-select").arg(ime_id).output() {
+            // 使用 macism 工具切换输入法
+            match Command::new("macism").arg(ime_id).output() {
                 Ok(output) => {
                     if output.status.success() {
                         Ok(())
@@ -105,7 +106,7 @@ impl ImeState {
                     }
                 }
                 Err(_) => {
-                    // im-select 未安装，静默忽略
+                    // macism 未安装，静默忽略
                     Ok(())
                 }
             }
