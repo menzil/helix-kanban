@@ -19,7 +19,7 @@ pub fn handle_cli() -> Result<bool> {
         }
         "create" => {
             if args.len() < 3 {
-                eprintln!("用法: kanban create <project-name>");
+                eprintln!("用法: hxk create <project-name>");
                 std::process::exit(1);
             }
             cli_create(&args[2])?;
@@ -31,7 +31,7 @@ pub fn handle_cli() -> Result<bool> {
         }
         "add" => {
             if args.len() < 3 {
-                eprintln!("用法: kanban add <task-title>");
+                eprintln!("用法: hxk add <task-title>");
                 std::process::exit(1);
             }
             cli_add(&args[2..])?;
@@ -45,14 +45,14 @@ pub fn handle_cli() -> Result<bool> {
                     "show" => crate::config::show_config()?,
                     "editor" => {
                         if args.len() < 4 {
-                            eprintln!("用法: kanban config editor <命令>");
+                            eprintln!("用法: hxk config editor <命令>");
                             std::process::exit(1);
                         }
                         crate::config::set_editor(args[3..].join(" "))?;
                     }
                     "viewer" => {
                         if args.len() < 4 {
-                            eprintln!("用法: kanban config viewer <命令>");
+                            eprintln!("用法: hxk config viewer <命令>");
                             std::process::exit(1);
                         }
                         crate::config::set_viewer(args[3..].join(" "))?;
@@ -70,9 +70,13 @@ pub fn handle_cli() -> Result<bool> {
             print_help();
             Ok(false)
         }
+        "--version" | "-V" | "-v" => {
+            print_version();
+            Ok(false)
+        }
         _ => {
             eprintln!("未知命令: {}", args[1]);
-            eprintln!("使用 'kanban --help' 查看帮助");
+            eprintln!("使用 'hxk --help' 查看帮助");
             std::process::exit(1);
         }
     }
@@ -189,26 +193,34 @@ fn cli_add(args: &[String]) -> Result<()> {
 
 /// 打印帮助信息
 fn print_help() {
-    println!("Kanban - 终端看板工具\n");
+    println!("Helix Kanban (hxk) - 终端看板工具\n");
     println!("用法:");
-    println!("  kanban                  启动 TUI 界面");
-    println!("  kanban create <名称>     在当前目录创建 .kanban/ 看板");
-    println!("  kanban list             列出所有项目");
-    println!("  kanban add <标题>        快速添加任务");
-    println!("  kanban config [选项]     配置编辑器和预览器");
-    println!("  kanban --help           显示此帮助信息\n");
+    println!("  hxk                     启动 TUI 界面");
+    println!("  hxk create <名称>        在当前目录创建 .kanban/ 看板");
+    println!("  hxk list                列出所有项目");
+    println!("  hxk add <标题>           快速添加任务");
+    println!("  hxk config [选项]        配置编辑器和预览器");
+    println!("  hxk --help              显示此帮助信息");
+    println!("  hxk --version           显示版本信息\n");
     println!("配置命令:");
-    println!("  kanban config           查看当前配置");
-    println!("  kanban config show      查看当前配置");
-    println!("  kanban config editor <命令>   设置编辑器");
-    println!("  kanban config viewer <命令>   设置 Markdown 预览器\n");
+    println!("  hxk config              查看当前配置");
+    println!("  hxk config show         查看当前配置");
+    println!("  hxk config editor <命令>   设置编辑器");
+    println!("  hxk config viewer <命令>   设置 Markdown 预览器\n");
     println!("项目类型:");
     println!("  [G] 全局项目       存储在 ~/.kanban/projects/项目名/");
     println!("  [L] 本地项目       存储在当前目录 .kanban/\n");
     println!("示例:");
-    println!("  kanban create 我的项目         # 创建 ./.kanban/ 目录");
-    println!("  kanban add 实现新功能          # 添加任务到本地看板");
-    println!("  kanban list                  # 列出全局和本地项目");
-    println!("  kanban config editor nvim    # 设置编辑器为 neovim");
-    println!("  kanban config viewer glow    # 设置预览器为 glow");
+    println!("  hxk create 我的项目            # 创建 ./.kanban/ 目录");
+    println!("  hxk add 实现新功能             # 添加任务到本地看板");
+    println!("  hxk list                      # 列出全局和本地项目");
+    println!("  hxk config editor nvim        # 设置编辑器为 neovim");
+    println!("  hxk config viewer glow        # 设置预览器为 glow");
+}
+
+/// 打印版本信息
+fn print_version() {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    const NAME: &str = env!("CARGO_PKG_NAME");
+    println!("{} {}", NAME, VERSION);
 }
