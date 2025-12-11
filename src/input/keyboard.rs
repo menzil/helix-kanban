@@ -31,14 +31,13 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
-    // 特殊处理空格键 - 如果缓冲区为空，显示命令菜单
+    // 特殊处理空格键 - 显示命令菜单
     if let KeyCode::Char(' ') = key.code {
-        if app.key_buffer.is_empty() {
-            app.mode = Mode::SpaceMenu;
-            app.menu_state = Some(crate::app::MenuState::Main);
-            app.key_buffer.clear();
-            return true;
-        }
+        // 空格键总是清空缓冲区并显示菜单
+        app.key_buffer.clear();
+        app.mode = Mode::SpaceMenu;
+        app.menu_state = Some(crate::app::MenuState::Main);
+        return true;
     }
 
     // 尝试匹配命令（使用当前缓冲区和新按键）
@@ -930,6 +929,26 @@ fn execute_command(app: &mut App, cmd: Command) {
                 });
             }
         }
+        Command::ReloadCurrentProject => {
+            // 重新加载当前项目
+            if let Err(e) = app.reload_current_project() {
+                log_debug(format!("重新加载当前项目失败: {}", e));
+            } else {
+                log_debug("重新加载当前项目成功".to_string());
+            }
+        }
+        Command::ReloadAllProjects => {
+            // 重新加载所有项目（本地+全局）
+            match crate::fs::load_all_projects() {
+                Ok(projects) => {
+                    app.projects = projects;
+                    log_debug(format!("重新加载所有项目成功，共 {} 个", app.projects.len()));
+                }
+                Err(e) => {
+                    log_debug(format!("重新加载所有项目失败: {}", e));
+                }
+            }
+        }
         // 未实现的命令：静默忽略（不报错，不执行）
         _ => {
             // 不做任何处理，避免报错
@@ -970,6 +989,8 @@ fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
             "focus-right" => execute_command(app, Command::FocusRight),
             "focus-up" => execute_command(app, Command::FocusUp),
             "focus-down" => execute_command(app, Command::FocusDown),
+            "reload" => execute_command(app, Command::ReloadCurrentProject),
+            "reload-all" => execute_command(app, Command::ReloadAllProjects),
             "help" => {
                 app.mode = Mode::Help;
             }
@@ -1346,6 +1367,20 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                             app.menu_state = None;
                             app.key_buffer.clear();
                             execute_command(app, Command::OpenProject);
+                        }
+                        'r' => {
+                            // 重新加载当前项目
+                            app.mode = Mode::Normal;
+                            app.menu_state = None;
+                            app.key_buffer.clear();
+                            execute_command(app, Command::ReloadCurrentProject);
+                        }
+                        'R' => {
+                            // 重新加载所有项目
+                            app.mode = Mode::Normal;
+                            app.menu_state = None;
+                            app.key_buffer.clear();
+                            execute_command(app, Command::ReloadAllProjects);
                         }
                         'q' => {
                             // 退出应用

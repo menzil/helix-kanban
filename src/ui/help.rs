@@ -137,6 +137,15 @@ pub fn render(f: &mut Frame, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
+            Span::styled("Space r", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("     重新加载当前项目"),
+        ]),
+        Line::from(vec![
+            Span::styled("Space R", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("     重新加载所有项目"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
             Span::styled("窗口管理", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(""),

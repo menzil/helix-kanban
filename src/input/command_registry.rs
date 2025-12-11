@@ -156,6 +156,19 @@ impl CommandRegistry {
             description: "聚焦下方面板",
         });
 
+        // 重新加载命令
+        self.register(CommandDef {
+            name: "reload",
+            aliases: vec!["r", "refresh"],
+            description: "重新加载当前项目",
+        });
+
+        self.register(CommandDef {
+            name: "reload-all",
+            aliases: vec!["ra", "refresh-all"],
+            description: "重新加载所有项目",
+        });
+
         // 帮助命令
         self.register(CommandDef {
             name: "help",

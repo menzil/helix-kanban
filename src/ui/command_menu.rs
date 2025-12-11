@@ -17,7 +17,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     render_backdrop(f, area);
 
     // 创建小型居中弹窗（固定宽度40，高度自适应内容）
-    let popup_area = centered_rect_fixed(40, 18, area);
+    let popup_area = centered_rect_fixed(40, 20, area);
 
     // 清空弹窗区域
     f.render_widget(Clear, popup_area);
@@ -97,6 +97,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "p", label: "项目操作..." },
                 CommandItem { key: "w", label: "窗口操作..." },
                 CommandItem { key: "t", label: "任务操作..." },
+                CommandItem { key: "", label: "" },
+                CommandItem { key: "r", label: "重新加载当前项目" },
+                CommandItem { key: "R", label: "重新加载所有项目" },
                 CommandItem { key: "", label: "" },
                 CommandItem { key: "?", label: "显示帮助" },
                 CommandItem { key: "q", label: "退出" },

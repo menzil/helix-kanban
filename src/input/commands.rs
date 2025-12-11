@@ -69,6 +69,10 @@ pub enum Command {
     DeleteProject,
     /// 重命名项目
     RenameProject,
+    /// 重新加载当前项目
+    ReloadCurrentProject,
+    /// 重新加载所有项目
+    ReloadAllProjects,
 
     // ===== 模式切换 =====
     /// 进入命令模式
