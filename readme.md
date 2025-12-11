@@ -37,6 +37,22 @@ cargo build --release
 hxk
 ```
 
+### 输入法切换（macOS）
+
+为了更好的输入体验，在正常模式下自动切换到英文输入法，在对话框模式（如创建/编辑任务）时保持用户的输入法。
+
+**推荐安装 im-select 工具：**
+
+```bash
+# 使用 Homebrew 安装
+brew install im-select
+
+# 或者使用 curl 安装
+curl -Ls https://raw.githubusercontent.com/daipeihust/im-select/master/install_mac.sh | sh
+```
+
+> 注意：如果不安装 im-select，程序仍可正常运行，只是不会自动切换输入法。
+
 ### 配置管理
 
 查看当前配置：

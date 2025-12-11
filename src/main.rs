@@ -12,6 +12,7 @@ mod cli;
 mod config;
 mod core;
 mod fs;
+mod ime;
 mod input;
 mod models;
 mod state;

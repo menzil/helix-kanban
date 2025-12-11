@@ -131,6 +131,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     KeyCode::Esc => {
                         app.dialog = None;
                         app.mode = Mode::Normal;
+                        // 切换回英文输入法
+                        app.ime_state.switch_to_english();
                     }
                     KeyCode::Enter => {
                         if is_task_input {
@@ -147,6 +149,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                                 let dialog_clone = dialog.clone();
                                 app.dialog = None;
                                 app.mode = Mode::Normal;
+                                // 切换回英文输入法
+                                app.ime_state.switch_to_english();
                                 handle_dialog_submit(app, dialog_clone, input_value);
                             }
                         } else {
@@ -155,6 +159,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                             let dialog_clone = dialog.clone();
                             app.dialog = None;
                             app.mode = Mode::Normal;
+                            // 切换回英文输入法
+                            app.ime_state.switch_to_english();
                             handle_dialog_submit(app, dialog_clone, input_value);
                         }
                     }
@@ -210,6 +216,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 KeyCode::Esc => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
+                    // 切换回英文输入法
+                    app.ime_state.switch_to_english();
                 }
                 KeyCode::Enter => {
                     // 选择当前项
@@ -228,6 +236,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         let dialog_clone = dialog.clone();
                         app.dialog = None;
                         app.mode = Mode::Normal;
+                        // 切换回英文输入法
+                        app.ime_state.switch_to_english();
                         handle_dialog_submit(app, dialog_clone, selected_item);
                     }
                 }
@@ -259,12 +269,16 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 KeyCode::Esc | KeyCode::Char('n') => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
+                    // 切换回英文输入法
+                    app.ime_state.switch_to_english();
                 }
                 KeyCode::Enter => {
                     let confirmed = *yes_selected;
                     let dialog_clone = dialog.clone();
                     app.dialog = None;
                     app.mode = Mode::Normal;
+                    // 切换回英文输入法
+                    app.ime_state.switch_to_english();
                     if confirmed {
                         handle_dialog_submit(app, dialog_clone, String::new());
                     }
@@ -279,6 +293,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     let dialog_clone = dialog.clone();
                     app.dialog = None;
                     app.mode = Mode::Normal;
+                    // 切换回英文输入法
+                    app.ime_state.switch_to_english();
                     handle_dialog_submit(app, dialog_clone, String::new());
                 }
                 _ => {}
