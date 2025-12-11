@@ -2,6 +2,10 @@
 
 一个终端看板应用，灵感来自 [Helix 编辑器](https://helix-editor.com/)的键位设计。
 
+## 预览
+
+![Kanban TUI 截图](https://raw.githubusercontent.com/menzil/helix-kanban/master/screenshoot.png)
+
 ## 特性
 
 - 📁 **基于文件存储** - 使用 Markdown 文件和 TOML 配置，易于版本控制
@@ -109,10 +113,13 @@ hxk config viewer "open -a Marked 2"
 |------|------|
 | `n` | 新建本地项目 [L] |
 | `N` | 新建全局项目 [G] |
+| `Space f` | 快速切换项目 |
 | `Space p o` | 打开项目 |
 | `Space p n` | 创建新项目 |
 | `Space p d` | 删除项目 |
 | `Space p r` | 重命名项目 |
+| `Space r` | 重新加载当前项目 |
+| `Space R` | 重新加载所有项目 |
 
 ### 窗口管理
 
@@ -138,6 +145,8 @@ hxk config viewer "open -a Marked 2"
 - `:add` / `:tn` - 创建新任务
 - `:edit` / `:te` - 编辑任务
 - `:view` / `:tv` - 预览任务
+- `:reload` / `:r` / `:refresh` - 重新加载当前项目
+- `:reload-all` / `:ra` / `:refresh-all` - 重新加载所有项目
 - `:vsplit` / `:sv` - 垂直分屏
 - `:hsplit` / `:sh` - 水平分屏
 - `:help` / `:h` - 显示帮助
