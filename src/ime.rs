@@ -35,6 +35,29 @@ impl ImeState {
         }
     }
 
+    /// 进入对话框时：保存当前输入法（应该是英文）并恢复用户之前的输入法
+    pub fn enter_dialog(&mut self) {
+        // 如果有保存的用户输入法，恢复它
+        if let Some(ref ime) = self.previous_ime.clone() {
+            let _ = self.switch_ime(ime);
+        }
+        // 如果没有保存的，就保持当前输入法（用户可以自己切换）
+    }
+
+    /// 退出对话框时：保存当前输入法（可能是用户的中文输入法）并切换到英文
+    pub fn exit_dialog(&mut self) {
+        // 保存当前输入法（用户在对话框中可能切换到了中文）
+        if let Some(current) = self.get_current_ime() {
+            // 只有不是英文输入法时才保存
+            if current != self.english_ime {
+                self.previous_ime = Some(current);
+            }
+        }
+
+        // 切换到英文
+        self.switch_to_english();
+    }
+
     /// 保存当前输入法并切换到英文（在进入对话框前调用）
     pub fn save_and_switch_to_english(&mut self) {
         // 保存当前输入法

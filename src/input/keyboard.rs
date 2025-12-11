@@ -131,8 +131,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     KeyCode::Esc => {
                         app.dialog = None;
                         app.mode = Mode::Normal;
-                        // 切换回英文输入法
-                        app.ime_state.switch_to_english();
+                        // 退出对话框，保存用户输入法并切换回英文
+                        app.ime_state.exit_dialog();
                     }
                     KeyCode::Enter => {
                         if is_task_input {
@@ -149,8 +149,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                                 let dialog_clone = dialog.clone();
                                 app.dialog = None;
                                 app.mode = Mode::Normal;
-                                // 切换回英文输入法
-                                app.ime_state.switch_to_english();
+                                // 退出对话框，保存用户输入法并切换回英文
+                                app.ime_state.exit_dialog();
                                 handle_dialog_submit(app, dialog_clone, input_value);
                             }
                         } else {
@@ -159,8 +159,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                             let dialog_clone = dialog.clone();
                             app.dialog = None;
                             app.mode = Mode::Normal;
-                            // 切换回英文输入法
-                            app.ime_state.switch_to_english();
+                            // 退出对话框，保存用户输入法并切换回英文
+                            app.ime_state.exit_dialog();
                             handle_dialog_submit(app, dialog_clone, input_value);
                         }
                     }
@@ -216,8 +216,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 KeyCode::Esc => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
-                    // 切换回英文输入法
-                    app.ime_state.switch_to_english();
+                    // 退出对话框，保存用户输入法并切换回英文
+                    app.ime_state.exit_dialog();
                 }
                 KeyCode::Enter => {
                     // 选择当前项
@@ -236,8 +236,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         let dialog_clone = dialog.clone();
                         app.dialog = None;
                         app.mode = Mode::Normal;
-                        // 切换回英文输入法
-                        app.ime_state.switch_to_english();
+                        // 退出对话框，保存用户输入法并切换回英文
+                        app.ime_state.exit_dialog();
                         handle_dialog_submit(app, dialog_clone, selected_item);
                     }
                 }
@@ -269,16 +269,16 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 KeyCode::Esc | KeyCode::Char('n') => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
-                    // 切换回英文输入法
-                    app.ime_state.switch_to_english();
+                    // 退出对话框，保存用户输入法并切换回英文
+                    app.ime_state.exit_dialog();
                 }
                 KeyCode::Enter => {
                     let confirmed = *yes_selected;
                     let dialog_clone = dialog.clone();
                     app.dialog = None;
                     app.mode = Mode::Normal;
-                    // 切换回英文输入法
-                    app.ime_state.switch_to_english();
+                    // 退出对话框，保存用户输入法并切换回英文
+                    app.ime_state.exit_dialog();
                     if confirmed {
                         handle_dialog_submit(app, dialog_clone, String::new());
                     }
@@ -293,8 +293,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     let dialog_clone = dialog.clone();
                     app.dialog = None;
                     app.mode = Mode::Normal;
-                    // 切换回英文输入法
-                    app.ime_state.switch_to_english();
+                    // 退出对话框，保存用户输入法并切换回英文
+                    app.ime_state.exit_dialog();
                     handle_dialog_submit(app, dialog_clone, String::new());
                 }
                 _ => {}
@@ -584,6 +584,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewProject => {
             app.mode = Mode::Dialog;
+            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             app.dialog = Some(DialogType::Input {
                 title: "创建新项目".to_string(),
                 prompt: "请输入项目名称:".to_string(),
@@ -593,6 +594,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewLocalProject => {
             app.mode = Mode::Dialog;
+            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             app.dialog = Some(DialogType::Input {
                 title: "创建新本地项目 [L]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
@@ -602,6 +604,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewGlobalProject => {
             app.mode = Mode::Dialog;
+            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             app.dialog = Some(DialogType::Input {
                 title: "创建新全局项目 [G]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
@@ -611,6 +614,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::OpenProject => {
             app.mode = Mode::Dialog;
+            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             // 生成格式化的项目列表：[G/L] 项目名\n    路径
             let project_items: Vec<String> = app.projects.iter().map(|p| {
                 let type_marker = match p.project_type {
@@ -641,6 +645,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 let current_name = project.name.clone();
                 let cursor_pos = current_name.chars().count();
                 app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Input {
                     title: "重命名项目".to_string(),
                     prompt: "请输入新的项目名称:".to_string(),
@@ -656,6 +661,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                 // 显示确认对话框
                 app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Confirm {
                     title: "删除项目".to_string(),
                     message: format!("确定要删除项目 \"{}\" 吗？\n这将删除项目的所有任务！", project_name),
@@ -665,6 +671,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewTask => {
             app.mode = Mode::Dialog;
+            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
                 prompt: "请输入任务标题:".to_string(),
@@ -678,6 +685,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 let title = task.title.clone();
                 let cursor_pos = title.chars().count();
                 app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
                     prompt: "修改任务标题:".to_string(),
@@ -786,6 +794,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                 // 显示确认对话框
                 app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Confirm {
                     title: "删除任务".to_string(),
                     message: format!("确定要删除任务 \"{}\" 吗？", task_title),
