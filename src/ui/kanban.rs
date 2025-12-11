@@ -78,7 +78,7 @@ fn render_column(
     let items: Vec<ListItem> = tasks
         .iter()
         .enumerate()
-        .flat_map(|(i, task)| {
+        .map(|(i, task)| {
             let selected_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
             let is_selected = is_column_focused && i == selected_idx;
 
@@ -107,26 +107,15 @@ fn render_column(
                 Span::raw("  ")
             };
 
-            let mut result = vec![];
-
-            // 添加空行作为上间距（除了第一项）
-            if i > 0 {
-                result.push(ListItem::new(Line::from("")));
-            }
-
-            // 任务项
-            result.push(
-                ListItem::new(Line::from(vec![
-                    Span::raw(" "),
-                    selection_indicator,
-                    priority_indicator,
-                    Span::raw(&task.title),
-                    Span::raw(" "),
-                ]))
-                .style(style)
-            );
-
-            result
+            // 任务项（紧凑布局，无额外间距）
+            ListItem::new(Line::from(vec![
+                Span::raw(" "),
+                selection_indicator,
+                priority_indicator,
+                Span::raw(&task.title),
+                Span::raw(" "),
+            ]))
+            .style(style)
         })
         .collect();
 

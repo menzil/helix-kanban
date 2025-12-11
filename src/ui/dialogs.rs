@@ -209,8 +209,8 @@ fn render_select_dialog(
 
             let mut content_lines = vec![];
 
-            // 添加空行（上间距）
-            if *idx > 0 {
+            // 第一项上方添加空行（顶部间距）
+            if *idx == 0 {
                 content_lines.push(Line::from(""));
             }
 
