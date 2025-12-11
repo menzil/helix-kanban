@@ -281,7 +281,18 @@ fn render_select_dialog(
         .collect();
 
     let list = List::new(list_items);
-    f.render_widget(list, chunks[0]);
+
+    // 创建 ListState 以支持滚动
+    let mut list_state = ratatui::widgets::ListState::default();
+
+    // 在过滤后的项目中找到当前选中项的索引
+    let filtered_selected = filtered_items.iter()
+        .position(|(idx, _)| *idx == selected)
+        .unwrap_or(0);
+
+    list_state.select(Some(filtered_selected));
+
+    f.render_stateful_widget(list, chunks[0], &mut list_state);
 
     // 帮助文本 - 右上角显示总数
     let help_text = format!("↑↓ 导航   Enter 切换选择   Esc 关闭   最多选择 1 个项目");
