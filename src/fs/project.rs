@@ -3,10 +3,16 @@ use std::path::{Path, PathBuf};
 
 use crate::models::{Project, ProjectConfig, ProjectType, Status};
 
-/// Get the kanban data directory (~/.kanban)
+/// Get the kanban data directory
+/// Windows: %APPDATA%\kanban
+/// macOS: ~/Library/Application Support/kanban
+/// Linux: ~/.local/share/kanban
 pub fn get_data_dir() -> PathBuf {
-    let home = std::env::var("HOME").expect("HOME environment variable not set");
-    PathBuf::from(home).join(".kanban")
+    let data_dir = directories::BaseDirs::new()
+        .expect("Failed to get user directories")
+        .data_dir()
+        .to_path_buf();
+    data_dir.join("kanban")
 }
 
 /// Get the projects directory (~/.kanban/projects)

@@ -139,7 +139,11 @@ hxk config viewer "open -a Marked 2"
 
 ### 全局项目
 
-全局项目存储在 `~/.kanban/projects/` 目录下。
+全局项目存储在系统的数据目录下：
+
+- **Windows**: `%APPDATA%\kanban\projects\`
+- **macOS**: `~/Library/Application Support/kanban/projects/`
+- **Linux**: `~/.local/share/kanban/projects/`
 
 ### 本地项目
 
@@ -190,7 +194,11 @@ priority: high
 
 ### 配置文件
 
-应用配置存储在 `~/.kanban/config.toml`：
+应用配置存储在系统的配置目录下：
+
+- **Windows**: `%APPDATA%\kanban\config.toml`
+- **macOS**: `~/Library/Application Support/kanban/config.toml`
+- **Linux**: `~/.config/kanban/config.toml`
 
 ```toml
 editor = "nvim"
@@ -211,7 +219,10 @@ hidden_projects = ["old-project", "archived-project"]
 - 聚焦的窗格
 
 **保存位置**：
-- 全局工作区：`~/.kanban/workspace.toml` - 在任何目录启动时使用
+- 全局工作区：
+  - **Windows**: `%APPDATA%\kanban\workspace.toml`
+  - **macOS**: `~/Library/Application Support/kanban/workspace.toml`
+  - **Linux**: `~/.local/share/kanban/workspace.toml`
 - 本地工作区：`.kanban/workspace.toml` - 在项目目录下启动时优先使用
 
 **使用场景**：

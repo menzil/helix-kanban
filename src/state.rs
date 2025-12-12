@@ -30,9 +30,15 @@ impl Default for AppState {
 }
 
 /// 获取状态文件路径
+/// Windows: %APPDATA%\kanban\state.json
+/// macOS: ~/Library/Application Support/kanban/state.json
+/// Linux: ~/.local/share/kanban/state.json
 fn get_state_file_path() -> PathBuf {
-    let home = std::env::var("HOME").expect("HOME environment variable not set");
-    PathBuf::from(home).join(".kanban").join("state.json")
+    let data_dir = directories::BaseDirs::new()
+        .expect("Failed to get user directories")
+        .data_dir()
+        .to_path_buf();
+    data_dir.join("kanban").join("state.json")
 }
 
 /// 从应用中提取状态
