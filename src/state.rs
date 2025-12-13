@@ -133,4 +133,9 @@ pub fn apply_state(app: &mut crate::app::App, state: AppState) {
     } else if let Some(&first_pane) = all_panes.first() {
         app.focused_pane = first_pane;
     }
+
+    // 重要：更新 next_pane_id 为当前最大ID+1，避免ID冲突
+    if let Some(&max_id) = all_panes.iter().max() {
+        app.next_pane_id = max_id + 1;
+    }
 }

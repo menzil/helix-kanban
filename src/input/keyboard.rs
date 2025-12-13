@@ -569,22 +569,30 @@ fn execute_command(app: &mut App, cmd: Command) {
     match cmd {
         Command::SplitHorizontal => {
             // 水平分割线 = 上下分屏
+            log_debug(format!("执行 SplitHorizontal, 当前焦点: {}", app.focused_pane));
             if let Some(pane) = app.split_tree.find_pane_mut(app.focused_pane) {
                 let new_pane_id = app.next_pane_id;
                 pane.split_vertical(new_pane_id);  // split_vertical 创建上下分屏
                 app.next_pane_id += 1;
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
+                log_debug(format!("创建新面板 {}, 新焦点: {}", new_pane_id, app.focused_pane));
+            } else {
+                log_debug("找不到当前面板".to_string());
             }
         }
         Command::SplitVertical => {
             // 垂直分割线 = 左右分屏
+            log_debug(format!("执行 SplitVertical, 当前焦点: {}", app.focused_pane));
             if let Some(pane) = app.split_tree.find_pane_mut(app.focused_pane) {
                 let new_pane_id = app.next_pane_id;
                 pane.split_horizontal(new_pane_id);  // split_horizontal 创建左右分屏
                 app.next_pane_id += 1;
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
+                log_debug(format!("创建新面板 {}, 新焦点: {}", new_pane_id, app.focused_pane));
+            } else {
+                log_debug("找不到当前面板".to_string());
             }
         }
         Command::TaskDown => {
@@ -810,56 +818,85 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::FocusNextPane => {
             // 获取所有窗格 ID 并找到下一个
             let all_panes = app.split_tree.collect_pane_ids();
+            log_debug(format!("FocusNextPane, 当前焦点: {}, 所有面板: {:?}", app.focused_pane, all_panes));
             if all_panes.len() > 1 {
                 if let Some(current_idx) = all_panes.iter().position(|&id| id == app.focused_pane) {
                     let next_idx = (current_idx + 1) % all_panes.len();
                     app.focused_pane = all_panes[next_idx];
+                    log_debug(format!("切换到面板: {}", app.focused_pane));
                 }
+            } else {
+                log_debug("只有一个面板，无需切换".to_string());
             }
         }
         Command::FocusLeft => {
+            log_debug(format!("FocusLeft, 当前焦点: {}", app.focused_pane));
             if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
                 app.focused_pane,
                 crate::ui::layout::Direction::Left,
             ) {
                 app.focused_pane = new_pane_id;
+                log_debug(format!("移动到左侧面板: {}", new_pane_id));
+            } else {
+                log_debug("左侧没有面板".to_string());
             }
         }
         Command::FocusRight => {
+            log_debug(format!("FocusRight, 当前焦点: {}", app.focused_pane));
             if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
                 app.focused_pane,
                 crate::ui::layout::Direction::Right,
             ) {
                 app.focused_pane = new_pane_id;
+                log_debug(format!("移动到右侧面板: {}", new_pane_id));
+            } else {
+                log_debug("右侧没有面板".to_string());
             }
         }
         Command::FocusUp => {
+            log_debug(format!("FocusUp, 当前焦点: {}", app.focused_pane));
             if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
                 app.focused_pane,
                 crate::ui::layout::Direction::Up,
             ) {
                 app.focused_pane = new_pane_id;
+                log_debug(format!("移动到上方面板: {}", new_pane_id));
+            } else {
+                log_debug("上方没有面板".to_string());
             }
         }
         Command::FocusDown => {
+            log_debug(format!("FocusDown, 当前焦点: {}", app.focused_pane));
             if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
                 app.focused_pane,
                 crate::ui::layout::Direction::Down,
             ) {
                 app.focused_pane = new_pane_id;
+                log_debug(format!("移动到下方面板: {}", new_pane_id));
+            } else {
+                log_debug("下方没有面板".to_string());
             }
         }
         Command::ClosePane => {
-            // 关闭当前面板
-            let current_pane = app.focused_pane;
-            if app.split_tree.close_pane(current_pane) {
-                // 关闭成功，需要重新聚焦到一个有效的面板
-                let all_panes = app.split_tree.collect_pane_ids();
-                if let Some(&first_pane) = all_panes.first() {
-                    app.focused_pane = first_pane;
+            // 如果当前处于最大化状态，先恢复布局
+            if app.saved_layout.is_some() {
+                log_debug("最大化状态下按 q，恢复布局".to_string());
+                app.toggle_maximize();
+            } else {
+                // 关闭当前面板
+                log_debug(format!("关闭面板: {}", app.focused_pane));
+                let current_pane = app.focused_pane;
+                if app.split_tree.close_pane(current_pane) {
+                    // 关闭成功，需要重新聚焦到一个有效的面板
+                    let all_panes = app.split_tree.collect_pane_ids();
+                    if let Some(&first_pane) = all_panes.first() {
+                        app.focused_pane = first_pane;
+                        log_debug(format!("关闭后聚焦到: {}", first_pane));
+                    }
+                } else {
+                    log_debug("无法关闭面板（可能只有一个）".to_string());
                 }
             }
-            // 如果关闭失败（比如只有一个面板），不做任何操作
         }
         Command::MaximizePane => {
             // 最大化/恢复当前面板
@@ -1436,10 +1473,11 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'l' => Some(Command::FocusRight),
                         'k' => Some(Command::FocusUp),
                         'j' => Some(Command::FocusDown),
-                        'm' => Some(Command::MaximizePane),  // 添加最大化快捷键
+                        'm' => Some(Command::MaximizePane),
                         _ => None,
                     };
                     if let Some(cmd) = cmd {
+                        log_debug(format!("执行窗口命令: {:?}", cmd));
                         app.mode = Mode::Normal;
                         app.menu_state = None;
                         app.key_buffer.clear();

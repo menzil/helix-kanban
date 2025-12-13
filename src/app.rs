@@ -5,6 +5,20 @@ use crate::ui::dialogs::DialogType;
 use anyhow::Result;
 use std::collections::HashMap;
 
+/// 调试日志辅助函数
+fn log_debug(msg: String) {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/kanban_debug.log")
+    {
+        let _ = writeln!(file, "[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg);
+    }
+}
+
 /// 应用模式
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -127,9 +141,15 @@ impl App {
             saved_layout: None,
         };
 
+        // 调试：记录初始状态
+        log_debug(format!("App初始化: focused_pane={}, next_pane_id={}, pane_ids={:?}",
+            app.focused_pane, app.next_pane_id, app.split_tree.collect_pane_ids()));
+
         // 尝试加载保存的状态
         if let Ok(state) = crate::state::load_state() {
             crate::state::apply_state(&mut app, state);
+            log_debug(format!("加载状态后: focused_pane={}, next_pane_id={}, pane_ids={:?}",
+                app.focused_pane, app.next_pane_id, app.split_tree.collect_pane_ids()));
         }
 
         // 启动时切换到英文输入法
