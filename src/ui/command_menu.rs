@@ -69,6 +69,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "v", label: "垂直分屏" },
                 CommandItem { key: "s", label: "水平分屏" },
                 CommandItem { key: "q", label: "关闭当前窗口" },
+                CommandItem { key: "m", label: "最大化/恢复" },
                 CommandItem { key: "", label: "" },
                 CommandItem { key: "h", label: "聚焦左侧" },
                 CommandItem { key: "l", label: "聚焦右侧" },

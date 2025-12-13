@@ -886,6 +886,10 @@ fn execute_command(app: &mut App, cmd: Command) {
             }
             // 如果关闭失败（比如只有一个面板），不做任何操作
         }
+        Command::MaximizePane => {
+            // 最大化/恢复当前面板
+            app.toggle_maximize();
+        }
         Command::EditTaskInEditor => {
             // 用外部编辑器编辑当前选中的任务
             if let Some(task) = get_selected_task(app) {
@@ -1427,6 +1431,7 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'l' => Some(Command::FocusRight),
                         'k' => Some(Command::FocusUp),
                         'j' => Some(Command::FocusDown),
+                        'm' => Some(Command::MaximizePane),  // 添加最大化快捷键
                         _ => None,
                     };
                     if let Some(cmd) = cmd {

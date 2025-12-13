@@ -81,6 +81,8 @@ pub struct App {
     pub show_welcome_dialog: bool,
     /// 输入法状态
     pub ime_state: crate::ime::ImeState,
+    /// 最大化前的窗口布局（用于恢复）
+    pub saved_layout: Option<SplitNode>,
 }
 
 impl App {
@@ -122,6 +124,7 @@ impl App {
             config,
             show_welcome_dialog: is_first_run,
             ime_state: crate::ime::ImeState::new(),
+            saved_layout: None,
         };
 
         // 尝试加载保存的状态
@@ -209,5 +212,31 @@ impl App {
             }
         }
         Ok(())
+    }
+
+    /// 切换当前面板的最大化状态
+    pub fn toggle_maximize(&mut self) {
+        if let Some(saved) = self.saved_layout.take() {
+            // 当前处于最大化状态，恢复原布局
+            self.split_tree = saved;
+        } else {
+            // 当前不是最大化状态，保存当前布局并最大化
+            // 只有在有多个面板时才需要最大化
+            if self.split_tree.collect_pane_ids().len() > 1 {
+                self.saved_layout = Some(self.split_tree.clone());
+
+                // 获取当前聚焦面板的内容
+                if let Some(SplitNode::Leaf { project_id, id }) = self.split_tree.find_pane(self.focused_pane) {
+                    let project_id = project_id.clone();
+                    let pane_id = *id;
+
+                    // 创建只包含当前面板的新布局
+                    self.split_tree = SplitNode::Leaf {
+                        project_id,
+                        id: pane_id,
+                    };
+                }
+            }
+        }
     }
 }

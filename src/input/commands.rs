@@ -21,6 +21,8 @@ pub enum Command {
     FocusUp,
     /// 聚焦下方面板
     FocusDown,
+    /// 最大化/恢复当前面板
+    MaximizePane,
 
     // ===== 任务操作 =====
     /// 将任务移到左边的状态列
