@@ -1439,7 +1439,7 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                 Some(MenuState::Task) => {
                     // 任务子菜单：立即执行命令并退出菜单
                     let cmd = match c {
-                        'n' => Some(Command::NewTask),
+                        'a' => Some(Command::NewTask),  // 改为 a 键新建任务
                         'e' => Some(Command::EditTask),
                         'E' => Some(Command::EditTaskInEditor),
                         'v' => Some(Command::ViewTask),

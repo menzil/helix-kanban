@@ -79,7 +79,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         ),
         Some(MenuState::Task) => (
             vec![
-                CommandItem { key: "n", label: "新建任务" },
+                CommandItem { key: "a", label: "新建任务" },
                 CommandItem { key: "e", label: "编辑任务" },
                 CommandItem { key: "E", label: "用编辑器编辑" },
                 CommandItem { key: "", label: "" },
