@@ -567,23 +567,6 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Left, _) => Some(Command::ColumnLeft),
         ([], KeyCode::Right, _) => Some(Command::ColumnRight),
 
-        // ===== Space w 序列（窗口管理）=====
-        // 缓冲区包含 [' ', 'w']，当前键是 'v'
-        ([' ', 'w'], KeyCode::Char('v'), _) => Some(Command::SplitHorizontal),
-        ([' ', 'w'], KeyCode::Char('s'), _) => Some(Command::SplitVertical),
-        ([' ', 'w'], KeyCode::Char('c'), _) => Some(Command::ClosePane),
-        ([' ', 'w'], KeyCode::Char('h'), _) => Some(Command::FocusLeft),
-        ([' ', 'w'], KeyCode::Char('l'), _) => Some(Command::FocusRight),
-        ([' ', 'w'], KeyCode::Char('k'), _) => Some(Command::FocusUp),
-        ([' ', 'w'], KeyCode::Char('j'), _) => Some(Command::FocusDown),
-
-        // ===== Space p 序列（项目管理）=====
-        // 缓冲区包含 [' ', 'p']，当前键是 'o'
-        ([' ', 'p'], KeyCode::Char('o'), _) => Some(Command::OpenProject),
-        ([' ', 'p'], KeyCode::Char('n'), _) => Some(Command::NewProject),
-        ([' ', 'p'], KeyCode::Char('d'), _) => Some(Command::DeleteProject),
-        ([' ', 'p'], KeyCode::Char('r'), _) => Some(Command::RenameProject),
-
         _ => None,
     }
 }
