@@ -560,6 +560,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('E'), KeyModifiers::SHIFT) => Some(Command::EditTaskInEditor),
         ([], KeyCode::Char('v'), KeyModifiers::NONE) => Some(Command::ViewTask),
         ([], KeyCode::Char('V'), KeyModifiers::SHIFT) => Some(Command::ViewTaskExternal),
+        ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask),  // 复制任务到剪贴板
 
         ([], KeyCode::Down, _) => Some(Command::TaskDown),
         ([], KeyCode::Up, _) => Some(Command::TaskUp),
