@@ -11,7 +11,7 @@ use ratatui::{
 /// 渲染看板视图
 pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, app: &App) {
     let border_style = if is_focused {
-        Style::default().fg(Color::White)
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
     };
