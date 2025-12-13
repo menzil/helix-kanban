@@ -878,12 +878,31 @@ fn execute_command(app: &mut App, cmd: Command) {
             }
         }
         Command::ClosePane => {
-            // 如果当前处于最大化状态，先恢复布局
+            // 如果当前处于最大化状态，关闭当前窗口并恢复布局
             if app.saved_layout.is_some() {
-                log_debug("最大化状态下按 q，恢复布局".to_string());
-                app.toggle_maximize();
+                log_debug("最大化状态下按 q，关闭窗口并恢复布局".to_string());
+
+                // 先恢复布局
+                if let Some(saved) = app.saved_layout.take() {
+                    app.split_tree = saved;
+                    log_debug("已恢复布局".to_string());
+                }
+
+                // 然后关闭当前聚焦的面板
+                let current_pane = app.focused_pane;
+                log_debug(format!("关闭面板: {}", current_pane));
+                if app.split_tree.close_pane(current_pane) {
+                    // 关闭成功，重新聚焦到一个有效的面板
+                    let all_panes = app.split_tree.collect_pane_ids();
+                    if let Some(&first_pane) = all_panes.first() {
+                        app.focused_pane = first_pane;
+                        log_debug(format!("关闭后聚焦到: {}", first_pane));
+                    }
+                } else {
+                    log_debug("无法关闭面板".to_string());
+                }
             } else {
-                // 关闭当前面板
+                // 非最大化状态：直接关闭当前面板
                 log_debug(format!("关闭面板: {}", app.focused_pane));
                 let current_pane = app.focused_pane;
                 if app.split_tree.close_pane(current_pane) {
