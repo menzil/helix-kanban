@@ -935,25 +935,32 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::CopyTask => {
             // 复制任务到剪贴板
-            if let Some(task) = get_selected_task(app) {
-                // 读取任务文件内容
-                if let Ok(content) = std::fs::read_to_string(&task.file_path) {
-                    // 复制到剪贴板
-                    match arboard::Clipboard::new() {
-                        Ok(mut clipboard) => {
-                            if let Err(e) = clipboard.set_text(content) {
-                                log_debug(format!("复制到剪贴板失败: {}", e));
-                            } else {
-                                log_debug(format!("已复制任务 '{}' 到剪贴板", task.title));
+            #[cfg(feature = "clipboard")]
+            {
+                if let Some(task) = get_selected_task(app) {
+                    // 读取任务文件内容
+                    if let Ok(content) = std::fs::read_to_string(&task.file_path) {
+                        // 复制到剪贴板
+                        match arboard::Clipboard::new() {
+                            Ok(mut clipboard) => {
+                                if let Err(e) = clipboard.set_text(content) {
+                                    log_debug(format!("复制到剪贴板失败: {}", e));
+                                } else {
+                                    log_debug(format!("已复制任务 '{}' 到剪贴板", task.title));
+                                }
+                            }
+                            Err(e) => {
+                                log_debug(format!("无法访问剪贴板: {}", e));
                             }
                         }
-                        Err(e) => {
-                            log_debug(format!("无法访问剪贴板: {}", e));
-                        }
+                    } else {
+                        log_debug("读取任务文件失败".to_string());
                     }
-                } else {
-                    log_debug("读取任务文件失败".to_string());
                 }
+            }
+            #[cfg(not(feature = "clipboard"))]
+            {
+                log_debug("剪贴板功能未启用，请使用 --features clipboard 编译".to_string());
             }
         }
         Command::ReloadCurrentProject => {
