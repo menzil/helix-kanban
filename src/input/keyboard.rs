@@ -902,7 +902,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                     log_debug("无法关闭面板".to_string());
                 }
             } else {
-                // 非最大化状态：直接关闭当前面板
+                // 非最大化状态：尝试关闭当前面板
                 log_debug(format!("关闭面板: {}", app.focused_pane));
                 let current_pane = app.focused_pane;
                 if app.split_tree.close_pane(current_pane) {
@@ -913,7 +913,14 @@ fn execute_command(app: &mut App, cmd: Command) {
                         log_debug(format!("关闭后聚焦到: {}", first_pane));
                     }
                 } else {
-                    log_debug("无法关闭面板（可能只有一个）".to_string());
+                    // 只有一个面板时，清空该面板的项目
+                    log_debug("只有一个面板，清空当前项目".to_string());
+                    if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+                        app.split_tree.find_pane_mut(app.focused_pane)
+                    {
+                        *project_id = None;
+                        log_debug("已清空项目".to_string());
+                    }
                 }
             }
         }
