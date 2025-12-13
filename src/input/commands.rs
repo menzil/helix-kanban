@@ -55,6 +55,8 @@ pub enum Command {
     ViewTask,
     /// 用外部工具预览任务
     ViewTaskExternal,
+    /// 复制任务到剪贴板
+    CopyTask,
 
     // ===== 项目操作 (Space p 前缀) =====
     /// 打开项目

@@ -37,3 +37,4 @@ toml = "0.8"
 # Utilities
 chrono = "0.4"
 anyhow = "1.0"
+arboard = "3.4"  # Clipboard support

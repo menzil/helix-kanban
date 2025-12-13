@@ -87,6 +87,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "v", label: "预览任务" },
                 CommandItem { key: "V", label: "外部预览" },
                 CommandItem { key: "", label: "" },
+                CommandItem { key: "Y", label: "复制到剪贴板" },
                 CommandItem { key: "d", label: "删除任务" },
             ],
             " 任务操作 "
