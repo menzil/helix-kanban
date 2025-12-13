@@ -25,15 +25,12 @@ impl Default for Config {
 }
 
 /// 获取配置文件路径
-/// Windows: %APPDATA%\kanban\config.toml
-/// macOS: ~/Library/Application Support/kanban/config.toml
-/// Linux: ~/.config/kanban/config.toml
+/// All platforms: ~/.kanban/config.toml
 pub fn get_config_path() -> PathBuf {
-    let config_dir = directories::BaseDirs::new()
-        .expect("Failed to get user directories")
-        .config_dir()
-        .to_path_buf();
-    config_dir.join("kanban").join("config.toml")
+    let home_dir = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .expect("Failed to get home directory");
+    PathBuf::from(home_dir).join(".kanban").join("config.toml")
 }
 
 /// 加载配置
