@@ -53,18 +53,9 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
-    // 如果没有匹配到命令，将字符添加到缓冲区（用于多键序列）
-    if let KeyCode::Char(c) = key.code {
-        app.key_buffer.push(c);
-    } else {
-        // 非字符键清空缓冲区
-        app.key_buffer.clear();
-    }
-
-    // 如果缓冲区太长，清空它
-    if app.key_buffer.len() > 3 {
-        app.key_buffer.clear();
-    }
+    // 如果没有匹配到命令，清空缓冲区
+    // 因为现在所有多键序列都通过 SpaceMenu 处理，不需要缓冲未匹配的按键
+    app.key_buffer.clear();
 
     true
 }
