@@ -2,20 +2,21 @@
 
 一个终端看板应用，灵感来自 [Helix 编辑器](https://helix-editor.com/)的键位设计。
 
+**特别适合与 AI 协作**：基于 Markdown 文件存储，一键复制任务内容（`Y`），快速将任务目录和内容分享给 AI 助手，让 AI 帮你规划和管理任务。
+
 ## 预览
 
 ![Kanban TUI 截图](https://raw.githubusercontent.com/menzil/helix-kanban/master/screenshoot.png)
 
-## 特性
+## 核心特性
 
-- 📁 **基于文件存储** - 使用 Markdown 文件和 TOML 配置，易于版本控制
-- 🎯 **多项目支持** - 支持全局项目和本地项目（`.kanban/`）
-- ⌨️  **Helix 风格键位** - 符合直觉的键盘快捷键
-- 🪟 **窗口管理** - 支持垂直/水平分屏，同时查看多个项目，自动保存和恢复工作区布局
-- 🎨 **现代 TUI** - 基于 ratatui 的美观终端界面
-- 📝 **Markdown 支持** - 任务使用 Markdown 格式，支持外部编辑器
-- 🔍 **任务预览** - 内置预览和外部预览工具支持
-- ⚙️  **自动配置** - 首次运行自动检测编辑器和预览器
+- 📁 **基于文件存储** - Markdown + TOML，易于版本控制，AI 可直接读取项目目录
+- 📋 **快速复制** - 一键复制任务到剪贴板 (`Y`)，方便分享给 AI
+- 🪟 **窗口管理** - 垂直/水平分屏、最大化，自动保存和恢复工作区布局
+- ⌨️  **Helix 风格键位** - 符合直觉的键盘快捷键，命令模式支持
+- 🎯 **多项目支持** - 全局项目 + 本地项目（`.kanban/`）
+- 📝 **编辑器集成** - 支持外部编辑器 (Vim/Neovim/VSCode/Helix 等)
+- 🔍 **Markdown 预览** - 内置预览和外部预览工具支持
 
 ## 安装
 
@@ -143,11 +144,11 @@ hxk config viewer "open -a Marked 2"
 
 ### 全局项目
 
-全局项目存储在系统的数据目录下：
+全局项目存储在用户主目录下：
 
-- **Windows**: `%APPDATA%\kanban\projects\`
-- **macOS**: `~/Library/Application Support/kanban/projects/`
-- **Linux**: `~/.local/share/kanban/projects/`
+```
+~/.kanban/projects/
+```
 
 ### 本地项目
 
@@ -198,12 +199,13 @@ priority: high
 
 ### 配置文件
 
-应用配置存储在系统的配置目录下：
+应用配置存储在：
 
-- **Windows**: `%APPDATA%\kanban\config.toml`
-- **macOS**: `~/Library/Application Support/kanban/config.toml`
-- **Linux**: `~/.config/kanban/config.toml`
+```
+~/.kanban/config.toml
+```
 
+配置示例：
 ```toml
 editor = "nvim"
 markdown_viewer = "glow"
@@ -212,54 +214,22 @@ markdown_viewer = "glow"
 hidden_projects = ["old-project", "archived-project"]
 ```
 
-### 工作区状态保存
+### 状态自动保存
 
 应用会自动保存窗口布局和工作状态，下次启动时恢复：
 
 **保存内容**：
 - 分屏结构（垂直/水平分割）
-- 每个窗格打开的项目
+- 每个面板打开的项目
 - 当前选中的列和任务
-- 聚焦的窗格
+- 聚焦的面板
 
-**保存位置**：
-- 全局工作区：
-  - **Windows**: `%APPDATA%\kanban\workspace.toml`
-  - **macOS**: `~/Library/Application Support/kanban/workspace.toml`
-  - **Linux**: `~/.local/share/kanban/workspace.toml`
-- 本地工作区：`.kanban/workspace.toml` - 在项目目录下启动时优先使用
+**保存位置**：`~/.kanban/state.json`
 
 **使用场景**：
 - 经常需要同时查看多个项目？设置好分屏布局后，下次启动自动恢复
-- 在不同项目目录工作？每个目录都有自己独立的工作区布局
-- 想要重置布局？使用命令 `:reset-layout` 恢复默认单窗格
-
-**示例工作区配置** (`workspace.toml`)：
-```toml
-# 自动生成，通常无需手动编辑
-focused_pane = 2
-next_pane_id = 4
-
-[[panes]]
-id = 0
-type = "horizontal_split"
-left = 1
-right = 2
-
-[[panes]]
-id = 1
-type = "leaf"
-project = "work-project"
-selected_column = 1
-selected_task_index = 0
-
-[[panes]]
-id = 2
-type = "leaf"
-project = "personal-project"
-selected_column = 0
-selected_task_index = 2
-```
+- 关闭应用后重新打开，无需重新配置窗口布局
+- `Space w m` 最大化窗口专注单个项目，需要时快速恢复多窗口视图
 
 ## 开发
 
