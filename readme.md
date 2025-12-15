@@ -86,6 +86,7 @@ hxk config viewer "open -a Marked 2"
 | `v` | 预览任务（TUI 内） |
 | `V` | 用外部工具预览任务 |
 | `d` | 删除任务 |
+| `Y` | 复制任务到剪贴板 |
 | `H` | 任务移到左列 |
 | `L` | 任务移到右列 |
 | `J` | 任务在列内下移 |
@@ -113,6 +114,7 @@ hxk config viewer "open -a Marked 2"
 | `Space w v` | 垂直分屏 |
 | `Space w s` | 水平分屏 |
 | `Space w q` | 关闭窗口 |
+| `Space w m` | 最大化/恢复窗口 |
 | `Space w h` | 聚焦左面板 |
 | `Space w l` | 聚焦右面板 |
 | `Space w j` | 聚焦下面板 |
@@ -133,6 +135,8 @@ hxk config viewer "open -a Marked 2"
 - `:reload-all` / `:ra` / `:refresh-all` - 重新加载所有项目
 - `:vsplit` / `:sv` - 垂直分屏
 - `:hsplit` / `:sh` - 水平分屏
+- `:maximize` / `:max` - 最大化/恢复窗口
+- `:reset-layout` - 重置窗口布局
 - `:help` / `:h` - 显示帮助
 
 ## 数据存储
