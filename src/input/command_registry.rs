@@ -106,6 +106,31 @@ impl CommandRegistry {
             description: "用外部编辑器编辑任务",
         });
 
+        // 任务优先级命令
+        self.register(CommandDef {
+            name: "priority-high",
+            aliases: vec!["ph", "pri-high"],
+            description: "设置任务优先级为 high",
+        });
+
+        self.register(CommandDef {
+            name: "priority-medium",
+            aliases: vec!["pm", "pri-medium", "pri-mid"],
+            description: "设置任务优先级为 medium",
+        });
+
+        self.register(CommandDef {
+            name: "priority-low",
+            aliases: vec!["pl", "pri-low"],
+            description: "设置任务优先级为 low",
+        });
+
+        self.register(CommandDef {
+            name: "priority-none",
+            aliases: vec!["pn", "pri-none", "no-priority"],
+            description: "移除任务优先级",
+        });
+
         // 窗口管理命令
         self.register(CommandDef {
             name: "split-horizontal",

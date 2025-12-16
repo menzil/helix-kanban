@@ -1022,6 +1022,63 @@ fn execute_command(app: &mut App, cmd: Command) {
                 log_debug("剪贴板功能未启用，请使用 --features clipboard 编译".to_string());
             }
         }
+        Command::SetTaskPriority(priority) => {
+            // 设置任务优先级
+            if let Some(task) = get_selected_task(app) {
+                // 读取任务文件
+                if let Ok(content) = std::fs::read_to_string(&task.file_path) {
+                    let lines: Vec<&str> = content.lines().collect();
+                    let mut new_lines = Vec::new();
+                    let mut found_priority = false;
+
+                    for line in &lines {
+                        if line.starts_with("priority:") {
+                            // 替换现有优先级
+                            if priority != "none" {
+                                new_lines.push(format!("priority: {}", priority));
+                            }
+                            // 如果是 "none" 就跳过这行（删除优先级）
+                            found_priority = true;
+                        } else if line.starts_with("created:") && !found_priority {
+                            // 在 created 行后面插入 priority
+                            new_lines.push(line.to_string());
+                            if priority != "none" {
+                                new_lines.push(format!("priority: {}", priority));
+                                found_priority = true;
+                            }
+                        } else {
+                            new_lines.push(line.to_string());
+                        }
+                    }
+
+                    // 如果还没找到 priority 位置，在标题后添加
+                    if !found_priority && priority != "none" {
+                        let mut final_lines = Vec::new();
+                        let mut after_title = false;
+                        for line in new_lines {
+                            final_lines.push(line.clone());
+                            if line.starts_with("# ") && !after_title {
+                                final_lines.push(String::new());
+                                final_lines.push(format!("priority: {}", priority));
+                                after_title = true;
+                            }
+                        }
+                        new_lines = final_lines;
+                    }
+
+                    let new_content = new_lines.join("\n");
+                    if let Err(e) = std::fs::write(&task.file_path, new_content) {
+                        log_debug(format!("保存任务失败: {}", e));
+                    } else {
+                        log_debug(format!("已设置优先级为: {}", priority));
+                        // 重新加载项目
+                        let _ = app.reload_current_project();
+                    }
+                } else {
+                    log_debug("读取任务文件失败".to_string());
+                }
+            }
+        }
         Command::ReloadCurrentProject => {
             // 重新加载当前项目
             if let Err(e) = app.reload_current_project() {
@@ -1074,6 +1131,10 @@ fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
             "task-view" => execute_command(app, Command::ViewTask),
             "task-view-external" => execute_command(app, Command::ViewTaskExternal),
             "task-edit-external" => execute_command(app, Command::EditTaskInEditor),
+            "priority-high" => execute_command(app, Command::SetTaskPriority("high".to_string())),
+            "priority-medium" => execute_command(app, Command::SetTaskPriority("medium".to_string())),
+            "priority-low" => execute_command(app, Command::SetTaskPriority("low".to_string())),
+            "priority-none" => execute_command(app, Command::SetTaskPriority("none".to_string())),
             "split-horizontal" => execute_command(app, Command::SplitHorizontal),
             "split-vertical" => execute_command(app, Command::SplitVertical),
             "close-pane" => execute_command(app, Command::ClosePane),
@@ -1541,6 +1602,10 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'V' => Some(Command::ViewTaskExternal),
                         'd' => Some(Command::DeleteTask),
                         'Y' => Some(Command::CopyTask),  // 大写 Y 复制任务
+                        'h' => Some(Command::SetTaskPriority("high".to_string())),
+                        'm' => Some(Command::SetTaskPriority("medium".to_string())),
+                        'l' => Some(Command::SetTaskPriority("low".to_string())),
+                        'n' => Some(Command::SetTaskPriority("none".to_string())),
                         _ => None,
                     };
                     if let Some(cmd) = cmd {

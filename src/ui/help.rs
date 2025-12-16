@@ -115,6 +115,27 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::styled("d", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("          删除任务"),
         ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("设置优先级 (Space t)", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("h", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          高优先级"),
+        ]),
+        Line::from(vec![
+            Span::styled("m", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          中优先级"),
+        ]),
+        Line::from(vec![
+            Span::styled("l", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          低优先级"),
+        ]),
+        Line::from(vec![
+            Span::styled("n", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          无优先级"),
+        ]),
     ];
 
     // 中列：项目管理
@@ -224,6 +245,14 @@ pub fn render(f: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("  t", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("         任务操作子菜单"),
+        ]),
+        Line::from(vec![
+            Span::styled("    a/e/E/v/V/d/Y", Style::default().fg(Color::Rgb(129, 161, 193))),  // 略浅的蓝色
+            Span::raw(" 任务操作"),
+        ]),
+        Line::from(vec![
+            Span::styled("    h/m/l/n", Style::default().fg(Color::Rgb(129, 161, 193))),
+            Span::raw("     优先级: 高/中/低/无"),
         ]),
         Line::from(vec![
             Span::styled("  ESC", Style::default().fg(Color::Rgb(136, 192, 208))),

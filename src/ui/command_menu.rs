@@ -89,6 +89,11 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "", label: "" },
                 CommandItem { key: "Y", label: "复制到剪贴板" },
                 CommandItem { key: "d", label: "删除任务" },
+                CommandItem { key: "", label: "" },
+                CommandItem { key: "h", label: "优先级：高" },
+                CommandItem { key: "m", label: "优先级：中" },
+                CommandItem { key: "l", label: "优先级：低" },
+                CommandItem { key: "n", label: "优先级：无" },
             ],
             " 任务操作 "
         ),
