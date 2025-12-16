@@ -577,6 +577,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
                 log_debug(format!("创建新面板 {}, 新焦点: {}", new_pane_id, app.focused_pane));
+
+                // 保存状态
+                let state = crate::state::extract_state(app);
+                let _ = crate::state::save_state(&state);
             } else {
                 log_debug("找不到当前面板".to_string());
             }
@@ -591,6 +595,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
                 log_debug(format!("创建新面板 {}, 新焦点: {}", new_pane_id, app.focused_pane));
+
+                // 保存状态
+                let state = crate::state::extract_state(app);
+                let _ = crate::state::save_state(&state);
             } else {
                 log_debug("找不到当前面板".to_string());
             }
@@ -898,6 +906,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                         app.focused_pane = first_pane;
                         log_debug(format!("关闭后聚焦到: {}", first_pane));
                     }
+
+                    // 保存状态
+                    let state = crate::state::extract_state(app);
+                    let _ = crate::state::save_state(&state);
                 } else {
                     log_debug("无法关闭面板".to_string());
                 }
@@ -912,6 +924,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                         app.focused_pane = first_pane;
                         log_debug(format!("关闭后聚焦到: {}", first_pane));
                     }
+
+                    // 保存状态
+                    let state = crate::state::extract_state(app);
+                    let _ = crate::state::save_state(&state);
                 } else {
                     // 只有一个面板时，清空该面板的项目
                     log_debug("只有一个面板，清空当前项目".to_string());
@@ -919,6 +935,11 @@ fn execute_command(app: &mut App, cmd: Command) {
                         app.split_tree.find_pane_mut(app.focused_pane)
                     {
                         *project_id = None;
+
+                        // 保存状态
+                        let state = crate::state::extract_state(app);
+                        let _ = crate::state::save_state(&state);
+
                         log_debug("已清空项目".to_string());
                     }
                 }

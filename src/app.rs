@@ -209,6 +209,10 @@ impl App {
             // 重置选中索引到 0
             self.selected_task_index.insert(self.focused_pane, 0);
             self.selected_column.insert(self.focused_pane, 0);
+
+            // 保存状态
+            let state = crate::state::extract_state(self);
+            let _ = crate::state::save_state(&state);
         }
     }
 
@@ -239,6 +243,10 @@ impl App {
         if let Some(saved) = self.saved_layout.take() {
             // 当前处于最大化状态，恢复原布局
             self.split_tree = saved;
+
+            // 保存状态
+            let state = crate::state::extract_state(self);
+            let _ = crate::state::save_state(&state);
         } else {
             // 当前不是最大化状态，保存当前布局并最大化
             // 只有在有多个面板时才需要最大化
@@ -255,6 +263,10 @@ impl App {
                         project_id,
                         id: pane_id,
                     };
+
+                    // 保存状态（最大化后的状态）
+                    let state = crate::state::extract_state(self);
+                    let _ = crate::state::save_state(&state);
                 }
             }
         }
