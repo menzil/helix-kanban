@@ -156,76 +156,121 @@ impl SplitNode {
     /// 查找当前面板在指定方向上的相邻面板
     /// 返回相邻面板的ID，如果没有则返回None
     pub fn find_adjacent_pane(&self, current_id: usize, direction: Direction) -> Option<usize> {
-        self.find_adjacent_internal(current_id, direction, true)
+        self.find_adjacent_with_position(current_id, direction)
     }
 
-    /// 内部递归查找相邻面板
-    fn find_adjacent_internal(&self, current_id: usize, direction: Direction, is_root: bool) -> Option<usize> {
+    /// 使用位置感知的方式查找相邻面板
+    fn find_adjacent_with_position(&self, current_id: usize, direction: Direction) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => {
                 if *id == current_id {
-                    // 找到了当前面板，但在叶子节点层面没有相邻的
-                    None
-                } else if is_root {
-                    // 如果这是根节点且是叶子，说明只有一个面板
                     None
                 } else {
-                    // 返回这个面板作为候选
-                    Some(*id)
+                    None
                 }
             }
             SplitNode::Horizontal { left, right, .. } => {
+                let in_left = left.contains_pane(current_id);
+                let in_right = right.contains_pane(current_id);
+
                 match direction {
                     Direction::Left => {
-                        // 如果当前面板在右侧，返回左侧的最右面板
-                        if right.contains_pane(current_id) {
-                            left.get_rightmost_pane()
+                        if in_right {
+                            // 从右边往左找：找到左边对应位置的面板
+                            left.find_adjacent_with_position(current_id, direction)
+                                .or_else(|| right.get_corresponding_pane(left, current_id, true))
                         } else {
-                            // 当前面板在左侧，继续向上查找
-                            left.find_adjacent_internal(current_id, direction, false)
+                            // 在左边继续向左找
+                            left.find_adjacent_with_position(current_id, direction)
                         }
                     }
                     Direction::Right => {
-                        // 如果当前面板在左侧，返回右侧的最左面板
-                        if left.contains_pane(current_id) {
-                            right.get_leftmost_pane()
+                        if in_left {
+                            // 从左边往右找：找到右边对应位置的面板
+                            right.find_adjacent_with_position(current_id, direction)
+                                .or_else(|| left.get_corresponding_pane(right, current_id, false))
                         } else {
-                            // 当前面板在右侧，继续向上查找
-                            right.find_adjacent_internal(current_id, direction, false)
+                            // 在右边继续向右找
+                            right.find_adjacent_with_position(current_id, direction)
                         }
                     }
                     Direction::Up | Direction::Down => {
-                        // 水平分割不影响上下导航
-                        left.find_adjacent_internal(current_id, direction, false)
-                            .or_else(|| right.find_adjacent_internal(current_id, direction, false))
+                        // 在水平分割中，上下移动需要穿透到子节点
+                        if in_left {
+                            left.find_adjacent_with_position(current_id, direction)
+                        } else {
+                            right.find_adjacent_with_position(current_id, direction)
+                        }
                     }
                 }
             }
             SplitNode::Vertical { top, bottom, .. } => {
+                let in_top = top.contains_pane(current_id);
+                let in_bottom = bottom.contains_pane(current_id);
+
                 match direction {
                     Direction::Up => {
-                        // 如果当前面板在下方，返回上方的最下面板
-                        if bottom.contains_pane(current_id) {
-                            top.get_bottommost_pane()
+                        if in_bottom {
+                            // 从下往上找：找到上边对应位置的面板
+                            top.find_adjacent_with_position(current_id, direction)
+                                .or_else(|| bottom.get_corresponding_pane(top, current_id, true))
                         } else {
-                            // 当前面板在上方，继续向上查找
-                            top.find_adjacent_internal(current_id, direction, false)
+                            // 在上边继续向上找
+                            top.find_adjacent_with_position(current_id, direction)
                         }
                     }
                     Direction::Down => {
-                        // 如果当前面板在上方，返回下方的最上面板
-                        if top.contains_pane(current_id) {
-                            bottom.get_topmost_pane()
+                        if in_top {
+                            // 从上往下找：找到下边对应位置的面板
+                            bottom.find_adjacent_with_position(current_id, direction)
+                                .or_else(|| top.get_corresponding_pane(bottom, current_id, false))
                         } else {
-                            // 当前面板在下方，继续向上查找
-                            bottom.find_adjacent_internal(current_id, direction, false)
+                            // 在下边继续向下找
+                            bottom.find_adjacent_with_position(current_id, direction)
                         }
                     }
                     Direction::Left | Direction::Right => {
-                        // 垂直分割不影响左右导航
-                        top.find_adjacent_internal(current_id, direction, false)
-                            .or_else(|| bottom.find_adjacent_internal(current_id, direction, false))
+                        // 在垂直分割中，左右移动需要穿透到子节点
+                        if in_top {
+                            top.find_adjacent_with_position(current_id, direction)
+                        } else {
+                            bottom.find_adjacent_with_position(current_id, direction)
+                        }
                     }
+                }
+            }
+        }
+    }
+
+    /// 在目标子树中找到与当前面板对应位置的面板
+    /// from_left: true 表示从左/上往右/下找，false 表示从右/下往左/上找
+    fn get_corresponding_pane(&self, target: &SplitNode, current_id: usize, from_left: bool) -> Option<usize> {
+        // 判断当前面板在本子树中的位置（左/右 或 上/下）
+        match self {
+            SplitNode::Leaf { .. } => {
+                // 叶子节点直接返回目标的首个面板
+                if from_left {
+                    target.get_leftmost_pane()
+                } else {
+                    target.get_rightmost_pane()
+                }
+            }
+            SplitNode::Horizontal { left, right, .. } => {
+                if left.contains_pane(current_id) {
+                    // 当前在左边，找目标的左边
+                    target.get_leftmost_pane()
+                } else {
+                    // 当前在右边，找目标的右边
+                    target.get_rightmost_pane()
+                }
+            }
+            SplitNode::Vertical { top, bottom, .. } => {
+                if top.contains_pane(current_id) {
+                    // 当前在上边，找目标的上边
+                    target.get_topmost_pane()
+                } else {
+                    // 当前在下边，找目标的下边
+                    target.get_bottommost_pane()
                 }
             }
         }
