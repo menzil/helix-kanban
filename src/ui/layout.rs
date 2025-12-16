@@ -258,7 +258,7 @@ impl SplitNode {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),
             SplitNode::Horizontal { right, .. } => right.get_rightmost_pane(),
-            SplitNode::Vertical { bottom, .. } => bottom.get_rightmost_pane(),
+            SplitNode::Vertical { top, .. } => top.get_rightmost_pane(),
         }
     }
 
@@ -275,7 +275,7 @@ impl SplitNode {
     fn get_bottommost_pane(&self) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),
-            SplitNode::Horizontal { right, .. } => right.get_bottommost_pane(),
+            SplitNode::Horizontal { left, .. } => left.get_bottommost_pane(),
             SplitNode::Vertical { bottom, .. } => bottom.get_bottommost_pane(),
         }
     }
