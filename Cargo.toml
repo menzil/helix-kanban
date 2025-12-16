@@ -1,6 +1,6 @@
 [package]
 name = "helix-kanban"
-version = "0.2.12"
+version = "0.2.13"
 edition = "2021"
 authors = ["Ruzaji Yasin <menzil@live.cn>"]
 description = "A terminal-based kanban board with file-based storage, multi-project support, and Helix-style keybindings"
