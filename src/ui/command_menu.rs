@@ -9,6 +9,7 @@ use ratatui::Frame;
 struct CommandItem {
     key: &'static str,
     label: &'static str,
+    color: Option<Color>,
 }
 
 /// 渲染空格命令菜单（小型弹窗样式）
@@ -40,76 +41,76 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
             };
 
             let mut commands = vec![
-                CommandItem { key: "o", label: "打开项目" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "n", label: "新建本地项目 [L]" },
-                CommandItem { key: "N", label: "新建全局项目 [G]" },
-                CommandItem { key: "", label: "" },
+                CommandItem { key: "o", label: "打开项目", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "n", label: "新建本地项目 [L]", color: None },
+                CommandItem { key: "N", label: "新建全局项目 [G]", color: None },
+                CommandItem { key: "", label: "", color: None },
             ];
 
             // 根据项目类型决定显示哪些删除选项
             if is_current_local_project {
                 // 当前目录的本地项目：只能硬删除
-                commands.push(CommandItem { key: "D", label: "删除项目文件" });
+                commands.push(CommandItem { key: "D", label: "删除项目文件", color: None });
             } else {
                 // 全局项目或其他目录的本地项目：可以软删除或硬删除
-                commands.push(CommandItem { key: "d", label: "隐藏项目（软删除）" });
-                commands.push(CommandItem { key: "D", label: "删除项目文件" });
+                commands.push(CommandItem { key: "d", label: "隐藏项目（软删除）", color: None });
+                commands.push(CommandItem { key: "D", label: "删除项目文件", color: None });
             }
 
-            commands.push(CommandItem { key: "", label: "" });
-            commands.push(CommandItem { key: "r", label: "重命名项目" });
+            commands.push(CommandItem { key: "", label: "", color: None });
+            commands.push(CommandItem { key: "r", label: "重命名项目", color: None });
 
             (commands, " 项目操作 ")
         },
         Some(MenuState::Window) => (
             vec![
-                CommandItem { key: "w", label: "下一个窗口" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "v", label: "垂直分屏" },
-                CommandItem { key: "s", label: "水平分屏" },
-                CommandItem { key: "q", label: "关闭当前窗口" },
-                CommandItem { key: "m", label: "最大化/恢复" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "h", label: "聚焦左侧" },
-                CommandItem { key: "l", label: "聚焦右侧" },
-                CommandItem { key: "k", label: "聚焦上方" },
-                CommandItem { key: "j", label: "聚焦下方" },
+                CommandItem { key: "w", label: "下一个窗口", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "v", label: "垂直分屏", color: None },
+                CommandItem { key: "s", label: "水平分屏", color: None },
+                CommandItem { key: "q", label: "关闭当前窗口", color: None },
+                CommandItem { key: "m", label: "最大化/恢复", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "h", label: "聚焦左侧", color: None },
+                CommandItem { key: "l", label: "聚焦右侧", color: None },
+                CommandItem { key: "k", label: "聚焦上方", color: None },
+                CommandItem { key: "j", label: "聚焦下方", color: None },
             ],
             " 窗口操作 "
         ),
         Some(MenuState::Task) => (
             vec![
-                CommandItem { key: "a", label: "新建任务" },
-                CommandItem { key: "e", label: "编辑任务" },
-                CommandItem { key: "E", label: "用编辑器编辑" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "v", label: "预览任务" },
-                CommandItem { key: "V", label: "外部预览" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "Y", label: "复制到剪贴板" },
-                CommandItem { key: "d", label: "删除任务" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "h", label: "优先级：高" },
-                CommandItem { key: "m", label: "优先级：中" },
-                CommandItem { key: "l", label: "优先级：低" },
-                CommandItem { key: "n", label: "优先级：无" },
+                CommandItem { key: "a", label: "新建任务", color: None },
+                CommandItem { key: "e", label: "编辑任务", color: None },
+                CommandItem { key: "E", label: "用编辑器编辑", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "v", label: "预览任务", color: None },
+                CommandItem { key: "V", label: "外部预览", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "Y", label: "复制到剪贴板", color: None },
+                CommandItem { key: "d", label: "删除任务", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "h", label: "优先级：高", color: Some(Color::Red) },
+                CommandItem { key: "m", label: "优先级：中", color: Some(Color::Yellow) },
+                CommandItem { key: "l", label: "优先级：低", color: Some(Color::Green) },
+                CommandItem { key: "n", label: "优先级：无", color: None },
             ],
             " 任务操作 "
         ),
         Some(MenuState::Main) | None => (
             vec![
-                CommandItem { key: "f", label: "快速切换项目" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "p", label: "项目操作..." },
-                CommandItem { key: "w", label: "窗口操作..." },
-                CommandItem { key: "t", label: "任务操作..." },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "r", label: "重新加载当前项目" },
-                CommandItem { key: "R", label: "重新加载所有项目" },
-                CommandItem { key: "", label: "" },
-                CommandItem { key: "?", label: "显示帮助" },
-                CommandItem { key: "q", label: "退出" },
+                CommandItem { key: "f", label: "快速切换项目", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "p", label: "项目操作...", color: None },
+                CommandItem { key: "w", label: "窗口操作...", color: None },
+                CommandItem { key: "t", label: "任务操作...", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "r", label: "重新加载当前项目", color: None },
+                CommandItem { key: "R", label: "重新加载所有项目", color: None },
+                CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "?", label: "显示帮助", color: None },
+                CommandItem { key: "q", label: "退出", color: None },
             ],
             " 命令菜单 "
         ),
@@ -123,7 +124,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 // 空行分隔符
                 ListItem::new("")
             } else {
-                let line = Line::from(vec![
+                let mut spans = vec![
                     Span::raw("  "),
                     Span::styled(
                         format!("{:3}", cmd.key),
@@ -132,8 +133,16 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                             .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw("  "),
-                    Span::styled(cmd.label, Style::default().fg(Color::White)),
-                ]);
+                ];
+
+                // 如果有颜色，添加彩色圆点
+                if let Some(color) = cmd.color {
+                    spans.push(Span::styled("● ", Style::default().fg(color)));
+                }
+
+                spans.push(Span::styled(cmd.label, Style::default().fg(Color::White)));
+
+                let line = Line::from(spans);
                 ListItem::new(line)
             }
         })

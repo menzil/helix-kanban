@@ -96,7 +96,7 @@ fn render_column(
             let priority_indicator = match task.priority.as_deref() {
                 Some("high") => Span::styled("● ", Style::default().fg(Color::Red)),
                 Some("medium") => Span::styled("● ", Style::default().fg(Color::Yellow)),
-                Some("low") => Span::styled("● ", Style::default().fg(Color::Blue)),
+                Some("low") => Span::styled("● ", Style::default().fg(Color::Green)),
                 _ => Span::raw("  "),
             };
 
