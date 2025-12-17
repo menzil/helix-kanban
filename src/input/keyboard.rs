@@ -469,16 +469,19 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                     log_debug("收到 DeleteProject 确认".to_string());
                     if let Some(project) = app.get_focused_project() {
                         let project_name = project.name.clone();
-                        let project_type = project.project_type.clone();
                         let project_path = project.path.clone();
 
-                        log_debug(format!("准备删除项目: 名称='{}', 类型={:?}, 路径={:?}",
-                            project_name, project_type, project_path));
+                        log_debug(format!("准备删除项目: 名称='{}', 路径={:?}",
+                            project_name, project_path));
 
-                        // 删除项目目录
-                        match crate::fs::delete_project(&project_name, &project_type) {
+                        // 使用项目路径直接删除
+                        match crate::fs::delete_project_by_path(&project_path) {
                             Err(e) => {
                                 log_debug(format!("删除项目失败: {}", e));
+                                app.show_notification(
+                                    format!("删除项目失败: {}", e),
+                                    crate::app::NotificationLevel::Error
+                                );
                             }
                             Ok(_) => {
                                 log_debug(format!("成功删除项目: {}", project_name));
@@ -487,13 +490,15 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                 app.projects.retain(|p| p.name != project_name);
                                 log_debug(format!("已从项目列表移除，剩余项目数: {}", app.projects.len()));
 
-                                // 清除当前面板的项目引用
-                                if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-                                    app.split_tree.find_pane_mut(app.focused_pane)
-                                {
-                                    *project_id = None;
-                                    log_debug("已清除当前面板的项目引用".to_string());
-                                }
+                                // 清除所有面板中对该项目的引用
+                                app.split_tree.clear_project_from_all_panes(&project_name);
+                                log_debug("已清除所有面板中的项目引用".to_string());
+
+                                // 显示删除成功通知
+                                app.show_notification(
+                                    format!("已删除项目: {}", project_name),
+                                    crate::app::NotificationLevel::Success
+                                );
                             }
                         }
                     } else {

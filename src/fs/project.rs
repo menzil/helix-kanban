@@ -373,6 +373,20 @@ pub fn rename_project(old_name: &str, new_name: &str) -> Result<(), String> {
 }
 
 /// 删除项目（包括所有任务）
+/// 删除项目（硬删除）- 直接删除项目目录
+pub fn delete_project_by_path(project_path: &std::path::Path) -> Result<(), String> {
+    if !project_path.exists() {
+        return Err(format!("项目路径 '{}' 不存在", project_path.display()));
+    }
+
+    // 删除整个项目目录及其所有内容
+    std::fs::remove_dir_all(project_path)
+        .map_err(|e| format!("删除项目目录失败: {}", e))?;
+
+    Ok(())
+}
+
+/// 删除项目（硬删除）- 根据项目名称和类型删除
 pub fn delete_project(project_name: &str, project_type: &ProjectType) -> Result<(), String> {
     let project_dir = match project_type {
         ProjectType::Global => get_projects_dir().join(project_name),

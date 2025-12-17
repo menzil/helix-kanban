@@ -162,6 +162,27 @@ impl SplitNode {
         }
     }
 
+    /// 清除所有面板中对指定项目的引用
+    pub fn clear_project_from_all_panes(&mut self, project_name: &str) {
+        match self {
+            SplitNode::Leaf { project_id, .. } => {
+                if let Some(id) = project_id {
+                    if id == project_name {
+                        *project_id = None;
+                    }
+                }
+            }
+            SplitNode::Horizontal { left, right, .. } => {
+                left.clear_project_from_all_panes(project_name);
+                right.clear_project_from_all_panes(project_name);
+            }
+            SplitNode::Vertical { top, bottom, .. } => {
+                top.clear_project_from_all_panes(project_name);
+                bottom.clear_project_from_all_panes(project_name);
+            }
+        }
+    }
+
     /// 查找当前面板在指定方向上的相邻面板
     /// 返回相邻面板的ID，如果没有则返回None
     pub fn find_adjacent_pane(&self, current_id: usize, direction: Direction) -> Option<usize> {
