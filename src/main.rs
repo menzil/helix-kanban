@@ -182,7 +182,10 @@ fn run_app<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Termina
 
             // 调用外部编辑器
             if let Err(e) = open_external_editor(&file_path, &app.config.editor) {
-                eprintln!("打开编辑器失败: {}", e);
+                app.show_notification(
+                    format!("打开编辑器失败: {}", e),
+                    app::NotificationLevel::Error
+                );
             }
 
             resume_terminal(terminal)?;
@@ -190,14 +193,20 @@ fn run_app<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Termina
             if is_new_task {
                 // 处理新任务创建
                 if let Err(e) = handle_new_task_from_file(app, &file_path) {
-                    eprintln!("创建任务失败: {}", e);
+                    app.show_notification(
+                        format!("创建任务失败: {}", e),
+                        app::NotificationLevel::Error
+                    );
                 }
                 // 删除临时文件
                 let _ = std::fs::remove_file(&file_path);
             } else {
                 // 重新加载项目以获取最新的任务数据（编辑现有任务）
                 if let Err(e) = app.reload_current_project() {
-                    eprintln!("重新加载项目失败: {}", e);
+                    app.show_notification(
+                        format!("重新加载项目失败: {}", e),
+                        app::NotificationLevel::Error
+                    );
                 }
             }
         }
@@ -208,7 +217,10 @@ fn run_app<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Termina
 
             // 调用外部预览工具
             if let Err(e) = open_external_previewer(&file_path, &app.config.markdown_viewer) {
-                eprintln!("打开预览工具失败: {}", e);
+                app.show_notification(
+                    format!("打开预览工具失败: {}", e),
+                    app::NotificationLevel::Error
+                );
             }
 
             resume_terminal(terminal)?;
