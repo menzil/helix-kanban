@@ -4,6 +4,7 @@ use crate::ui::layout::SplitNode;
 use crate::ui::dialogs::DialogType;
 use anyhow::Result;
 use std::collections::HashMap;
+use std::time::Instant;
 
 /// 调试日志辅助函数
 fn log_debug(msg: String) {
@@ -16,6 +17,30 @@ fn log_debug(msg: String) {
         .open("/tmp/kanban_debug.log")
     {
         let _ = writeln!(file, "[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg);
+    }
+}
+
+/// 通知级别
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotificationLevel {
+    Info,
+    Success,
+    Warning,
+    Error,
+}
+
+/// 通知消息
+#[derive(Debug, Clone)]
+pub struct Notification {
+    pub message: String,
+    pub level: NotificationLevel,
+    pub created_at: Instant,
+}
+
+impl Notification {
+    /// 检查通知是否已过期（3秒后自动消失）
+    pub fn is_expired(&self) -> bool {
+        self.created_at.elapsed().as_secs() >= 3
     }
 }
 
@@ -97,6 +122,8 @@ pub struct App {
     pub ime_state: crate::ime::ImeState,
     /// 最大化前的窗口布局（用于恢复）
     pub saved_layout: Option<SplitNode>,
+    /// 通知消息
+    pub notification: Option<Notification>,
 }
 
 impl App {
@@ -139,6 +166,7 @@ impl App {
             show_welcome_dialog: is_first_run,
             ime_state: crate::ime::ImeState::new(),
             saved_layout: None,
+            notification: None,
         };
 
         // 调试：记录初始状态
@@ -268,6 +296,24 @@ impl App {
                     let state = crate::state::extract_state(self);
                     let _ = crate::state::save_state(&state);
                 }
+            }
+        }
+    }
+
+    /// 显示通知消息
+    pub fn show_notification(&mut self, message: String, level: NotificationLevel) {
+        self.notification = Some(Notification {
+            message,
+            level,
+            created_at: Instant::now(),
+        });
+    }
+
+    /// 清除已过期的通知
+    pub fn clear_expired_notification(&mut self) {
+        if let Some(ref notification) = self.notification {
+            if notification.is_expired() {
+                self.notification = None;
             }
         }
     }

@@ -1003,23 +1003,38 @@ fn execute_command(app: &mut App, cmd: Command) {
                         match arboard::Clipboard::new() {
                             Ok(mut clipboard) => {
                                 if let Err(e) = clipboard.set_text(content) {
-                                    log_debug(format!("复制到剪贴板失败: {}", e));
+                                    app.show_notification(
+                                        format!("复制失败: {}", e),
+                                        crate::app::NotificationLevel::Error
+                                    );
                                 } else {
-                                    log_debug(format!("已复制任务 '{}' 到剪贴板", task.title));
+                                    app.show_notification(
+                                        format!("已复制任务「{}」到剪贴板", task.title),
+                                        crate::app::NotificationLevel::Success
+                                    );
                                 }
                             }
                             Err(e) => {
-                                log_debug(format!("无法访问剪贴板: {}", e));
+                                app.show_notification(
+                                    format!("无法访问剪贴板: {}", e),
+                                    crate::app::NotificationLevel::Error
+                                );
                             }
                         }
                     } else {
-                        log_debug("读取任务文件失败".to_string());
+                        app.show_notification(
+                            "读取任务文件失败".to_string(),
+                            crate::app::NotificationLevel::Error
+                        );
                     }
                 }
             }
             #[cfg(not(feature = "clipboard"))]
             {
-                log_debug("剪贴板功能未启用，请使用 --features clipboard 编译".to_string());
+                app.show_notification(
+                    "剪贴板功能未启用".to_string(),
+                    crate::app::NotificationLevel::Warning
+                );
             }
         }
         Command::SetTaskPriority(priority) => {
@@ -1097,6 +1112,61 @@ fn execute_command(app: &mut App, cmd: Command) {
                 Err(e) => {
                     log_debug(format!("重新加载所有项目失败: {}", e));
                 }
+            }
+        }
+        Command::CopyProjectInfo => {
+            // 复制项目信息到剪贴板
+            #[cfg(feature = "clipboard")]
+            {
+                if let Some(project) = app.get_focused_project() {
+                    let project_type_label = match project.project_type {
+                        crate::models::ProjectType::Global => "[G]",
+                        crate::models::ProjectType::Local => "[L]",
+                    };
+
+                    let kanban_path = project.path.to_string_lossy();
+                    // 使用全局 AI 配置路径
+                    let ai_config_path = crate::fs::get_data_dir().join(".ai-config.json");
+
+                    // 格式化项目信息
+                    let project_info = format!(
+                        "{} {}\n看板路径: {}\nAI配置: {}",
+                        project_type_label,
+                        project.name,
+                        kanban_path,
+                        ai_config_path.to_string_lossy()
+                    );
+
+                    // 复制到剪贴板
+                    match arboard::Clipboard::new() {
+                        Ok(mut clipboard) => {
+                            if let Err(e) = clipboard.set_text(project_info) {
+                                app.show_notification(
+                                    format!("复制失败: {}", e),
+                                    crate::app::NotificationLevel::Error
+                                );
+                            } else {
+                                app.show_notification(
+                                    format!("已复制项目「{}」信息到剪贴板", project.name),
+                                    crate::app::NotificationLevel::Success
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            app.show_notification(
+                                format!("无法访问剪贴板: {}", e),
+                                crate::app::NotificationLevel::Error
+                            );
+                        }
+                    }
+                }
+            }
+            #[cfg(not(feature = "clipboard"))]
+            {
+                app.show_notification(
+                    "剪贴板功能未启用".to_string(),
+                    crate::app::NotificationLevel::Warning
+                );
             }
         }
         // 未实现的命令：静默忽略（不报错，不执行）
@@ -1561,6 +1631,7 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'd' => Some(Command::HideProject),     // 小写d = 软删除（隐藏）
                         'D' => Some(Command::DeleteProject),   // 大写D = 硬删除
                         'r' => Some(Command::RenameProject),
+                        'i' => Some(Command::CopyProjectInfo), // 复制项目信息
                         _ => None,
                     };
                     if let Some(cmd) = cmd {

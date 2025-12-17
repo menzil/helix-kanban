@@ -59,6 +59,50 @@ pub fn render(f: &mut Frame, app: &App) {
     if app.show_welcome_dialog {
         welcome::render(f, f.area(), &app.config);
     }
+
+    // 渲染通知栏（如果有通知）
+    if let Some(ref notification) = app.notification {
+        render_notification(f, f.area(), notification);
+    }
+}
+
+/// 渲染通知栏
+fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification: &crate::app::Notification) {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::{Block, Borders, Paragraph};
+    use crate::app::NotificationLevel;
+
+    // 通知栏占据顶部 3 行
+    let notification_area = ratatui::layout::Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: 3,
+    };
+
+    // 根据级别选择颜色
+    let (bg_color, fg_color, prefix) = match notification.level {
+        NotificationLevel::Info => (Color::Blue, Color::White, "ℹ"),
+        NotificationLevel::Success => (Color::Green, Color::White, "✓"),
+        NotificationLevel::Warning => (Color::Yellow, Color::Black, "⚠"),
+        NotificationLevel::Error => (Color::Red, Color::White, "✗"),
+    };
+
+    let content = Line::from(vec![
+        Span::styled(format!(" {} ", prefix), Style::default().fg(fg_color).bg(bg_color).add_modifier(Modifier::BOLD)),
+        Span::raw(" "),
+        Span::styled(&notification.message, Style::default().fg(fg_color)),
+    ]);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(bg_color))
+        .style(Style::default().bg(bg_color));
+
+    let paragraph = Paragraph::new(content).block(block);
+
+    f.render_widget(paragraph, notification_area);
 }
 
 /// 递归渲染分屏树

@@ -60,6 +60,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
 
             commands.push(CommandItem { key: "", label: "", color: None });
             commands.push(CommandItem { key: "r", label: "重命名项目", color: None });
+            commands.push(CommandItem { key: "i", label: "复制项目信息", color: None });
 
             (commands, " 项目操作 ")
         },

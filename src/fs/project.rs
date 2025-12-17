@@ -389,3 +389,115 @@ pub fn delete_project(project_name: &str, project_type: &ProjectType) -> Result<
 
     Ok(())
 }
+
+/// 确保全局 AI 配置文件存在
+/// 如果不存在则自动创建
+pub fn ensure_global_ai_config() -> Result<(), String> {
+    let ai_config_path = get_data_dir().join(".ai-config.json");
+
+    // 如果已存在，不重复创建
+    if ai_config_path.exists() {
+        return Ok(());
+    }
+
+    let version = env!("CARGO_PKG_VERSION");
+
+    let template = r##"{
+  "project_type": "helix-kanban",
+  "version": "VERSION",
+  "description": "这是一个基于文件系统的看板项目，任务以 Markdown 文件形式存储",
+  "important_notes": [
+    "⚠️ 所有任务操作必须在看板目录中进行（即包含 .kanban.toml 的目录）",
+    "⚠️ 看板路径可通过 hxk 应用中按 Space+p+i 获取",
+    "⚠️ 不要在项目代码目录中直接操作任务文件"
+  ],
+  "how_to_find_kanban_dir": {
+    "method_1": "在 hxk 应用中，按 Space → p → i 复制项目信息，包含看板路径",
+    "method_2": "全局项目：~/.kanban/projects/项目名/",
+    "method_3": "本地项目：项目代码目录/.kanban/",
+    "example_global": "cd ~/.kanban/projects/匹达代驾",
+    "example_local": "cd /path/to/your/project/.kanban"
+  },
+  "ai_instructions": {
+    "create_task": {
+      "description": "在看板目录的指定状态目录创建新任务",
+      "command": "cd <看板目录> && 在 {status}/ 目录创建 {next_id}.md",
+      "format": "# {title}\n\ncreated: {timestamp}\npriority: {priority}\n\n{description}",
+      "example": "cd ~/.kanban/projects/myproject && echo '# 实现用户登录\\n\\ncreated: 2024-12-17\\npriority: high\\n\\n' > todo/005.md",
+      "notes": [
+        "任务编号从 001 开始，自动递增",
+        "时间戳使用 ISO 8601 格式或 Unix 时间戳",
+        "优先级: high, medium, low"
+      ]
+    },
+    "move_task": {
+      "description": "移动任务到另一个状态",
+      "command": "cd <看板目录> && mv {from}/{file}.md {to}/",
+      "example": "cd ~/.kanban/projects/myproject && mv todo/001.md doing/",
+      "notes": [
+        "保持文件名不变",
+        "可用状态: todo, doing, done（以 .kanban.toml 为准）"
+      ]
+    },
+    "list_tasks": {
+      "description": "列出指定状态的所有任务",
+      "command": "cd <看板目录> && ls {status}/*.md | xargs head -n 1",
+      "example": "cd ~/.kanban/projects/myproject && ls todo/*.md",
+      "notes": [
+        "head -n 1 只显示标题（第一行）",
+        "可以用 cat 查看完整内容"
+      ]
+    },
+    "complete_task": {
+      "description": "完成任务（移到 done）",
+      "command": "cd <看板目录> && mv {from}/{file}.md done/",
+      "example": "cd ~/.kanban/projects/myproject && mv doing/003.md done/"
+    },
+    "delete_task": {
+      "description": "删除任务文件",
+      "command": "cd <看板目录> && rm {status}/{file}.md",
+      "example": "cd ~/.kanban/projects/myproject && rm todo/002.md",
+      "warning": "删除操作不可恢复，请谨慎使用"
+    }
+  },
+  "project_structure": {
+    "root": "<看板目录>/",
+    "config": ".kanban.toml",
+    "statuses": [
+      "todo/    - 待办任务",
+      "doing/   - 进行中",
+      "done/    - 已完成"
+    ],
+    "task_files": "{status}/001.md, 002.md, 003.md..."
+  },
+  "quick_commands": {
+    "get_kanban_path": "在 hxk 中按 Space+p+i 复制看板路径",
+    "cd_to_kanban": "cd <看板路径>",
+    "add_task": "cd <看板路径> && 创建任务文件",
+    "move_task": "cd <看板路径> && mv {from}/{file}.md {to}/",
+    "list": "cd <看板路径> && ls {status}/*.md"
+  },
+  "task_format": {
+    "header": "# 任务标题",
+    "metadata": [
+      "created: 2024-12-16T10:00:00+08:00",
+      "priority: high|medium|low"
+    ],
+    "body": "任务的详细描述...",
+    "example": "# 实现用户登录\\n\\ncreated: 2024-12-16T10:00:00+08:00\\npriority: high\\n\\n实现用户登录功能，支持邮箱和手机号登录。"
+  },
+  "tips": [
+    "使用 'cat .kanban.toml' 查看项目配置和状态列表（在看板目录中）",
+    "任务编号是文件名，如 001.md, 002.md",
+    "可以直接编辑任务文件，应用会自动重新加载",
+    "Y 键可以复制任务内容到剪贴板，方便分享给 AI",
+    "Space+p+i 可以复制项目的看板路径和 AI 配置路径"
+  ]
+}"##;
+
+    let config_content = template.replace("VERSION", version);
+    std::fs::write(&ai_config_path, config_content)
+        .map_err(|e| format!("创建 AI 配置文件失败: {}", e))?;
+
+    Ok(())
+}

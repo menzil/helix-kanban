@@ -22,7 +22,13 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
     let done_count = project.tasks.iter().filter(|t| t.status == "done").count();
     let total_count = project.tasks.len();
 
-    let title = format!(" {} ({}/{}) ", project.name, done_count, total_count);
+    // 添加项目类型标记
+    let project_type_label = match project.project_type {
+        crate::models::ProjectType::Global => "[G]",
+        crate::models::ProjectType::Local => "[L]",
+    };
+
+    let title = format!(" {} {} ({}/{}) ", project_type_label, project.name, done_count, total_count);
 
     let block = Block::default()
         .title(title)

@@ -5,7 +5,7 @@ pub mod task;
 pub use project::{
     create_project, create_local_project, delete_project, get_data_dir, get_projects_dir, get_local_kanban_dir,
     init_data_dir, list_local_project_dirs, list_project_dirs, load_project,
-    load_project_config, load_project_with_type, rename_project,
+    load_project_config, load_project_with_type, rename_project, ensure_global_ai_config,
 };
 pub use task::{delete_task, get_next_task_id, load_task, move_task, save_task};
 

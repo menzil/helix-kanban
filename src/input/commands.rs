@@ -75,6 +75,8 @@ pub enum Command {
     DeleteProject,
     /// 重命名项目
     RenameProject,
+    /// 复制项目信息到剪贴板
+    CopyProjectInfo,
     /// 重新加载当前项目
     ReloadCurrentProject,
     /// 重新加载所有项目

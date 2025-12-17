@@ -130,6 +130,9 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // 确保全局 AI 配置文件存在
+    let _ = fs::ensure_global_ai_config();
+
     // 创建应用
     let mut app = App::new()?;
 
@@ -165,6 +168,9 @@ pub fn resume_terminal<B: ratatui::backend::Backend + std::io::Write>(terminal: 
 
 fn run_app<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
     loop {
+        // 清除过期的通知
+        app.clear_expired_notification();
+
         terminal.draw(|f| ui::render(f, app))?;
 
         // 检查是否需要打开外部编辑器

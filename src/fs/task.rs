@@ -51,6 +51,18 @@ pub fn load_task(path: &Path, status: &str) -> Result<Task, String> {
 
     let priority = parsed.metadata.get("priority").cloned();
 
+    // Parse tags from comma-separated string
+    let tags = parsed
+        .metadata
+        .get("tags")
+        .map(|s| {
+            s.split(',')
+                .map(|tag| tag.trim().to_string())
+                .filter(|tag| !tag.is_empty())
+                .collect()
+        })
+        .unwrap_or_else(Vec::new);
+
     Ok(Task {
         id,
         title: parsed.title,
@@ -58,6 +70,7 @@ pub fn load_task(path: &Path, status: &str) -> Result<Task, String> {
         created,
         priority,
         status: status.to_string(),
+        tags,
         file_path: path.to_path_buf(),
     })
 }
@@ -100,6 +113,10 @@ pub fn save_task(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
     metadata.insert("created".to_string(), task.created.clone());
     if let Some(priority) = &task.priority {
         metadata.insert("priority".to_string(), priority.clone());
+    }
+    // Save tags as comma-separated string
+    if !task.tags.is_empty() {
+        metadata.insert("tags".to_string(), task.tags.join(", "));
     }
 
     let content = generate_task_md(&task.title, &metadata, &task.content);

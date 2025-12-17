@@ -66,10 +66,6 @@ pub fn handle_cli() -> Result<bool> {
             }
             Ok(false)
         }
-        "ai-guide" => {
-            cli_ai_guide()?;
-            Ok(false)
-        }
         "--help" | "-h" => {
             print_help();
             Ok(false)
@@ -195,118 +191,6 @@ fn cli_add(args: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// 生成 AI 操作指南
-fn cli_ai_guide() -> Result<()> {
-    use crate::fs;
-
-    // 查找本地项目
-    let local_projects = fs::list_local_project_dirs()?;
-
-    let project_path = if let Some(first) = local_projects.first() {
-        first.clone()
-    } else {
-        eprintln!("错误: 当前目录没有本地项目");
-        eprintln!("使用 'hxk create <name>' 先创建项目");
-        std::process::exit(1);
-    };
-
-    // 生成 AI 配置文件
-    let ai_config_path = project_path.join(".ai-config.json");
-
-    let version = env!("CARGO_PKG_VERSION");
-
-    // 直接写入JSON内容，使用字符串替换版本号
-    let template = r##"{
-  "project_type": "helix-kanban",
-  "version": "VERSION",
-  "description": "这是一个基于文件系统的看板项目，任务以 Markdown 文件形式存储",
-  "ai_instructions": {
-    "create_task": {
-      "description": "在指定状态目录创建新任务",
-      "command": "在 {status}/ 目录创建 {next_id}.md",
-      "format": "# {title}\n\ncreated: {timestamp}\npriority: {priority}\n\n{description}",
-      "example": "创建任务'实现用户登录' -> todo/005.md",
-      "notes": [
-        "任务编号从 001 开始，自动递增",
-        "时间戳使用 ISO 8601 格式或 Unix 时间戳",
-        "优先级: high, medium, low"
-      ]
-    },
-    "move_task": {
-      "description": "移动任务到另一个状态",
-      "command": "mv {from}/{file}.md {to}/",
-      "example": "移动 001 到 doing -> mv todo/001.md doing/",
-      "notes": [
-        "保持文件名不变",
-        "可用状态: todo, doing, done（以 .kanban.toml 为准）"
-      ]
-    },
-    "list_tasks": {
-      "description": "列出指定状态的所有任务",
-      "command": "ls {status}/*.md | xargs head -n 1",
-      "example": "列出 todo 任务 -> ls todo/*.md",
-      "notes": [
-        "head -n 1 只显示标题（第一行）",
-        "可以用 cat 查看完整内容"
-      ]
-    },
-    "complete_task": {
-      "description": "完成任务（移到 done）",
-      "command": "mv {from}/{file}.md done/",
-      "example": "完成 doing/003.md -> mv doing/003.md done/"
-    },
-    "delete_task": {
-      "description": "删除任务文件",
-      "command": "rm {status}/{file}.md",
-      "example": "删除 todo/002.md",
-      "warning": "删除操作不可恢复，请谨慎使用"
-    }
-  },
-  "project_structure": {
-    "root": ".kanban/",
-    "config": ".kanban/.kanban.toml",
-    "statuses": [
-      "todo/    - 待办任务",
-      "doing/   - 进行中",
-      "done/    - 已完成"
-    ],
-    "task_files": "{status}/001.md, 002.md, 003.md..."
-  },
-  "quick_commands": {
-    "add_task": "加任务 '{标题}' [到 {状态}]",
-    "move_task": "移到 {状态} {编号}",
-    "complete": "完成 {编号}",
-    "list": "列出 {状态} 任务",
-    "show": "显示任务 {编号}"
-  },
-  "task_format": {
-    "header": "# 任务标题",
-    "metadata": [
-      "created: 2024-12-16T10:00:00+08:00",
-      "priority: high|medium|low"
-    ],
-    "body": "任务的详细描述...",
-    "example": "# 实现用户登录\n\ncreated: 2024-12-16T10:00:00+08:00\npriority: high\n\n实现用户登录功能，支持邮箱和手机号登录。"
-  },
-  "tips": [
-    "使用 'cat .kanban/.kanban.toml' 查看项目配置和状态列表",
-    "任务编号是文件名，如 001.md, 002.md",
-    "可以直接编辑任务文件，应用会自动重新加载",
-    "Y 键可以复制任务内容到剪贴板，方便分享给 AI"
-  ]
-}"##;
-
-    let config_content = template.replace("VERSION", version);
-    std::fs::write(&ai_config_path, config_content)?;
-
-    println!("✓ 已生成 AI 操作指南:");
-    println!("  {}", ai_config_path.display());
-    println!("\n提示: AI 助手可以读取此文件来理解项目结构和操作方式");
-
-    Ok(())
-}
-
-
 /// 打印帮助信息
 fn print_help() {
     println!("Helix Kanban (hxk) - 终端看板工具\n");
@@ -315,7 +199,6 @@ fn print_help() {
     println!("  hxk create <名称>        在当前目录创建 .kanban/ 看板");
     println!("  hxk list                列出所有项目");
     println!("  hxk add <标题>           快速添加任务");
-    println!("  hxk ai-guide            生成 AI 助手操作指南");
     println!("  hxk config [选项]        配置编辑器和预览器");
     println!("  hxk --help              显示此帮助信息");
     println!("  hxk --version           显示版本信息\n");
@@ -330,10 +213,12 @@ fn print_help() {
     println!("示例:");
     println!("  hxk create 我的项目            # 创建 ./.kanban/ 目录");
     println!("  hxk add 实现新功能             # 添加任务到本地看板");
-    println!("  hxk ai-guide                  # 生成 AI 操作指南（.ai-config.json）");
     println!("  hxk list                      # 列出全局和本地项目");
     println!("  hxk config editor nvim        # 设置编辑器为 neovim");
     println!("  hxk config viewer glow        # 设置预览器为 glow");
+    println!("\nAI 协作:");
+    println!("  在 TUI 中按 Space+p+i 复制项目看板路径");
+    println!("  AI 配置文件: ~/.kanban/.ai-config.json（自动生成）");
 }
 
 /// 打印版本信息

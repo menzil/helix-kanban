@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// 路径步骤 - 记录在父节点中的位置
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PathStep {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
 /// 分屏节点 - 支持递归分屏
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SplitNode {
@@ -156,124 +165,60 @@ impl SplitNode {
     /// 查找当前面板在指定方向上的相邻面板
     /// 返回相邻面板的ID，如果没有则返回None
     pub fn find_adjacent_pane(&self, current_id: usize, direction: Direction) -> Option<usize> {
-        self.find_adjacent_with_position(current_id, direction)
-    }
+        // 1. 查找从根到当前节点的路径
+        let mut path = Vec::new();
+        if !self.find_node_path(current_id, &mut path) {
+            return None; // 节点不存在
+        }
 
-    /// 使用位置感知的方式查找相邻面板
-    fn find_adjacent_with_position(&self, current_id: usize, direction: Direction) -> Option<usize> {
-        match self {
-            SplitNode::Leaf { id, .. } => {
-                if *id == current_id {
-                    None
-                } else {
-                    None
-                }
-            }
-            SplitNode::Horizontal { left, right, .. } => {
-                let in_left = left.contains_pane(current_id);
-                let in_right = right.contains_pane(current_id);
+        // 2. 从路径末尾向上遍历，查找匹配的父容器
+        for i in (0..path.len()).rev() {
+            let step = path[i];
 
-                match direction {
-                    Direction::Left => {
-                        if in_right {
-                            // 从右边往左找：找到左边对应位置的面板
-                            left.find_adjacent_with_position(current_id, direction)
-                                .or_else(|| right.get_corresponding_pane(left, current_id, true))
-                        } else {
-                            // 在左边继续向左找
-                            left.find_adjacent_with_position(current_id, direction)
-                        }
-                    }
-                    Direction::Right => {
-                        if in_left {
-                            // 从左边往右找：找到右边对应位置的面板
-                            right.find_adjacent_with_position(current_id, direction)
-                                .or_else(|| left.get_corresponding_pane(right, current_id, false))
-                        } else {
-                            // 在右边继续向右找
-                            right.find_adjacent_with_position(current_id, direction)
-                        }
-                    }
-                    Direction::Up | Direction::Down => {
-                        // 在水平分割中，上下移动需要穿透到子节点
-                        if in_left {
-                            left.find_adjacent_with_position(current_id, direction)
-                        } else {
-                            right.find_adjacent_with_position(current_id, direction)
-                        }
-                    }
-                }
-            }
-            SplitNode::Vertical { top, bottom, .. } => {
-                let in_top = top.contains_pane(current_id);
-                let in_bottom = bottom.contains_pane(current_id);
+            // 获取父节点（通过路径重新遍历）
+            let parent_node = self.get_node_at_path(&path[..i]);
 
-                match direction {
-                    Direction::Up => {
-                        if in_bottom {
-                            // 从下往上找：找到上边对应位置的面板
-                            top.find_adjacent_with_position(current_id, direction)
-                                .or_else(|| bottom.get_corresponding_pane(top, current_id, true))
-                        } else {
-                            // 在上边继续向上找
-                            top.find_adjacent_with_position(current_id, direction)
-                        }
-                    }
-                    Direction::Down => {
-                        if in_top {
-                            // 从上往下找：找到下边对应位置的面板
-                            bottom.find_adjacent_with_position(current_id, direction)
-                                .or_else(|| top.get_corresponding_pane(bottom, current_id, false))
-                        } else {
-                            // 在下边继续向下找
-                            bottom.find_adjacent_with_position(current_id, direction)
-                        }
-                    }
-                    Direction::Left | Direction::Right => {
-                        // 在垂直分割中，左右移动需要穿透到子节点
-                        if in_top {
-                            top.find_adjacent_with_position(current_id, direction)
-                        } else {
-                            bottom.find_adjacent_with_position(current_id, direction)
-                        }
-                    }
+            // 3. 检查父节点类型是否匹配方向，并获取兄弟节点
+            let sibling_node = match (parent_node, direction, step) {
+                // 水平容器 + 左右方向
+                (Some(SplitNode::Horizontal { left, right, .. }), Direction::Left, PathStep::Right) => {
+                    Some(left.as_ref())
                 }
+                (Some(SplitNode::Horizontal { left, right, .. }), Direction::Right, PathStep::Left) => {
+                    Some(right.as_ref())
+                }
+                // 垂直容器 + 上下方向
+                (Some(SplitNode::Vertical { top, bottom, .. }), Direction::Up, PathStep::Bottom) => {
+                    Some(top.as_ref())
+                }
+                (Some(SplitNode::Vertical { top, bottom, .. }), Direction::Down, PathStep::Top) => {
+                    Some(bottom.as_ref())
+                }
+                _ => None,
+            };
+
+            // 如果找到兄弟节点，根据当前路径选择位置感知的叶子
+            if let Some(sibling) = sibling_node {
+                return sibling.get_leaf_with_preference(&path);
             }
         }
+
+        None // 到达根节点仍无匹配
     }
 
-    /// 在目标子树中找到与当前面板对应位置的面板
-    /// from_left: true 表示从左/上往右/下找，false 表示从右/下往左/上找
-    fn get_corresponding_pane(&self, target: &SplitNode, current_id: usize, from_left: bool) -> Option<usize> {
-        // 判断当前面板在本子树中的位置（左/右 或 上/下）
-        match self {
-            SplitNode::Leaf { .. } => {
-                // 叶子节点直接返回目标的首个面板
-                if from_left {
-                    target.get_leftmost_pane()
-                } else {
-                    target.get_rightmost_pane()
-                }
-            }
-            SplitNode::Horizontal { left, right, .. } => {
-                if left.contains_pane(current_id) {
-                    // 当前在左边，找目标的左边
-                    target.get_leftmost_pane()
-                } else {
-                    // 当前在右边，找目标的右边
-                    target.get_rightmost_pane()
-                }
-            }
-            SplitNode::Vertical { top, bottom, .. } => {
-                if top.contains_pane(current_id) {
-                    // 当前在上边，找目标的上边
-                    target.get_topmost_pane()
-                } else {
-                    // 当前在下边，找目标的下边
-                    target.get_bottommost_pane()
-                }
-            }
+    /// 根据路径获取节点引用
+    fn get_node_at_path(&self, path: &[PathStep]) -> Option<&SplitNode> {
+        let mut current = self;
+        for &step in path {
+            current = match (current, step) {
+                (SplitNode::Horizontal { left, .. }, PathStep::Left) => left,
+                (SplitNode::Horizontal { right, .. }, PathStep::Right) => right,
+                (SplitNode::Vertical { top, .. }, PathStep::Top) => top,
+                (SplitNode::Vertical { bottom, .. }, PathStep::Bottom) => bottom,
+                _ => return None,
+            };
         }
+        Some(current)
     }
 
     /// 检查是否包含指定ID的面板
@@ -322,6 +267,76 @@ impl SplitNode {
             SplitNode::Leaf { id, .. } => Some(*id),
             SplitNode::Horizontal { left, .. } => left.get_bottommost_pane(),
             SplitNode::Vertical { bottom, .. } => bottom.get_bottommost_pane(),
+        }
+    }
+
+    /// 查找从根到目标节点的路径
+    fn find_node_path(&self, target_id: usize, path: &mut Vec<PathStep>) -> bool {
+        match self {
+            SplitNode::Leaf { id, .. } => *id == target_id,
+            SplitNode::Horizontal { left, right, .. } => {
+                path.push(PathStep::Left);
+                if left.find_node_path(target_id, path) {
+                    return true;
+                }
+                path.pop();
+
+                path.push(PathStep::Right);
+                if right.find_node_path(target_id, path) {
+                    return true;
+                }
+                path.pop();
+                false
+            }
+            SplitNode::Vertical { top, bottom, .. } => {
+                path.push(PathStep::Top);
+                if top.find_node_path(target_id, path) {
+                    return true;
+                }
+                path.pop();
+
+                path.push(PathStep::Bottom);
+                if bottom.find_node_path(target_id, path) {
+                    return true;
+                }
+                path.pop();
+                false
+            }
+        }
+    }
+
+    /// 获取分支的第一个 Leaf ID
+    fn get_first_leaf(&self) -> Option<usize> {
+        match self {
+            SplitNode::Leaf { id, .. } => Some(*id),
+            SplitNode::Horizontal { left, .. } => left.get_first_leaf(),
+            SplitNode::Vertical { top, .. } => top.get_first_leaf(),
+        }
+    }
+
+    /// 根据路径偏好获取叶子节点
+    /// 保持位置感知：向上/下导航时保持左/右位置，向左/右导航时保持上/下位置
+    fn get_leaf_with_preference(&self, path: &[PathStep]) -> Option<usize> {
+        match self {
+            SplitNode::Leaf { id, .. } => Some(*id),
+            SplitNode::Horizontal { left, right, .. } => {
+                // 检查路径中是否有Left/Right偏好
+                let prefer_right = path.iter().any(|&step| step == PathStep::Right);
+                if prefer_right {
+                    right.get_leaf_with_preference(path)
+                } else {
+                    left.get_leaf_with_preference(path)
+                }
+            }
+            SplitNode::Vertical { top, bottom, .. } => {
+                // 检查路径中是否有Top/Bottom偏好
+                let prefer_bottom = path.iter().any(|&step| step == PathStep::Bottom);
+                if prefer_bottom {
+                    bottom.get_leaf_with_preference(path)
+                } else {
+                    top.get_leaf_with_preference(path)
+                }
+            }
         }
     }
 }

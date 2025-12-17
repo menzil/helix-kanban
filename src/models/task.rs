@@ -9,6 +9,7 @@ pub struct Task {
     pub created: String,
     pub priority: Option<String>,
     pub status: String,
+    pub tags: Vec<String>,
     #[serde(skip)]
     pub file_path: PathBuf,
 }
@@ -28,6 +29,7 @@ impl Task {
             created: timestamp.to_string(),
             priority: None,
             status,
+            tags: Vec::new(),
             file_path: PathBuf::new(),
         }
     }
