@@ -70,7 +70,7 @@ pub fn render(f: &mut Frame, app: &App) {
 fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification: &crate::app::Notification) {
     use ratatui::style::{Color, Modifier, Style};
     use ratatui::text::{Line, Span};
-    use ratatui::widgets::{Block, Borders, Paragraph};
+    use ratatui::widgets::{Block, Borders, Clear, Paragraph};
     use crate::app::NotificationLevel;
 
     // 通知栏占据顶部 3 行
@@ -89,18 +89,34 @@ fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification:
         NotificationLevel::Error => (Color::Red, Color::White, "✗"),
     };
 
+    // 先清除背景区域
+    f.render_widget(Clear, notification_area);
+
+    // 构建内容，所有 Span 都设置背景色
     let content = Line::from(vec![
-        Span::styled(format!(" {} ", prefix), Style::default().fg(fg_color).bg(bg_color).add_modifier(Modifier::BOLD)),
-        Span::raw(" "),
-        Span::styled(&notification.message, Style::default().fg(fg_color)),
+        Span::styled(
+            format!(" {} ", prefix),
+            Style::default()
+                .fg(fg_color)
+                .bg(bg_color)
+                .add_modifier(Modifier::BOLD)
+        ),
+        Span::styled(
+            format!(" {} ", notification.message),
+            Style::default()
+                .fg(fg_color)
+                .bg(bg_color)
+        ),
     ]);
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(bg_color))
+        .border_style(Style::default().fg(fg_color).bg(bg_color))
         .style(Style::default().bg(bg_color));
 
-    let paragraph = Paragraph::new(content).block(block);
+    let paragraph = Paragraph::new(content)
+        .block(block)
+        .style(Style::default().bg(bg_color));
 
     f.render_widget(paragraph, notification_area);
 }

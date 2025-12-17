@@ -413,6 +413,9 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 if !value.is_empty() {
                     update_task_title(app, value);
                 }
+            } else if title.contains("编辑标签") {
+                // 编辑标签
+                update_task_tags(app, value);
             } else if title.contains("重命名项目") {
                 // 重命名项目
                 if !value.is_empty() {
@@ -552,6 +555,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('v'), KeyModifiers::NONE) => Some(Command::ViewTask),
         ([], KeyCode::Char('V'), KeyModifiers::SHIFT) => Some(Command::ViewTaskExternal),
         ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask),  // 复制任务到剪贴板
+        ([], KeyCode::Char('t'), KeyModifiers::NONE) => Some(Command::EditTags),  // 编辑标签
 
         ([], KeyCode::Down, _) => Some(Command::TaskDown),
         ([], KeyCode::Up, _) => Some(Command::TaskUp),
@@ -1094,6 +1098,21 @@ fn execute_command(app: &mut App, cmd: Command) {
                 }
             }
         }
+        Command::EditTags => {
+            // 编辑任务标签
+            if let Some(task) = get_selected_task(app) {
+                let current_tags = task.tags.join(", ");
+                let cursor_pos = current_tags.chars().count();
+                app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+                app.dialog = Some(DialogType::Input {
+                    title: "编辑标签".to_string(),
+                    prompt: "标签（逗号分隔）:".to_string(),
+                    value: current_tags,
+                    cursor_pos,
+                });
+            }
+        }
         Command::ReloadCurrentProject => {
             // 重新加载当前项目
             if let Err(e) = app.reload_current_project() {
@@ -1544,6 +1563,67 @@ fn update_task_title(app: &mut App, new_title: String) {
                 log_debug(format!("保存任务失败: {}", e));
                 task.title = old_title; // 回滚
             }
+        }
+    }
+}
+
+/// 更新任务标签
+fn update_task_tags(app: &mut App, tags_string: String) {
+    // 获取任务 ID
+    let task_id = if let Some(id) = get_selected_task_id(app) {
+        id
+    } else {
+        return;
+    };
+
+    // 获取项目名称
+    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+        app.split_tree.find_pane(app.focused_pane) {
+        if let Some(name) = project_id {
+            name.clone()
+        } else {
+            return;
+        }
+    } else {
+        return;
+    };
+
+    // 解析标签（从逗号分隔的字符串）
+    let new_tags: Vec<String> = tags_string
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    // 找到任务并更新
+    let mut result = Ok(());
+    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
+        if let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
+            let old_tags = task.tags.clone();
+            task.tags = new_tags;
+
+            // 保存到文件（使用项目的实际路径）
+            let project_path = project.path.clone();
+            if let Err(e) = crate::fs::save_task(&project_path, task) {
+                result = Err(e);
+                task.tags = old_tags; // 回滚
+            }
+        }
+    }
+
+    // 显示通知
+    match result {
+        Ok(_) => {
+            app.show_notification(
+                "标签已更新".to_string(),
+                crate::app::NotificationLevel::Success
+            );
+        }
+        Err(e) => {
+            app.show_notification(
+                format!("保存标签失败: {}", e),
+                crate::app::NotificationLevel::Error
+            );
         }
     }
 }

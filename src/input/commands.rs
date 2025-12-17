@@ -59,6 +59,8 @@ pub enum Command {
     CopyTask,
     /// 设置任务优先级
     SetTaskPriority(String),  // "high", "medium", "low", "none"
+    /// 编辑任务标签
+    EditTags,
 
     // ===== 项目操作 (Space p 前缀) =====
     /// 打开项目
