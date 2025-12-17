@@ -2,6 +2,99 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::models::{Project, ProjectConfig, ProjectType, Status};
+use serde::{Deserialize, Serialize};
+
+/// 本地项目索引结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LocalProjectsIndex {
+    local_projects: Vec<String>,
+}
+
+impl Default for LocalProjectsIndex {
+    fn default() -> Self {
+        Self {
+            local_projects: Vec::new(),
+        }
+    }
+}
+
+/// 获取本地项目索引文件路径
+fn get_local_projects_index_path() -> PathBuf {
+    get_data_dir().join("local_projects.json")
+}
+
+/// 加载本地项目索引
+fn load_local_projects_index() -> LocalProjectsIndex {
+    let index_path = get_local_projects_index_path();
+
+    if !index_path.exists() {
+        return LocalProjectsIndex::default();
+    }
+
+    match fs::read_to_string(&index_path) {
+        Ok(content) => {
+            serde_json::from_str(&content).unwrap_or_default()
+        }
+        Err(_) => LocalProjectsIndex::default(),
+    }
+}
+
+/// 保存本地项目索引
+fn save_local_projects_index(index: &LocalProjectsIndex) -> std::io::Result<()> {
+    let index_path = get_local_projects_index_path();
+
+    // 确保父目录存在
+    if let Some(parent) = index_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let content = serde_json::to_string_pretty(index)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+    fs::write(&index_path, content)
+}
+
+/// 添加本地项目到索引
+pub fn add_local_project_to_index(project_path: &Path) -> std::io::Result<()> {
+    let mut index = load_local_projects_index();
+    let path_str = project_path.to_string_lossy().to_string();
+
+    // 避免重复添加
+    if !index.local_projects.contains(&path_str) {
+        index.local_projects.push(path_str);
+        save_local_projects_index(&index)?;
+    }
+
+    Ok(())
+}
+
+/// 从索引中移除无效路径，返回有效路径列表
+fn clean_and_get_valid_paths() -> std::io::Result<Vec<PathBuf>> {
+    let mut index = load_local_projects_index();
+    let mut valid_paths = Vec::new();
+    let mut changed = false;
+
+    // 过滤出仍然存在的路径
+    index.local_projects.retain(|path_str| {
+        let path = PathBuf::from(path_str);
+        let exists = path.exists() && path.join(".kanban.toml").exists();
+
+        if exists {
+            valid_paths.push(path);
+        } else {
+            changed = true; // 发现无效路径
+        }
+
+        exists
+    });
+
+    // 如果有路径被清理，保存更新后的索引
+    if changed {
+        save_local_projects_index(&index)?;
+    }
+
+    Ok(valid_paths)
+}
 
 /// Get the kanban data directory
 /// All platforms: ~/.kanban
@@ -59,19 +152,31 @@ pub fn list_project_dirs() -> std::io::Result<Vec<PathBuf>> {
 }
 
 /// List all local project directories (.kanban if exists)
+/// Returns: current directory's .kanban + all valid paths from index
 pub fn list_local_project_dirs() -> std::io::Result<Vec<PathBuf>> {
+    let mut all_paths = Vec::new();
+
+    // 1. 优先添加当前目录的本地项目（如果存在）
     let local_kanban_dir = get_local_kanban_dir();
+    if local_kanban_dir.exists() && local_kanban_dir.join(".kanban.toml").exists() {
+        all_paths.push(local_kanban_dir.clone());
 
-    if !local_kanban_dir.exists() {
-        return Ok(Vec::new());
+        // 同时确保当前目录在索引中（自动注册）
+        let _ = add_local_project_to_index(&local_kanban_dir);
     }
 
-    // 检查是否有 .kanban.toml 文件
-    if local_kanban_dir.join(".kanban.toml").exists() {
-        Ok(vec![local_kanban_dir])
-    } else {
-        Ok(Vec::new())
+    // 2. 从索引中加载其他本地项目（自动清理无效路径）
+    let indexed_paths = clean_and_get_valid_paths()?;
+
+    // 3. 合并路径（去重）
+    for path in indexed_paths {
+        // 避免重复添加当前目录
+        if !all_paths.contains(&path) {
+            all_paths.push(path);
+        }
     }
+
+    Ok(all_paths)
 }
 
 /// Load project configuration from .kanban.toml
@@ -222,6 +327,9 @@ pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
 
     fs::write(project_dir.join(".kanban.toml"), config)
         .map_err(|e| format!("Failed to write config: {}", e))?;
+
+    // 自动将新创建的本地项目添加到索引
+    let _ = add_local_project_to_index(&project_dir);
 
     Ok(project_dir)
 }
