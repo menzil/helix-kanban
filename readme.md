@@ -1,6 +1,6 @@
 # Kanban
 
-一个终端看板应用，灵感来自 [Helix 编辑器](https://helix-editor.com/)的键位设计。
+一个终端看板应用，使用 Rust 开发，灵感来自 [Helix 编辑器](https://helix-editor.com/)的键位设计。
 
 **特别适合与 AI 协作**：基于 Markdown 文件存储，一键复制任务内容（`Y`），快速将任务目录和内容分享给 AI 助手，让 AI 帮你规划和管理任务。
 
