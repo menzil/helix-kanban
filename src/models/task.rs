@@ -4,6 +4,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     pub id: u32,
+    pub order: i32,
     pub title: String,
     pub content: String,
     pub created: String,
@@ -24,6 +25,7 @@ impl Task {
 
         Self {
             id,
+            order: 0,
             title,
             content: String::new(),
             created: timestamp.to_string(),

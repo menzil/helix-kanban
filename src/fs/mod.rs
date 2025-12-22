@@ -7,7 +7,7 @@ pub use project::{
     init_data_dir, list_local_project_dirs, list_project_dirs, load_project,
     load_project_config, load_project_with_type, rename_project, ensure_global_ai_config,
 };
-pub use task::{delete_task, get_next_task_id, load_task, move_task, save_task};
+pub use task::{delete_task, get_next_task_id, get_max_order_in_status, load_task, move_task, save_task};
 
 use crate::models::{Project, ProjectType};
 use anyhow::Result;

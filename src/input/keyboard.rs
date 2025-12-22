@@ -1360,39 +1360,112 @@ fn move_task_in_column(app: &mut App, direction: i32) {
         _ => return,
     };
 
-    // 获取当前列的所有任务
-    if let Some(project) = app.get_focused_project() {
-        let tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == status).collect();
-        let task_count = tasks.len();
+    // 获取项目名称和路径
+    let (project_name, project_path) = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+        app.split_tree.find_pane(app.focused_pane) {
+        if let Some(name) = project_id {
+            if let Some(project) = app.projects.iter().find(|p| &p.name == name) {
+                (name.clone(), project.path.clone())
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+    } else {
+        return;
+    };
 
-        if task_count < 2 {
+    // 获取当前列的所有任务（已按order排序）
+    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
+        let mut tasks: Vec<&mut crate::models::Task> = project.tasks.iter_mut()
+            .filter(|t| t.status == status)
+            .collect();
+
+        if tasks.len() < 2 {
             return; // 不足以移动
         }
 
-        let new_idx = (task_idx as i32 + direction).clamp(0, task_count as i32 - 1) as usize;
+        // 按order排序
+        tasks.sort_by_key(|t| t.order);
+
+        let new_idx = (task_idx as i32 + direction).clamp(0, tasks.len() as i32 - 1) as usize;
 
         if new_idx == task_idx {
             return; // 已经在边界
         }
 
-        // 获取要交换的两个任务的 id
-        let task1_id = tasks.get(task_idx).map(|t| t.id);
-        let task2_id = tasks.get(new_idx).map(|t| t.id);
+        // 获取当前任务
+        let current_task_id = tasks[task_idx].id;
 
-        if let (Some(id1), Some(id2)) = (task1_id, task2_id) {
-            // 在项目中找到并交换
-            if let Some(project) = app.get_focused_project_mut() {
-                let pos1 = project.tasks.iter().position(|t| t.id == id1);
-                let pos2 = project.tasks.iter().position(|t| t.id == id2);
+        // 计算新的order值
+        let new_order = if new_idx == 0 {
+            // 移到最顶部
+            tasks[0].order - 1000
+        } else if new_idx == tasks.len() - 1 {
+            // 移到最底部
+            tasks[tasks.len() - 1].order + 1000
+        } else {
+            // 移到中间：计算上下任务的中间值
+            let (order_above, order_below) = if direction > 0 {
+                // 向下移动
+                (tasks[new_idx].order, tasks.get(new_idx + 1).map(|t| t.order).unwrap_or(tasks[new_idx].order + 1000))
+            } else {
+                // 向上移动
+                (tasks.get(new_idx.saturating_sub(1)).map(|t| t.order).unwrap_or(tasks[new_idx].order - 1000), tasks[new_idx].order)
+            };
 
-                if let (Some(p1), Some(p2)) = (pos1, pos2) {
-                    project.tasks.swap(p1, p2);
-                    app.selected_task_index.insert(app.focused_pane, new_idx);
+            // 检查间隙是否足够
+            if (order_below - order_above).abs() < 2 {
+                // 间隙不够，需要重平衡
+                log_debug("Order值间隙不足，执行重平衡".to_string());
+                rebalance_order_in_column(&mut tasks);
 
-                    // TODO: 保存到文件系统（可以添加序号或排序字段）
+                // 重新计算new_order
+                if direction > 0 {
+                    let below_order = tasks.get(new_idx + 1).map(|t| t.order).unwrap_or(tasks[new_idx].order + 1000);
+                    (tasks[new_idx].order + below_order) / 2
+                } else {
+                    let above_order = tasks.get(new_idx.saturating_sub(1)).map(|t| t.order).unwrap_or(tasks[new_idx].order - 1000);
+                    (above_order + tasks[new_idx].order) / 2
                 }
+            } else {
+                (order_above + order_below) / 2
+            }
+        };
+
+        // 更新当前任务的order
+        let need_rebalance = tasks.iter().any(|t| t.order % 1000 == 0 && t.id != current_task_id);
+
+        if let Some(task) = project.tasks.iter_mut().find(|t| t.id == current_task_id) {
+            task.order = new_order;
+
+            // 持久化到文件
+            if let Err(e) = crate::fs::save_task(&project_path, task) {
+                log_debug(format!("保存任务失败: {}", e));
+                return;
+            }
+
+            log_debug(format!("任务 {} 的order更新为 {}", task.id, task.order));
+        }
+
+        // 如果进行了重平衡，保存所有任务
+        if need_rebalance {
+            let tasks_to_save: Vec<crate::models::Task> = project.tasks.iter()
+                .filter(|t| t.status == status)
+                .cloned()
+                .collect();
+
+            for task in tasks_to_save {
+                let _ = crate::fs::save_task(&project_path, &task);
             }
         }
+
+        // 更新UI选中索引
+        app.selected_task_index.insert(app.focused_pane, new_idx);
+
+        // 重新加载项目以刷新排序
+        let _ = app.reload_current_project();
     }
 }
 
@@ -1438,8 +1511,15 @@ fn create_new_task(app: &mut App, title: String) {
             };
             log_debug(format!("调试: 状态 '{}'", status));
 
-            // 创建任务
-            let task = Task::new(next_id, title, status.to_string());
+            // 获取当前列的最大order值
+            let max_order = crate::fs::get_max_order_in_status(&project_path, status)
+                .unwrap_or(-1000);
+            let new_order = max_order + 1000;
+            log_debug(format!("调试: 新任务order值 {}", new_order));
+
+            // 创建任务并设置order
+            let mut task = Task::new(next_id, title, status.to_string());
+            task.order = new_order;
 
         // 保存到文件
         match crate::fs::save_task(&project_path, &task) {
@@ -1878,3 +1958,12 @@ fn move_cursor_vertical(text: &str, cursor_pos: usize, direction: i32) -> usize 
         next_line_start + column.min(next_line_len)
     }
 }
+
+/// 重平衡列内任务的order值，使其均匀分布
+fn rebalance_order_in_column(tasks: &mut [&mut crate::models::Task]) {
+    // tasks已按order排序
+    for (idx, task) in tasks.iter_mut().enumerate() {
+        task.order = (idx as i32) * 1000;
+    }
+}
+
