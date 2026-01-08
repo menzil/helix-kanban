@@ -12,6 +12,7 @@ pub enum ConfirmAction {
     DeleteTask,
     DeleteProject,
     HideProject,
+    DeleteStatus,
 }
 
 /// 对话框类型

@@ -99,6 +99,21 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
             ],
             " 任务操作 "
         ),
+        Some(MenuState::Status) => {
+            (
+                vec![
+                    CommandItem { key: "a", label: "创建新状态", color: None },
+                    CommandItem { key: "r", label: "重命名状态", color: None },
+                    CommandItem { key: "e", label: "编辑显示名", color: None },
+                    CommandItem { key: "", label: "", color: None },
+                    CommandItem { key: "h", label: "左移状态列", color: None },
+                    CommandItem { key: "l", label: "右移状态列", color: None },
+                    CommandItem { key: "", label: "", color: None },
+                    CommandItem { key: "d", label: "删除状态", color: None },
+                ],
+                " 状态管理 "
+            )
+        }
         Some(MenuState::Main) | None => (
             vec![
                 CommandItem { key: "f", label: "快速切换项目", color: None },
@@ -106,6 +121,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "p", label: "项目操作...", color: None },
                 CommandItem { key: "w", label: "窗口操作...", color: None },
                 CommandItem { key: "t", label: "任务操作...", color: None },
+                CommandItem { key: "s", label: "状态管理...", color: None },
                 CommandItem { key: "", label: "", color: None },
                 CommandItem { key: "r", label: "重新加载当前项目", color: None },
                 CommandItem { key: "R", label: "重新加载所有项目", color: None },

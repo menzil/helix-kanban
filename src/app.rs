@@ -74,6 +74,8 @@ pub enum MenuState {
     Window,
     /// 任务管理子菜单
     Task,
+    /// 状态管理子菜单
+    Status,
 }
 
 /// 应用状态

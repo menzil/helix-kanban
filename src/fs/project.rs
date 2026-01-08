@@ -329,7 +329,7 @@ fn capitalize_first(s: &str) -> String {
 }
 
 /// 保存项目配置到 .kanban.toml
-fn save_project_config(project_path: &Path, config: &ProjectConfig) -> Result<(), String> {
+pub fn save_project_config(project_path: &Path, config: &ProjectConfig) -> Result<(), String> {
     let config_path = project_path.join(".kanban.toml");
 
     let content = toml::to_string_pretty(config)

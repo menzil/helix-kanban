@@ -422,6 +422,94 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 if !value.is_empty() {
                     rename_current_project(app, value);
                 }
+            } else if title.contains("创建新状态") {
+                // 创建新状态
+                if !value.is_empty() {
+                    if let Some(project) = app.get_focused_project() {
+                        let project_path = project.path.clone();
+
+                        // 使用输入值作为显示名
+                        match crate::fs::status::create_status(&project_path, &value, &value) {
+                            Ok(_) => {
+                                // 重新加载项目
+                                if let Err(e) = app.reload_current_project() {
+                                    log_debug(format!("重新加载项目失败: {}", e));
+                                }
+                                app.show_notification(
+                                    format!("已创建状态「{}」", value),
+                                    crate::app::NotificationLevel::Success
+                                );
+                            }
+                            Err(e) => {
+                                app.show_notification(
+                                    format!("创建失败: {}", e),
+                                    crate::app::NotificationLevel::Error
+                                );
+                            }
+                        }
+                    }
+                }
+            } else if title.contains("重命名状态") {
+                // 重命名状态
+                if !value.is_empty() {
+                    if let Some(project) = app.get_focused_project() {
+                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        if let Some(status) = project.statuses.get(column) {
+                            let old_name = status.name.clone();
+                            let old_display = status.display.clone();
+                            let project_path = project.path.clone();
+
+                            match crate::fs::status::rename_status(&project_path, &old_name, &value, &value) {
+                                Ok(_) => {
+                                    // 重新加载项目
+                                    if let Err(e) = app.reload_current_project() {
+                                        log_debug(format!("重新加载项目失败: {}", e));
+                                    }
+                                    app.show_notification(
+                                        format!("已将「{}」重命名为「{}」", old_display, value),
+                                        crate::app::NotificationLevel::Success
+                                    );
+                                }
+                                Err(e) => {
+                                    app.show_notification(
+                                        format!("重命名失败: {}", e),
+                                        crate::app::NotificationLevel::Error
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if title.contains("编辑显示名") {
+                // 编辑状态显示名
+                if !value.is_empty() {
+                    if let Some(project) = app.get_focused_project() {
+                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        if let Some(status) = project.statuses.get(column) {
+                            let status_name = status.name.clone();
+                            let project_path = project.path.clone();
+
+                            match crate::fs::status::update_status_display(&project_path, &status_name, &value) {
+                                Ok(_) => {
+                                    // 重新加载项目
+                                    if let Err(e) = app.reload_current_project() {
+                                        log_debug(format!("重新加载项目失败: {}", e));
+                                    }
+                                    app.show_notification(
+                                        format!("已更新显示名为「{}」", value),
+                                        crate::app::NotificationLevel::Success
+                                    );
+                                }
+                                Err(e) => {
+                                    app.show_notification(
+                                        format!("更新失败: {}", e),
+                                        crate::app::NotificationLevel::Error
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         DialogType::Select { title, .. } => {
@@ -524,6 +612,43 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             let task_idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
                             if *task_idx > 0 {
                                 *task_idx -= 1;
+                            }
+                        }
+                    }
+                }
+                crate::ui::dialogs::ConfirmAction::DeleteStatus => {
+                    // 删除状态
+                    if let Some(project) = app.get_focused_project() {
+                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        if let Some(status) = project.statuses.get(column) {
+                            let status_name = status.name.clone();
+                            let status_display = status.display.clone();
+                            let project_path = project.path.clone();
+
+                            match crate::fs::status::delete_status(&project_path, &status_name, None) {
+                                Ok(_) => {
+                                    log_debug(format!("成功删除状态: {}", status_name));
+
+                                    // 重新加载项目
+                                    if let Err(e) = app.reload_current_project() {
+                                        log_debug(format!("重新加载项目失败: {}", e));
+                                    }
+
+                                    // 调整选中列到第一列
+                                    app.selected_column.insert(app.focused_pane, 0);
+
+                                    app.show_notification(
+                                        format!("已删除状态「{}」", status_display),
+                                        crate::app::NotificationLevel::Success
+                                    );
+                                }
+                                Err(e) => {
+                                    log_debug(format!("删除状态失败: {}", e));
+                                    app.show_notification(
+                                        format!("删除失败: {}", e),
+                                        crate::app::NotificationLevel::Error
+                                    );
+                                }
                             }
                         }
                     }
@@ -1215,6 +1340,171 @@ fn execute_command(app: &mut App, cmd: Command) {
                 );
             }
         }
+        Command::CreateStatus => {
+            // 创建新状态
+            app.mode = Mode::Dialog;
+            app.ime_state.enter_dialog();
+            app.dialog = Some(DialogType::Input {
+                title: "创建新状态".to_string(),
+                prompt: "请输入状态内部名称（英文、数字、下划线）:".to_string(),
+                value: String::new(),
+                cursor_pos: 0,
+            });
+        }
+        Command::RenameStatus => {
+            // 重命名状态 - 收集信息后再修改 app
+            let status_info = {
+                let project = app.get_focused_project();
+                if let Some(project) = project {
+                    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone()))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((current_name, current_display)) = status_info {
+                let cursor_pos = current_name.chars().count();
+                app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();
+                app.dialog = Some(DialogType::Input {
+                    title: format!("重命名状态: {}", current_display),
+                    prompt: "请输入新的状态名称（英文、数字、下划线）:".to_string(),
+                    value: current_name,
+                    cursor_pos,
+                });
+            }
+        }
+        Command::EditStatusDisplay => {
+            // 编辑状态显示名 - 收集信息后再修改 app
+            let status_info = {
+                let project = app.get_focused_project();
+                if let Some(project) = project {
+                    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone()))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((status_name, current_display)) = status_info {
+                let cursor_pos = current_display.chars().count();
+                app.mode = Mode::Dialog;
+                app.ime_state.enter_dialog();
+                app.dialog = Some(DialogType::Input {
+                    title: format!("编辑显示名: {}", status_name),
+                    prompt: "请输入新的显示名称:".to_string(),
+                    value: current_display,
+                    cursor_pos,
+                });
+            }
+        }
+        Command::MoveStatusLeft => {
+            // 左移状态列 - 收集信息后再修改 app
+            let focused_pane = app.focused_pane;
+            let status_info = {
+                let project = app.get_focused_project();
+                if let Some(project) = project {
+                    let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
+                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((status_name, status_display, project_path, column)) = status_info {
+                match crate::fs::status::move_status_order(&project_path, &status_name, -1) {
+                    Ok(_) => {
+                        // 重新加载项目
+                        if let Err(e) = app.reload_current_project() {
+                            log_debug(format!("重新加载项目失败: {}", e));
+                        }
+                        // 更新选中列
+                        if column > 0 {
+                            app.selected_column.insert(focused_pane, column - 1);
+                        }
+                        app.show_notification(
+                            format!("状态「{}」已左移", status_display),
+                            crate::app::NotificationLevel::Success
+                        );
+                    }
+                    Err(e) => {
+                        app.show_notification(
+                            format!("移动失败: {}", e),
+                            crate::app::NotificationLevel::Error
+                        );
+                    }
+                }
+            }
+        }
+        Command::MoveStatusRight => {
+            // 右移状态列 - 收集信息后再修改 app
+            let focused_pane = app.focused_pane;
+            let status_info = {
+                let project = app.get_focused_project();
+                if let Some(project) = project {
+                    let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
+                    let statuses_len = project.statuses.len();
+                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column, statuses_len))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((status_name, status_display, project_path, column, statuses_len)) = status_info {
+                match crate::fs::status::move_status_order(&project_path, &status_name, 1) {
+                    Ok(_) => {
+                        // 重新加载项目
+                        if let Err(e) = app.reload_current_project() {
+                            log_debug(format!("重新加载项目失败: {}", e));
+                        }
+                        // 更新选中列
+                        if column < statuses_len - 1 {
+                            app.selected_column.insert(focused_pane, column + 1);
+                        }
+                        app.show_notification(
+                            format!("状态「{}」已右移", status_display),
+                            crate::app::NotificationLevel::Success
+                        );
+                    }
+                    Err(e) => {
+                        app.show_notification(
+                            format!("移动失败: {}", e),
+                            crate::app::NotificationLevel::Error
+                        );
+                    }
+                }
+            }
+        }
+        Command::DeleteStatus => {
+            // 删除状态
+            if let Some(project) = app.get_focused_project() {
+                let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                if let Some(status) = project.statuses.get(column) {
+                    let status_name = status.name.clone();
+                    let status_display = status.display.clone();
+
+                    // 检查任务数量
+                    let task_count = project.tasks.iter().filter(|t| t.status == status_name).count();
+
+                    let message = if task_count > 0 {
+                        format!("确定要删除状态「{}」吗？\n该状态下有 {} 个任务，删除后任务将无法访问。",
+                            status_display, task_count)
+                    } else {
+                        format!("确定要删除状态「{}」吗？", status_display)
+                    };
+
+                    app.mode = Mode::Dialog;
+                    app.ime_state.enter_dialog();
+                    app.dialog = Some(DialogType::Confirm {
+                        title: "删除状态".to_string(),
+                        message,
+                        yes_selected: false,  // 默认选择"否"，更安全
+                        action: crate::ui::dialogs::ConfirmAction::DeleteStatus,
+                    });
+                }
+            }
+        }
         // 未实现的命令：静默忽略（不报错，不执行）
         _ => {
             // 不做任何处理，避免报错
@@ -1775,6 +2065,7 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'p' => app.menu_state = Some(MenuState::Project),
                         'w' => app.menu_state = Some(MenuState::Window),
                         't' => app.menu_state = Some(MenuState::Task),
+                        's' => app.menu_state = Some(MenuState::Status),
                         'f' => {
                             // 快速切换项目
                             app.mode = Mode::Normal;
@@ -1867,6 +2158,24 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'm' => Some(Command::SetTaskPriority("medium".to_string())),
                         'l' => Some(Command::SetTaskPriority("low".to_string())),
                         'n' => Some(Command::SetTaskPriority("none".to_string())),
+                        _ => None,
+                    };
+                    if let Some(cmd) = cmd {
+                        app.mode = Mode::Normal;
+                        app.menu_state = None;
+                        app.key_buffer.clear();
+                        execute_command(app, cmd);
+                    }
+                }
+                Some(MenuState::Status) => {
+                    // 状态子菜单：立即执行命令并退出菜单
+                    let cmd = match c {
+                        'a' => Some(Command::CreateStatus),
+                        'r' => Some(Command::RenameStatus),
+                        'e' => Some(Command::EditStatusDisplay),
+                        'h' => Some(Command::MoveStatusLeft),
+                        'l' => Some(Command::MoveStatusRight),
+                        'd' => Some(Command::DeleteStatus),
                         _ => None,
                     };
                     if let Some(cmd) = cmd {
@@ -2147,7 +2456,7 @@ fn get_menu_commands(menu_state: Option<crate::app::MenuState>) -> Vec<char> {
 
     match menu_state {
         Some(MenuState::Main) | None => {
-            vec!['f', 'p', 'w', 't', 'r', 'R', '?', 'q']
+            vec!['f', 'p', 'w', 't', 's', 'r', 'R', '?', 'q']
         }
         Some(MenuState::Project) => {
             vec!['o', 'n', 'N', 'd', 'D', 'r', 'i']
@@ -2157,6 +2466,9 @@ fn get_menu_commands(menu_state: Option<crate::app::MenuState>) -> Vec<char> {
         }
         Some(MenuState::Task) => {
             vec!['a', 'e', 'E', 'v', 'V', 'Y', 'd', 'h', 'm', 'l', 'n']
+        }
+        Some(MenuState::Status) => {
+            vec!['a', 'r', 'e', 'h', 'l', 'd']
         }
     }
 }
@@ -2218,6 +2530,10 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
                 }
                 't' => {
                     app.menu_state = Some(MenuState::Task);
+                    app.menu_selected_index = Some(0);
+                }
+                's' => {
+                    app.menu_state = Some(MenuState::Status);
                     app.menu_selected_index = Some(0);
                 }
                 'f' => {
@@ -2310,6 +2626,24 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
                 'm' => Some(Command::SetTaskPriority("medium".to_string())),
                 'l' => Some(Command::SetTaskPriority("low".to_string())),
                 'n' => Some(Command::SetTaskPriority("none".to_string())),
+                _ => None,
+            };
+            if let Some(cmd) = cmd {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, cmd);
+            }
+        }
+        Some(MenuState::Status) => {
+            let cmd = match c {
+                'a' => Some(Command::CreateStatus),
+                'r' => Some(Command::RenameStatus),
+                'e' => Some(Command::EditStatusDisplay),
+                'h' => Some(Command::MoveStatusLeft),
+                'l' => Some(Command::MoveStatusRight),
+                'd' => Some(Command::DeleteStatus),
                 _ => None,
             };
             if let Some(cmd) = cmd {

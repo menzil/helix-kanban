@@ -94,6 +94,20 @@ pub enum Command {
     /// 重新加载所有项目
     ReloadAllProjects,
 
+    // ===== 状态管理 (Space s 前缀) =====
+    /// 创建新状态
+    CreateStatus,
+    /// 重命名当前状态
+    RenameStatus,
+    /// 删除当前状态
+    DeleteStatus,
+    /// 左移当前状态列
+    MoveStatusLeft,
+    /// 右移当前状态列
+    MoveStatusRight,
+    /// 编辑状态显示名
+    EditStatusDisplay,
+
     // ===== 模式切换 =====
     /// 进入命令模式
     EnterCommandMode,
