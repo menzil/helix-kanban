@@ -20,7 +20,47 @@
 
 ## 安装
 
+### Homebrew (macOS/Linux) - 推荐
+
+最简单的安装方式，自动下载预编译的二进制文件：
+
+```bash
+brew tap menzil/tap
+brew install helix-kanban
+```
+
+### 预编译二进制文件
+
+从 [GitHub Releases](https://github.com/menzil/helix-kanban/releases) 下载适合你系统的预编译版本：
+
+**macOS**:
+```bash
+# Apple Silicon (M1/M2/M3)
+curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-macos-aarch64.tar.gz | tar xz
+sudo mv hxk-macos-aarch64 /usr/local/bin/hxk
+
+# Intel
+curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-macos-x86_64.tar.gz | tar xz
+sudo mv hxk-macos-x86_64 /usr/local/bin/hxk
+```
+
+**Linux**:
+```bash
+# x86_64
+curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-linux-x86_64.tar.gz | tar xz
+sudo mv hxk-linux-x86_64 /usr/local/bin/hxk
+
+# ARM64
+curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-linux-aarch64.tar.gz | tar xz
+sudo mv hxk-linux-aarch64 /usr/local/bin/hxk
+```
+
+**Windows**:
+直接从 [Releases 页面](https://github.com/menzil/helix-kanban/releases/latest) 下载 `hxk-windows-x86_64.exe`
+
 ### 从 crates.io 安装
+
+如果你已经安装了 Rust 工具链：
 
 ```bash
 cargo install helix-kanban --locked
