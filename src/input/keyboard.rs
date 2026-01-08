@@ -268,13 +268,13 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         handle_dialog_submit(app, dialog_clone, selected_item);
                     }
                 }
-                KeyCode::Up | KeyCode::Char('k') => {
+                KeyCode::Up => {
                     // 向上移动选择
                     if *selected > 0 {
                         *selected -= 1;
                     }
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
+                KeyCode::Down => {
                     // 向下移动选择
                     let filtered_count = if filter.is_empty() {
                         items.len()
