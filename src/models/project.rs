@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use super::status::Status;
-use super::task::Task;
+use super::task::{Task, TaskMetadata};
 
 /// 项目类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +31,13 @@ pub struct StatusesConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusConfig {
     pub display: String,
+}
+
+/// 任务元数据配置文件结构（tasks.toml）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TasksConfig {
+    #[serde(flatten)]
+    pub tasks: HashMap<u32, TaskMetadata>,
 }
 
 #[derive(Debug, Clone)]

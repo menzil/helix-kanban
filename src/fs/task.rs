@@ -5,12 +5,22 @@ use std::path::{Path, PathBuf};
 use crate::fs::parser::{generate_task_md, parse_task_md};
 use crate::models::Task;
 
-/// Load all tasks from a status directory
+/// Load all tasks from a status directory (supports both legacy and metadata formats)
 pub fn load_tasks_from_dir(dir: &Path, status: &str) -> Result<Vec<Task>, String> {
     if !dir.exists() {
         return Ok(Vec::new());
     }
 
+    // 获取项目根目录
+    let project_path = dir.parent().ok_or("Invalid directory path")?;
+
+    // 检查是否存在 tasks.toml（新格式）
+    if project_path.join("tasks.toml").exists() {
+        // 使用新的元数据格式加载
+        return load_tasks_from_metadata(project_path, status);
+    }
+
+    // 否则使用旧格式（从 markdown 文件直接解析）
     let mut tasks = Vec::new();
 
     for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
@@ -121,13 +131,28 @@ pub fn get_next_task_id(project_path: &Path) -> Result<u32, String> {
     Ok(max_id + 1)
 }
 
-/// Save a task to a markdown file
+/// Save a task to a markdown file (supports both legacy and metadata formats)
 pub fn save_task(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
     let status_dir = project_path.join(&task.status);
 
     if !status_dir.exists() {
         fs::create_dir_all(&status_dir).map_err(|e| e.to_string())?;
     }
+
+    let tasks_toml = project_path.join("tasks.toml");
+
+    if tasks_toml.exists() {
+        // 新格式：保存元数据到 tasks.toml，内容到 .md 文件
+        save_task_metadata_format(project_path, task)
+    } else {
+        // 旧格式：保存完整数据到 .md 文件
+        save_task_legacy_format(project_path, task)
+    }
+}
+
+/// 保存任务（旧格式：元数据+内容都在 markdown 文件中）
+fn save_task_legacy_format(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
+    let status_dir = project_path.join(&task.status);
 
     // 生成文件名
     let filename = if task.file_path.exists() && task.file_path.parent() == Some(status_dir.as_path()) {
@@ -167,6 +192,32 @@ pub fn save_task(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
     fs::write(&file_path, content).map_err(|e| e.to_string())?;
 
     Ok(file_path)
+}
+
+/// 保存任务（新格式：元数据在 tasks.toml，内容在 .md 文件）
+fn save_task_metadata_format(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
+    // 1. 加载现有元数据
+    let mut metadata_map = load_tasks_metadata(project_path)?;
+
+    // 2. 更新当前任务的元数据
+    let task_metadata = crate::models::TaskMetadata::from(task);
+    metadata_map.insert(task.id, task_metadata);
+
+    // 3. 保存元数据到 tasks.toml
+    save_tasks_metadata(project_path, &metadata_map)?;
+
+    // 4. 保存内容到 {status}/{id}.md
+    let status_dir = project_path.join(&task.status);
+    let content_path = status_dir.join(format!("{}.md", task.id));
+
+    // 如果旧文件存在且路径不同，删除旧文件
+    if task.file_path.exists() && task.file_path != content_path {
+        let _ = fs::remove_file(&task.file_path);
+    }
+
+    fs::write(&content_path, &task.content).map_err(|e| e.to_string())?;
+
+    Ok(content_path)
 }
 
 /// Move a task to a different status
@@ -262,3 +313,71 @@ pub fn get_max_order_in_status(project_path: &Path, status: &str) -> Result<i32,
 
     Ok(tasks.iter().map(|t| t.order).max().unwrap_or(-1000))
 }
+
+/// 加载任务元数据文件（tasks.toml）
+pub fn load_tasks_metadata(project_path: &Path) -> Result<HashMap<u32, crate::models::TaskMetadata>, String> {
+    let tasks_toml = project_path.join("tasks.toml");
+
+    if !tasks_toml.exists() {
+        return Ok(HashMap::new());
+    }
+
+    let content = fs::read_to_string(&tasks_toml).map_err(|e| format!("Failed to read tasks.toml: {}", e))?;
+
+    let config: crate::models::TasksConfig = toml::from_str(&content)
+        .map_err(|e| format!("Failed to parse tasks.toml: {}", e))?;
+
+    Ok(config.tasks)
+}
+
+/// 保存任务元数据到 tasks.toml
+pub fn save_tasks_metadata(project_path: &Path, metadata: &HashMap<u32, crate::models::TaskMetadata>) -> Result<(), String> {
+    let tasks_toml = project_path.join("tasks.toml");
+
+    let config = crate::models::TasksConfig {
+        tasks: metadata.clone(),
+    };
+
+    let content = toml::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize tasks.toml: {}", e))?;
+
+    fs::write(&tasks_toml, content)
+        .map_err(|e| format!("Failed to write tasks.toml: {}", e))?;
+
+    Ok(())
+}
+
+/// 从元数据格式加载任务（新格式）
+pub fn load_tasks_from_metadata(project_path: &Path, status: &str) -> Result<Vec<Task>, String> {
+    // 1. 加载元数据
+    let metadata_map = load_tasks_metadata(project_path)?;
+
+    // 2. 过滤出指定状态的任务
+    let mut tasks = Vec::new();
+
+    for (id, metadata) in metadata_map {
+        if metadata.status != status {
+            continue;
+        }
+
+        // 3. 加载对应的内容文件
+        let content_path = project_path.join(&status).join(format!("{}.md", id));
+
+        if !content_path.exists() {
+            // 内容文件缺失，跳过此任务（可选：记录警告）
+            continue;
+        }
+
+        let content = fs::read_to_string(&content_path)
+            .map_err(|e| format!("Failed to read content file {:?}: {}", content_path, e))?;
+
+        // 4. 组装Task
+        tasks.push(Task::from_metadata(metadata, content, content_path));
+    }
+
+    // 5. 按order排序
+    tasks.sort_by_key(|t| t.order);
+
+    Ok(tasks)
+}
+
