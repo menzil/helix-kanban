@@ -71,18 +71,14 @@ fn handle_new_task_from_file(app: &mut App, temp_file_path: &str) -> Result<()> 
 
     // 获取当前选中的列作为初始状态
     let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-    let status = match column {
-        0 => "todo",
-        1 => "doing",
-        2 => "done",
-        _ => "todo",
-    };
+    let status = app.get_status_name_by_column(column)
+        .unwrap_or_else(|| "todo".to_string());
 
     // 创建任务
-    let mut task = Task::new(next_id, title, status.to_string());
+    let mut task = Task::new(next_id, title.clone(), status.clone());
 
     // 保存完整的文件内容到任务文件
-    let task_dir = project_path.join(status);
+    let task_dir = project_path.join(&status);
     std::fs::create_dir_all(&task_dir)?;
     let task_file = task_dir.join(format!("{:03}.md", next_id));
     std::fs::write(&task_file, &content)?;
@@ -152,21 +148,33 @@ fn main() -> Result<()> {
 }
 
 /// 暂停终端（用于调用外部编辑器）
-pub fn suspend_terminal<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Terminal<B>) -> Result<()> {
+pub fn suspend_terminal<B>(terminal: &mut Terminal<B>) -> Result<()>
+where
+    B: ratatui::backend::Backend + std::io::Write,
+    B::Error: Send + Sync + 'static,
+{
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
 }
 
 /// 恢复终端（从外部编辑器返回）
-pub fn resume_terminal<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Terminal<B>) -> Result<()> {
+pub fn resume_terminal<B>(terminal: &mut Terminal<B>) -> Result<()>
+where
+    B: ratatui::backend::Backend + std::io::Write,
+    B::Error: Send + Sync + 'static,
+{
     enable_raw_mode()?;
     execute!(terminal.backend_mut(), EnterAlternateScreen)?;
     terminal.clear()?;
     Ok(())
 }
 
-fn run_app<B: ratatui::backend::Backend + std::io::Write>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
+fn run_app<B>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()>
+where
+    B: ratatui::backend::Backend + std::io::Write,
+    B::Error: Send + Sync + 'static,
+{
     loop {
         // 清除过期的通知
         app.clear_expired_notification();

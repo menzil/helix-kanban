@@ -1,6 +1,6 @@
 [package]
 name = "helix-kanban"
-version = "0.2.17"
+version = "0.2.19"
 edition = "2024"
 authors = ["Ruzaji Yasin <menzil@live.cn>"]
 description = "A terminal-based kanban board with file-based storage, multi-project support, and Helix-style keybindings"
@@ -30,7 +30,7 @@ clipboard = ["arboard"]
 
 [dependencies]
 # TUI framework
-ratatui = "0.29"
+ratatui = "0.30.0"
 crossterm = "0.29"
 
 # Data serialization

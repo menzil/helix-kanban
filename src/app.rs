@@ -317,4 +317,19 @@ impl App {
             }
         }
     }
+
+    /// 根据列索引获取状态名称
+    pub fn get_status_name_by_column(&self, column: usize) -> Option<String> {
+        self.get_focused_project()?
+            .statuses
+            .get(column)
+            .map(|s| s.name.clone())
+    }
+
+    /// 获取当前项目的状态列数
+    pub fn get_status_count(&self) -> usize {
+        self.get_focused_project()
+            .map(|p| p.statuses.len())
+            .unwrap_or(3)
+    }
 }

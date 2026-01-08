@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::models::Project;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem},
@@ -39,10 +39,17 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
     };
 
     // 计算任务统计
-    let todo_count = project.tasks.iter().filter(|t| t.status == "todo").count();
-    let doing_count = project.tasks.iter().filter(|t| t.status == "doing").count();
-    let done_count = project.tasks.iter().filter(|t| t.status == "done").count();
     let total_count = project.tasks.len();
+    let done_count = project.tasks.iter()
+        .filter(|t| {
+            // 找到最后一个状态作为"已完成"状态
+            if let Some(last_status) = project.statuses.last() {
+                t.status == last_status.name
+            } else {
+                false
+            }
+        })
+        .count();
 
     // 添加项目类型标记
     let project_type_label = match project.project_type {
@@ -62,25 +69,36 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    // 三列布局：待办 | 进行中 | 已完成
+    // 动态列布局：根据状态数量创建等宽列
+    let num_columns = project.statuses.len();
+    if num_columns == 0 {
+        return;
+    }
+
+    // 使用 Flex::SpaceBetween 布局创建等宽列
+    let constraints: Vec<Constraint> = vec![Constraint::Fill(1); num_columns];
     let columns = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
-        ])
+        .constraints(constraints)
+        .flex(Flex::Start)
         .split(inner);
 
-    // 按状态分类任务
-    let todo_tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == "todo").collect();
-    let doing_tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == "doing").collect();
-    let done_tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == "done").collect();
+    // 渲染每一列
+    for (col_idx, status) in project.statuses.iter().enumerate() {
+        let tasks: Vec<_> = project.tasks.iter()
+            .filter(|t| t.status == status.name)
+            .collect();
 
-    // 渲染三列
-    render_column(f, columns[0], "待办", &todo_tasks, 0, app, is_focused);
-    render_column(f, columns[1], "进行中", &doing_tasks, 1, app, is_focused);
-    render_column(f, columns[2], "已完成", &done_tasks, 2, app, is_focused);
+        render_column(
+            f,
+            columns[col_idx],
+            &status.display,
+            &tasks,
+            col_idx,
+            app,
+            is_focused,
+        );
+    }
 }
 
 /// 渲染单个列

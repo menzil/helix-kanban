@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::models::{Project, ProjectConfig, ProjectType, Status};
+use crate::models::{Project, ProjectConfig, ProjectType, Status, StatusConfig};
 use serde::{Deserialize, Serialize};
 
 /// 本地项目索引结构
@@ -200,7 +200,19 @@ pub fn load_project(project_path: &Path) -> Result<Project, String> {
 
 /// Load a project with all its tasks, specifying project type
 pub fn load_project_with_type(project_path: &Path, project_type: ProjectType) -> Result<Project, String> {
-    let config = load_project_config(project_path)?;
+    // 1. 扫描实际存在的目录
+    let actual_dirs = scan_status_directories(project_path)?;
+
+    // 2. 加载或创建配置
+    let mut config = load_project_config(project_path)?;
+
+    // 3. 同步配置：移除不存在的、添加新发现的
+    let config_updated = sync_status_config(&mut config, &actual_dirs);
+
+    // 4. 如果配置有更新，保存回文件
+    if config_updated {
+        save_project_config(project_path, &config)?;
+    }
 
     let mut statuses = Vec::new();
     for status_name in &config.statuses.order {
@@ -226,6 +238,107 @@ pub fn load_project_with_type(project_path: &Path, project_type: ProjectType) ->
     }
 
     Ok(project)
+}
+
+/// 扫描项目目录下的所有状态目录
+/// 返回目录名列表，按字母顺序排序
+fn scan_status_directories(project_path: &Path) -> Result<Vec<String>, String> {
+    if !project_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut dirs = Vec::new();
+
+    for entry in fs::read_dir(project_path)
+        .map_err(|e| format!("Failed to read project directory: {}", e))?
+    {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let path = entry.path();
+
+        // 只处理目录，排除以 . 开头的目录
+        if path.is_dir() {
+            if let Some(name) = path.file_name() {
+                let name_str = name.to_string_lossy().to_string();
+                if !name_str.starts_with('.') {
+                    dirs.push(name_str);
+                }
+            }
+        }
+    }
+
+    // 按字母顺序排序
+    dirs.sort();
+
+    Ok(dirs)
+}
+
+/// 同步配置文件中的状态定义
+/// 返回是否有更新
+fn sync_status_config(config: &mut ProjectConfig, actual_dirs: &[String]) -> bool {
+    let mut updated = false;
+
+    // 1. 移除 order 中不存在的目录
+    let original_len = config.statuses.order.len();
+    config.statuses.order.retain(|s| actual_dirs.contains(s));
+    if config.statuses.order.len() != original_len {
+        updated = true;
+    }
+
+    // 2. 同时清理 statuses map 中不存在的条目
+    let keys_to_remove: Vec<String> = config
+        .statuses
+        .statuses
+        .keys()
+        .filter(|k| !actual_dirs.contains(k))
+        .cloned()
+        .collect();
+
+    for key in keys_to_remove {
+        config.statuses.statuses.remove(&key);
+        updated = true;
+    }
+
+    // 3. 添加新发现的目录到 order 末尾
+    for dir in actual_dirs {
+        if !config.statuses.order.contains(dir) {
+            config.statuses.order.push(dir.clone());
+            config.statuses.statuses.insert(
+                dir.clone(),
+                StatusConfig {
+                    display: capitalize_first(dir),
+                },
+            );
+            updated = true;
+        }
+    }
+
+    updated
+}
+
+/// 首字母大写
+fn capitalize_first(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => {
+            let mut result = first.to_uppercase().to_string();
+            result.push_str(&chars.as_str());
+            result
+        }
+    }
+}
+
+/// 保存项目配置到 .kanban.toml
+fn save_project_config(project_path: &Path, config: &ProjectConfig) -> Result<(), String> {
+    let config_path = project_path.join(".kanban.toml");
+
+    let content = toml::to_string_pretty(config)
+        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+
+    fs::write(&config_path, content)
+        .map_err(|e| format!("Failed to write config: {}", e))?;
+
+    Ok(())
 }
 
 /// Create a new project

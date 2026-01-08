@@ -616,11 +616,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             // 获取当前列的任务数量并限制索引
             if let Some(project) = app.get_focused_project() {
                 let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-                let status = match column {
-                    0 => "todo",
-                    1 => "doing",
-                    2 => "done",
-                    _ => return,
+
+                // 动态获取状态名称
+                let status = if let Some(status_name) = app.get_status_name_by_column(column) {
+                    status_name
+                } else {
+                    return;
                 };
 
                 let task_count = project.tasks.iter()
@@ -644,10 +645,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.selected_task_index.insert(app.focused_pane, 0);
         }
         Command::ColumnRight => {
-            let col = app.selected_column.entry(app.focused_pane).or_insert(0);
-            *col = (*col + 1).min(2); // 最多3列
+            let max_col = app.get_status_count().saturating_sub(1);
+            let focused_pane = app.focused_pane;
+            let col = app.selected_column.entry(focused_pane).or_insert(0);
+            *col = (*col + 1).min(max_col);
             // 切换列时重置任务索引到 0
-            app.selected_task_index.insert(app.focused_pane, 0);
+            app.selected_task_index.insert(focused_pane, 0);
         }
         Command::EnterCommandMode => {
             app.mode = Mode::Command;
@@ -1259,12 +1262,7 @@ fn get_selected_task(app: &App) -> Option<&crate::models::Task> {
     let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
     let task_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
 
-    let status = match column {
-        0 => "todo",
-        1 => "doing",
-        2 => "done",
-        _ => return None,
-    };
+    let status = app.get_status_name_by_column(column)?;
 
     let tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == status).collect();
     tasks.get(task_idx).copied()
@@ -1275,12 +1273,7 @@ fn get_selected_task_id(app: &App) -> Option<u32> {
     let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
     let task_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
 
-    let status = match column {
-        0 => "todo",
-        1 => "doing",
-        2 => "done",
-        _ => return None,
-    };
+    let status = app.get_status_name_by_column(column)?;
 
     let project = app.get_focused_project()?;
     let tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == status).collect();
@@ -1290,7 +1283,8 @@ fn get_selected_task_id(app: &App) -> Option<u32> {
 /// 移动任务到相邻状态
 fn move_task_to_status(app: &mut App, direction: i32) {
     let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-    let new_column = (column as i32 + direction).clamp(0, 2) as usize;
+    let status_count = app.get_status_count();
+    let new_column = (column as i32 + direction).clamp(0, status_count as i32 - 1) as usize;
 
     if new_column == column {
         return; // 已经在边界
@@ -1315,23 +1309,23 @@ fn move_task_to_status(app: &mut App, direction: i32) {
         return;
     };
 
+    // 获取新状态名称
+    let new_status = if let Some(status) = app.get_status_name_by_column(new_column) {
+        status
+    } else {
+        return;
+    };
+
     // 找到任务并修改
     if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
         if let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
-            let new_status = match new_column {
-                0 => "todo",
-                1 => "doing",
-                2 => "done",
-                _ => return,
-            };
-
             let old_status = task.status.clone();
-            task.status = new_status.to_string();
+            task.status = new_status.clone();
 
             // 移动文件到新的状态目录（使用项目的实际路径）
             let project_path = project.path.clone();
 
-            match crate::fs::move_task(&project_path, task, new_status) {
+            match crate::fs::move_task(&project_path, task, &new_status) {
                 Ok(new_path) => {
                     // 更新任务的文件路径
                     task.file_path = new_path;
@@ -1353,11 +1347,10 @@ fn move_task_in_column(app: &mut App, direction: i32) {
     let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
     let task_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
 
-    let status = match column {
-        0 => "todo",
-        1 => "doing",
-        2 => "done",
-        _ => return,
+    let status = if let Some(s) = app.get_status_name_by_column(column) {
+        s
+    } else {
+        return;
     };
 
     // 获取项目名称和路径
@@ -1503,22 +1496,18 @@ fn create_new_task(app: &mut App, title: String) {
             log_debug(format!("调试: 下一个任务ID {}", next_id));
             // 获取当前选中的列作为初始状态
             let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-            let status = match column {
-                0 => "todo",
-                1 => "doing",
-                2 => "done",
-                _ => "todo",
-            };
+            let status = app.get_status_name_by_column(column)
+                .unwrap_or_else(|| "todo".to_string());
             log_debug(format!("调试: 状态 '{}'", status));
 
             // 获取当前列的最大order值
-            let max_order = crate::fs::get_max_order_in_status(&project_path, status)
+            let max_order = crate::fs::get_max_order_in_status(&project_path, &status)
                 .unwrap_or(-1000);
             let new_order = max_order + 1000;
             log_debug(format!("调试: 新任务order值 {}", new_order));
 
             // 创建任务并设置order
-            let mut task = Task::new(next_id, title, status.to_string());
+            let mut task = Task::new(next_id, title.clone(), status.clone());
             task.order = new_order;
 
         // 保存到文件
