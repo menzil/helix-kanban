@@ -139,30 +139,29 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         *value = chars.into_iter().collect();
                         *cursor_pos += 1;
                     }
+                    KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Ctrl+Enter: 提交对话框
+                        log_debug("Ctrl+Enter: 提交对话框".to_string());
+                        let input_value = value.clone();
+                        let dialog_clone = dialog.clone();
+                        app.dialog = None;
+                        app.mode = Mode::Normal;
+                        // 退出对话框，保存用户输入法并切换回英文
+                        app.ime_state.exit_dialog();
+                        handle_dialog_submit(app, dialog_clone, input_value);
+                    }
                     KeyCode::Enter => {
+                        // 普通 Enter: 根据输入类型决定行为
                         if is_task_input {
-                            // 任务输入：Enter 提交，Shift+Enter 或 Ctrl+J 换行
-                            log_debug(format!("Enter 键，modifiers={:?}", key.modifiers));
-                            if key.modifiers.contains(KeyModifiers::SHIFT) {
-                                // Shift+Enter 换行（如果终端支持）
-                                log_debug("检测到 Shift+Enter，插入换行".to_string());
-                                let mut chars: Vec<char> = value.chars().collect();
-                                chars.insert(*cursor_pos, '\n');
-                                *value = chars.into_iter().collect();
-                                *cursor_pos += 1;
-                            } else {
-                                // Enter 提交
-                                log_debug("普通 Enter，提交任务".to_string());
-                                let input_value = value.clone();
-                                let dialog_clone = dialog.clone();
-                                app.dialog = None;
-                                app.mode = Mode::Normal;
-                                // 退出对话框，保存用户输入法并切换回英文
-                                app.ime_state.exit_dialog();
-                                handle_dialog_submit(app, dialog_clone, input_value);
-                            }
+                            // 任务输入：Enter 插入换行，Ctrl+Enter 提交
+                            log_debug("任务输入: Enter 插入换行".to_string());
+                            let mut chars: Vec<char> = value.chars().collect();
+                            chars.insert(*cursor_pos, '\n');
+                            *value = chars.into_iter().collect();
+                            *cursor_pos += 1;
                         } else {
-                            // 普通输入：Enter 直接提交
+                            // 普通单行输入：Enter 提交
+                            log_debug("普通输入: Enter 提交".to_string());
                             let input_value = value.clone();
                             let dialog_clone = dialog.clone();
                             app.dialog = None;
@@ -913,7 +912,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
-                prompt: "请输入任务标题:".to_string(),
+                prompt: "任务标题 (Enter=换行, Ctrl+Enter=提交):".to_string(),
                 value: String::new(),
                 cursor_pos: 0,
             });
@@ -949,7 +948,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
-                    prompt: "修改任务标题:".to_string(),
+                    prompt: "任务标题 (Enter=换行, Ctrl+Enter=提交):".to_string(),
                     value: title,
                     cursor_pos,
                 });
