@@ -238,8 +238,9 @@ fn render_select_dialog(
     // 列表项 - 支持多行显示，添加分隔线
     let list_items: Vec<ListItem> = filtered_items
         .iter()
-        .flat_map(|(idx, item)| {
-            let is_selected = *idx == selected;
+        .enumerate()
+        .flat_map(|(filtered_idx, (idx, item))| {
+            let is_selected = filtered_idx == selected;
 
             // 分割成多行
             let lines: Vec<&str> = item.lines().collect();
@@ -249,13 +250,13 @@ fn render_select_dialog(
             let mut content_lines = vec![];
 
             // 第一项上方添加空行（顶部间距）
-            if *idx == 0 {
+            if filtered_idx == 0 {
                 content_lines.push(Line::from(""));
             }
 
             if is_selected {
                 // 选中项：蓝色背景，带序号
-                let sequence_num = format!("{}", *idx + 1);
+                let sequence_num = format!("{}", filtered_idx + 1);
 
                 content_lines.push(Line::from(vec![
                     Span::raw("  "),
