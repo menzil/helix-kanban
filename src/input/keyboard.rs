@@ -562,6 +562,12 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask),  // 复制任务到剪贴板
         ([], KeyCode::Char('t'), KeyModifiers::NONE) => Some(Command::EditTags),  // 编辑标签
 
+        // 列宽调整
+        ([], KeyCode::Char('+'), KeyModifiers::NONE) => Some(Command::IncreaseColumnWidth),
+        ([], KeyCode::Char('-'), KeyModifiers::NONE) => Some(Command::DecreaseColumnWidth),
+        ([], KeyCode::Char('='), KeyModifiers::NONE) => Some(Command::ResetColumnWidths),
+        ([], KeyCode::Char('m'), KeyModifiers::NONE) => Some(Command::ToggleMaximizeColumn),
+
         ([], KeyCode::Down, _) => Some(Command::TaskDown),
         ([], KeyCode::Up, _) => Some(Command::TaskUp),
         ([], KeyCode::Left, _) => Some(Command::ColumnLeft),
@@ -1120,6 +1126,18 @@ fn execute_command(app: &mut App, cmd: Command) {
                     cursor_pos,
                 });
             }
+        }
+        Command::IncreaseColumnWidth => {
+            adjust_column_width(app, 5);
+        }
+        Command::DecreaseColumnWidth => {
+            adjust_column_width(app, -5);
+        }
+        Command::ResetColumnWidths => {
+            reset_column_widths(app);
+        }
+        Command::ToggleMaximizeColumn => {
+            toggle_maximize_column(app);
         }
         Command::ReloadCurrentProject => {
             // 重新加载当前项目
@@ -1956,3 +1974,151 @@ fn rebalance_order_in_column(tasks: &mut [&mut crate::models::Task]) {
     }
 }
 
+/// 调整当前列的宽度
+fn adjust_column_width(app: &mut App, delta: i16) {
+    let project_name = match get_focused_project_name(app) {
+        Some(name) => name,
+        None => return,
+    };
+
+    let project = match app.get_focused_project() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+    let num_columns = project.statuses.len();
+
+    // 获取或初始化列宽配置
+    let widths = app.config.column_widths
+        .entry(project_name.clone())
+        .or_insert_with(|| vec![100 / num_columns as u16; num_columns]);
+
+    if column >= widths.len() {
+        return;
+    }
+
+    // 计算新宽度（限制在 10%-80% 之间）
+    let new_width = (widths[column] as i16 + delta).clamp(10, 80) as u16;
+    let old_width = widths[column];
+    let diff = new_width as i16 - old_width as i16;
+
+    if diff == 0 {
+        return;
+    }
+
+    // 调整当前列宽度
+    widths[column] = new_width;
+
+    // 从其他列平均分配/回收空间
+    let other_count = num_columns - 1;
+    if other_count > 0 {
+        let per_column_adjust = -(diff as f32 / other_count as f32);
+        for (i, width) in widths.iter_mut().enumerate() {
+            if i != column {
+                let adjusted = (*width as f32 + per_column_adjust).clamp(5.0, 95.0) as u16;
+                *width = adjusted;
+            }
+        }
+    }
+
+    // 确保总和为 100%
+    normalize_widths(widths);
+
+    // 保存配置
+    if let Err(e) = crate::config::save_config(&app.config) {
+        log_debug(format!("保存配置失败: {}", e));
+    }
+
+    // 记录调整时间
+    app.last_column_resize_time = Some(std::time::Instant::now());
+}
+
+/// 重置为等宽
+fn reset_column_widths(app: &mut App) {
+    let project_name = match get_focused_project_name(app) {
+        Some(name) => name,
+        None => return,
+    };
+
+    // 移除配置和最大化状态
+    app.config.column_widths.remove(&project_name);
+    app.config.maximized_column.remove(&project_name);
+
+    // 保存配置
+    if let Err(e) = crate::config::save_config(&app.config) {
+        log_debug(format!("保存配置失败: {}", e));
+    }
+}
+
+/// 切换最大化当前列
+fn toggle_maximize_column(app: &mut App) {
+    log_debug("调用 toggle_maximize_column".to_string());
+
+    let project_name = match get_focused_project_name(app) {
+        Some(name) => name,
+        None => {
+            log_debug("无法获取项目名称".to_string());
+            return;
+        }
+    };
+
+    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+    log_debug(format!("当前列: {}, 项目: {}", column, project_name));
+
+    // 获取当前最大化状态
+    let current_max = app.config.maximized_column
+        .get(&project_name)
+        .and_then(|&opt| opt);
+
+    log_debug(format!("当前最大化状态: {:?}", current_max));
+
+    // 切换状态
+    if current_max == Some(column) {
+        // 已最大化当前列 -> 取消最大化
+        log_debug("取消最大化".to_string());
+        app.config.maximized_column.insert(project_name.clone(), None);
+    } else {
+        // 最大化当前列
+        log_debug(format!("最大化列 {}", column));
+        app.config.maximized_column.insert(project_name.clone(), Some(column));
+    }
+
+    // 保存配置
+    if let Err(e) = crate::config::save_config(&app.config) {
+        log_debug(format!("保存配置失败: {}", e));
+    }
+
+    // 记录调整时间
+    app.last_column_resize_time = Some(std::time::Instant::now());
+}
+
+/// 归一化列宽，确保总和为 100%
+fn normalize_widths(widths: &mut Vec<u16>) {
+    let total: u16 = widths.iter().sum();
+    if total == 100 {
+        return;
+    }
+
+    // 按比例调整
+    let scale = 100.0 / total as f32;
+    for width in widths.iter_mut() {
+        *width = (*width as f32 * scale).round() as u16;
+    }
+
+    // 处理舍入误差
+    let new_total: u16 = widths.iter().sum();
+    if new_total != 100 && !widths.is_empty() {
+        let diff = 100i16 - new_total as i16;
+        widths[0] = (widths[0] as i16 + diff) as u16;
+    }
+}
+
+/// 获取当前聚焦项目的名称
+fn get_focused_project_name(app: &App) -> Option<String> {
+    if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) = app.split_tree.find_pane(app.focused_pane) {
+        project_id.clone()
+    } else {
+        None
+    }
+}

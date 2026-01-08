@@ -124,6 +124,8 @@ pub struct App {
     pub saved_layout: Option<SplitNode>,
     /// 通知消息
     pub notification: Option<Notification>,
+    /// 最后一次列宽调整的时间（用于控制百分比显示）
+    pub last_column_resize_time: Option<std::time::Instant>,
 }
 
 impl App {
@@ -167,6 +169,7 @@ impl App {
             ime_state: crate::ime::ImeState::new(),
             saved_layout: None,
             notification: None,
+            last_column_resize_time: None,
         };
 
         // 调试：记录初始状态

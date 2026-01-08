@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.20] - 2026-01-08
+
+### Added
+- **Column width adjustment**: Dynamically adjust status column widths with keyboard shortcuts
+  - Press `+` to increase current column width (+5%)
+  - Press `-` to decrease current column width (-5%)
+  - Press `=` to reset all columns to equal width
+  - Press `m` to toggle maximize/restore current column (90% vs equal distribution)
+- Width percentage indicator in column headers (shows for 2 seconds after adjustment)
+- Per-project column width persistence in `~/.kanban/config.toml`
+
+### Changed
+- Column widths are now configurable and saved per project
+- UI automatically redistributes remaining width when adjusting a column
+- Column headers temporarily show width percentage `[30%]` or `[MAX]` after adjustments
+
+### Technical
+- Added `column_widths` and `maximized_column` fields to Config struct
+- Added `last_column_resize_time` field to App for tracking adjustment timing
+- Implemented `adjust_column_width()`, `toggle_maximize_column()`, `reset_column_widths()`, and `normalize_widths()` helper functions
+- Added 4 new Command variants: `IncreaseColumnWidth`, `DecreaseColumnWidth`, `ResetColumnWidths`, `ToggleMaximizeColumn`
+- Enhanced UI rendering to support dynamic width constraints based on configuration
+
+### How to Use
+1. Navigate to any column with `h`/`l`
+2. Press `+`/`-` to adjust width (10%-80% range)
+3. Press `m` to maximize/restore the column
+4. Press `=` to reset to equal width
+5. Configuration is automatically saved and persists across restarts
+
 ## [0.2.19] - 2026-01-08
 
 ### Added

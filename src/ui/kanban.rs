@@ -75,8 +75,30 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
         return;
     }
 
-    // 使用 Flex::SpaceBetween 布局创建等宽列
-    let constraints: Vec<Constraint> = vec![Constraint::Fill(1); num_columns];
+    // 获取当前项目的列宽配置
+    let constraints: Vec<Constraint> = if let Some(widths) = app.config.column_widths.get(&project.name) {
+        // 使用配置的宽度（确保列数匹配）
+        if widths.len() == num_columns {
+            widths.iter().map(|&w| Constraint::Percentage(w)).collect()
+        } else {
+            // 列数不匹配，使用默认等宽
+            vec![Constraint::Fill(1); num_columns]
+        }
+    } else if let Some(Some(max_col)) = app.config.maximized_column.get(&project.name) {
+        // 最大化模式：一列占 90%，其他列平分 10%
+        (0..num_columns).map(|i| {
+            if i == *max_col {
+                Constraint::Percentage(90)
+            } else {
+                let remaining = if num_columns > 1 { 10 / (num_columns - 1) as u16 } else { 0 };
+                Constraint::Percentage(remaining)
+            }
+        }).collect()
+    } else {
+        // 默认等宽
+        vec![Constraint::Fill(1); num_columns]
+    };
+
     let columns = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(constraints)
@@ -97,6 +119,7 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
             col_idx,
             app,
             is_focused,
+            project,
         );
     }
 }
@@ -110,6 +133,7 @@ fn render_column(
     column_idx: usize,
     app: &App,
     is_pane_focused: bool,
+    project: &Project,
 ) {
     let current_column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
     let is_column_focused = is_pane_focused && current_column == column_idx;
@@ -180,8 +204,30 @@ fn render_column(
         })
         .collect();
 
-    // 列标题
-    let title_with_count = format!(" {} ({}) ", title, tasks.len());
+    // 列标题（调整后2秒内显示宽度百分比）
+    let show_percentage = app.last_column_resize_time
+        .map(|t| t.elapsed().as_secs() < 2)
+        .unwrap_or(false);
+
+    let title_with_count = if show_percentage {
+        if let Some(widths) = app.config.column_widths.get(&project.name) {
+            if column_idx < widths.len() {
+                format!(" {} ({}) [{}%] ", title, tasks.len(), widths[column_idx])
+            } else {
+                format!(" {} ({}) ", title, tasks.len())
+            }
+        } else if let Some(Some(max_col)) = app.config.maximized_column.get(&project.name) {
+            if column_idx == *max_col {
+                format!(" {} ({}) [MAX] ", title, tasks.len())
+            } else {
+                format!(" {} ({}) ", title, tasks.len())
+            }
+        } else {
+            format!(" {} ({}) ", title, tasks.len())
+        }
+    } else {
+        format!(" {} ({}) ", title, tasks.len())
+    };
 
     let list = List::new(items).block(
         Block::default()

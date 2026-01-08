@@ -62,6 +62,16 @@ pub enum Command {
     /// 编辑任务标签
     EditTags,
 
+    // ===== 列宽调整 =====
+    /// 增加当前列宽度
+    IncreaseColumnWidth,
+    /// 减小当前列宽度
+    DecreaseColumnWidth,
+    /// 重置列宽为等宽
+    ResetColumnWidths,
+    /// 切换最大化当前列
+    ToggleMaximizeColumn,
+
     // ===== 项目操作 (Space p 前缀) =====
     /// 打开项目
     OpenProject,

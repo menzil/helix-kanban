@@ -1,6 +1,7 @@
 /// 应用配置管理
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,6 +13,12 @@ pub struct Config {
     /// 隐藏的全局项目列表（软删除）
     #[serde(default)]
     pub hidden_projects: Vec<String>,
+    /// 每个项目的列宽配置（百分比）
+    #[serde(default)]
+    pub column_widths: HashMap<String, Vec<u16>>,
+    /// 记录哪个项目的哪一列被最大化
+    #[serde(default)]
+    pub maximized_column: HashMap<String, Option<usize>>,
 }
 
 impl Default for Config {
@@ -20,6 +27,8 @@ impl Default for Config {
             editor: detect_editor(),
             markdown_viewer: detect_markdown_viewer(),
             hidden_projects: Vec::new(),
+            column_widths: HashMap::new(),
+            maximized_column: HashMap::new(),
         }
     }
 }
