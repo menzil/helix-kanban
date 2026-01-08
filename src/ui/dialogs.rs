@@ -144,12 +144,12 @@ fn render_input_dialog(
     // 渲染输入内容和光标（支持多行）
     let chars: Vec<char> = value.chars().collect();
     let input_with_cursor = if cursor_pos >= chars.len() {
-        // 光标在末尾
-        format!("{}_", value)
+        // 光标在末尾 - 使用反色块更明显
+        format!("{}█", value)
     } else {
-        // 光标在中间
+        // 光标在中间 - 使用反色竖线
         let mut display_chars = chars.clone();
-        display_chars.insert(cursor_pos, '|');
+        display_chars.insert(cursor_pos, '█');
         display_chars.into_iter().collect()
     };
 
@@ -168,12 +168,30 @@ fn render_input_dialog(
     // 计算可见区域的高度
     let visible_height = input_inner.height as usize;
 
-    // 计算滚动偏移量，确保光标可见
-    // 如果光标在底部附近，向下滚动
-    let scroll_offset = if cursor_line >= visible_height {
-        (cursor_line - visible_height + 1) as u16
+    // 计算滚动偏移量，确保光标可见且有上下文
+    // 策略：保持光标在可见区域的中间位置，或至少距离边缘 2 行
+    let scroll_offset = if visible_height <= 4 {
+        // 视图太小，简单处理
+        if cursor_line > 0 {
+            cursor_line.saturating_sub(1) as u16
+        } else {
+            0
+        }
     } else {
-        0
+        // 正常大小的视图，保持光标在中间或距离边缘至少 2 行
+        let margin = 2;
+        let preferred_position = visible_height / 2;
+
+        if cursor_line < margin {
+            // 光标在顶部，不滚动
+            0
+        } else if cursor_line < preferred_position {
+            // 光标在上半部分，轻微滚动
+            0
+        } else {
+            // 光标在下半部分或底部，滚动以保持在中间或距离底部有边距
+            (cursor_line.saturating_sub(preferred_position)) as u16
+        }
     };
 
     let input_text = Paragraph::new(input_with_cursor)
