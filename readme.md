@@ -23,8 +23,10 @@
 ### 从 crates.io 安装
 
 ```bash
-cargo install helix-kanban
+cargo install helix-kanban --locked
 ```
+
+> 💡 **提示**：使用 `--locked` 参数可以确保使用项目指定的依赖版本，避免版本冲突。
 
 ### 从源码构建
 
