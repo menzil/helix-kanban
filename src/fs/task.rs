@@ -154,7 +154,7 @@ pub fn save_task(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
 fn save_task_legacy_format(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
     let status_dir = project_path.join(&task.status);
 
-    // 生成文件名
+    // 生成文件名：使用任务ID
     let filename = if task.file_path.exists() && task.file_path.parent() == Some(status_dir.as_path()) {
         // 任务已存在且在同一目录，保持原文件名（避免不必要的重命名）
         task.file_path
@@ -163,8 +163,8 @@ fn save_task_legacy_format(project_path: &Path, task: &Task) -> Result<PathBuf, 
             .ok_or_else(|| "Invalid file path".to_string())?
             .to_string()
     } else {
-        // 新任务或跨目录移动，生成新文件名
-        generate_task_filename(&task.title, &status_dir)
+        // 新任务或跨目录移动，使用任务ID作为文件名
+        format!("{}.md", task.id)
     };
 
     let file_path = status_dir.join(&filename);
