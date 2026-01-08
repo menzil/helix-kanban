@@ -268,10 +268,14 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         handle_dialog_submit(app, dialog_clone, selected_item);
                     }
                 }
-                KeyCode::Up => {
-                    *selected = selected.saturating_sub(1);
+                KeyCode::Up | KeyCode::Char('k') => {
+                    // 向上移动选择
+                    if *selected > 0 {
+                        *selected -= 1;
+                    }
                 }
-                KeyCode::Down => {
+                KeyCode::Down | KeyCode::Char('j') => {
+                    // 向下移动选择
                     let filtered_count = if filter.is_empty() {
                         items.len()
                     } else {
@@ -280,7 +284,10 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                             .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
                             .count()
                     };
-                    *selected = (*selected + 1).min(filtered_count.saturating_sub(1));
+
+                    if filtered_count > 0 && *selected < filtered_count - 1 {
+                        *selected += 1;
+                    }
                 }
                 KeyCode::Backspace => {
                     filter.pop();
@@ -1295,16 +1302,39 @@ fn execute_command(app: &mut App, cmd: Command) {
                     };
 
                     let kanban_path = project.path.to_string_lossy();
-                    // 使用全局 AI 配置路径
-                    let ai_config_path = crate::fs::get_data_dir().join(".ai-config.json");
+                    // CLAUDE.md 路径（项目根目录）
+                    let claude_md_path = std::env::current_dir()
+                        .ok()
+                        .and_then(|p| p.join("CLAUDE.md").to_str().map(|s| s.to_string()))
+                        .unwrap_or_else(|| "./CLAUDE.md".to_string());
 
-                    // 格式化项目信息
+                    // 格式化项目信息，包含 AI 使用指南
                     let project_info = format!(
-                        "{} {}\n看板路径: {}\nAI配置: {}",
+                        "{} {}\n看板路径: {}\n文档: {}\n\n# AI 使用指南\n\n\
+                        ## 查看项目和任务\n\
+                        hxk project list                          # 列出所有项目\n\
+                        hxk task list {} --status todo       # 查看待办任务\n\
+                        hxk task show {} <task-id>           # 查看任务详情\n\n\
+                        ## 创建和编辑任务\n\
+                        hxk task create {} --status todo --title \"任务标题\"\n\
+                        hxk task update {} <task-id> --title \"新标题\" --priority high\n\
+                        hxk task move {} <task-id> --to doing    # 移动任务状态\n\n\
+                        ## 状态管理\n\
+                        hxk status list {}                   # 列出所有状态列\n\
+                        hxk status create {} review --display \"Review\"\n\n\
+                        详细文档请查看: {}",
                         project_type_label,
                         project.name,
                         kanban_path,
-                        ai_config_path.to_string_lossy()
+                        claude_md_path,
+                        project.name,
+                        project.name,
+                        project.name,
+                        project.name,
+                        project.name,
+                        project.name,
+                        project.name,
+                        claude_md_path
                     );
 
                     // 复制到剪贴板
