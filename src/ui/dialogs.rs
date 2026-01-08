@@ -153,8 +153,30 @@ fn render_input_dialog(
         display_chars.into_iter().collect()
     };
 
+    // 计算光标所在行号（用于自动滚动）
+    let cursor_line = if cursor_pos == 0 {
+        0
+    } else {
+        value[..cursor_pos.min(value.len())]
+            .chars()
+            .filter(|&c| c == '\n')
+            .count()
+    };
+
+    // 计算可见区域的高度
+    let visible_height = input_inner.height as usize;
+
+    // 计算滚动偏移量，确保光标可见
+    // 如果光标在底部附近，向下滚动
+    let scroll_offset = if cursor_line >= visible_height {
+        (cursor_line - visible_height + 1) as u16
+    } else {
+        0
+    };
+
     let input_text = Paragraph::new(input_with_cursor)
-        .wrap(Wrap { trim: false });  // 支持自动换行
+        .wrap(Wrap { trim: false })  // 支持自动换行
+        .scroll((scroll_offset, 0));  // 垂直滚动到光标位置
     f.render_widget(input_text, input_inner);
 
     // 帮助文本
