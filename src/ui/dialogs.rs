@@ -157,8 +157,10 @@ fn render_input_dialog(
     let cursor_line = if cursor_pos == 0 {
         0
     } else {
-        value[..cursor_pos.min(value.len())]
+        // 使用字符迭代器避免字节边界错误
+        value
             .chars()
+            .take(cursor_pos)
             .filter(|&c| c == '\n')
             .count()
     };
