@@ -139,8 +139,30 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         *value = chars.into_iter().collect();
                         *cursor_pos += 1;
                     }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Ctrl+S: 提交对话框（保存）
+                        log_debug("Ctrl+S: 提交对话框".to_string());
+                        let input_value = value.clone();
+                        let dialog_clone = dialog.clone();
+                        app.dialog = None;
+                        app.mode = Mode::Normal;
+                        // 退出对话框，保存用户输入法并切换回英文
+                        app.ime_state.exit_dialog();
+                        handle_dialog_submit(app, dialog_clone, input_value);
+                    }
+                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) && is_task_input => {
+                        // Ctrl+D: 提交对话框（完成）- 仅任务输入
+                        log_debug("Ctrl+D: 提交对话框".to_string());
+                        let input_value = value.clone();
+                        let dialog_clone = dialog.clone();
+                        app.dialog = None;
+                        app.mode = Mode::Normal;
+                        // 退出对话框，保存用户输入法并切换回英文
+                        app.ime_state.exit_dialog();
+                        handle_dialog_submit(app, dialog_clone, input_value);
+                    }
                     KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        // Ctrl+Enter: 提交对话框
+                        // Ctrl+Enter: 提交对话框（如果终端支持）
                         log_debug("Ctrl+Enter: 提交对话框".to_string());
                         let input_value = value.clone();
                         let dialog_clone = dialog.clone();

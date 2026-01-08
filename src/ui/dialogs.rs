@@ -201,7 +201,7 @@ fn render_input_dialog(
 
     // 帮助文本
     let help_text = if is_task_input {
-        "Enter: 换行 | Ctrl+Enter: 提交 | ESC: 取消"
+        "Enter: 换行 | Ctrl+S/Ctrl+D: 提交 | ESC: 取消"
     } else {
         "Enter: 确认 | ESC: 取消"
     };
