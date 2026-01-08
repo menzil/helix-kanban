@@ -51,34 +51,40 @@ pub fn render(f: &mut Frame, app: &App) {
     }
 
     // 渲染命令补全（如果处于命令模式且有输入）
-    if app.mode == crate::app::Mode::Command {
+    let command_completion_height = if app.mode == crate::app::Mode::Command {
         command_completion::render(f, f.area(), app);
-    }
+        // 命令补全占用底部约 3 行
+        3
+    } else {
+        0
+    };
 
     // 渲染欢迎对话框（如果是首次运行）
     if app.show_welcome_dialog {
         welcome::render(f, f.area(), &app.config);
     }
 
-    // 渲染通知栏（如果有通知）
+    // 渲染通知栏（如果有通知），在命令补全上方
     if let Some(ref notification) = app.notification {
-        render_notification(f, f.area(), notification);
+        render_notification(f, f.area(), notification, command_completion_height);
     }
 }
 
 /// 渲染通知栏
-fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification: &crate::app::Notification) {
+fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification: &crate::app::Notification, command_completion_height: u16) {
     use ratatui::style::{Color, Modifier, Style};
     use ratatui::text::{Line, Span};
     use ratatui::widgets::{Block, Borders, Clear, Paragraph};
     use crate::app::NotificationLevel;
 
-    // 通知栏占据顶部 3 行
+    // 通知栏占据底部 3 行，如果有命令补全则显示在其上方
+    let notification_height = 3;
+    let offset = command_completion_height + notification_height;
     let notification_area = ratatui::layout::Rect {
         x: area.x,
-        y: area.y,
+        y: area.y + area.height.saturating_sub(offset),
         width: area.width,
-        height: 3,
+        height: notification_height,
     };
 
     // 根据级别选择颜色

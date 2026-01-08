@@ -117,10 +117,25 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         ),
     };
 
+    // 获取有效命令索引映射（排除空行）
+    let mut valid_cmd_indices: Vec<usize> = Vec::new();
+    for (i, cmd) in commands.iter().enumerate() {
+        if !cmd.key.is_empty() {
+            valid_cmd_indices.push(i);
+        }
+    }
+
     // 构建列表项
+    let selected_cmd_idx = app.menu_selected_index.and_then(|sel_idx| {
+        valid_cmd_indices.get(sel_idx).copied()
+    });
+
     let list_items: Vec<ListItem> = commands
         .iter()
-        .map(|cmd| {
+        .enumerate()
+        .map(|(idx, cmd)| {
+            let is_selected = Some(idx) == selected_cmd_idx;
+
             if cmd.key.is_empty() {
                 // 空行分隔符
                 ListItem::new("")
@@ -144,7 +159,14 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 spans.push(Span::styled(cmd.label, Style::default().fg(Color::White)));
 
                 let line = Line::from(spans);
-                ListItem::new(line)
+                let mut item = ListItem::new(line);
+
+                // 为选中项添加高亮背景
+                if is_selected {
+                    item = item.style(Style::default().bg(Color::Rgb(76, 86, 106))); // Nord highlight
+                }
+
+                item
             }
         })
         .collect();
@@ -174,15 +196,12 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     };
 
     if help_area.y < area.height {
-        let help_text = match app.menu_state {
-            Some(MenuState::Main) => "选择分类进入子菜单",
-            _ => "输入字母键执行命令",
-        };
-
         let help_line = Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled(help_text, Style::default().fg(Color::DarkGray)),
-            Span::styled("  ", Style::default()),
+            Span::styled("↑↓/jk", Style::default().fg(Color::Cyan)),
+            Span::styled(" 导航  ", Style::default().fg(Color::DarkGray)),
+            Span::styled("Enter", Style::default().fg(Color::Cyan)),
+            Span::styled(" 执行  ", Style::default().fg(Color::DarkGray)),
             Span::styled("Esc", Style::default().fg(Color::Cyan)),
             Span::styled(" 返回", Style::default().fg(Color::DarkGray)),
         ]);

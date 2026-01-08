@@ -37,6 +37,7 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
         app.key_buffer.clear();
         app.mode = Mode::SpaceMenu;
         app.menu_state = Some(crate::app::MenuState::Main);
+        app.menu_selected_index = Some(0); // 初始化选中第一项
         return true;
     }
 
@@ -1741,12 +1742,29 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
             match app.menu_state {
                 Some(MenuState::Main) | None => {
                     app.menu_state = None;
+                    app.menu_selected_index = None;
                     app.mode = Mode::Normal;
                     app.key_buffer.clear();
                 }
                 Some(_) => {
                     app.menu_state = Some(MenuState::Main);
+                    app.menu_selected_index = Some(0); // 返回主菜单时重置选中索引
                 }
+            }
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            // 向上导航菜单
+            navigate_menu_up(app);
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            // 向下导航菜单
+            navigate_menu_down(app);
+        }
+        KeyCode::Enter => {
+            // 执行选中的命令
+            if let Some(idx) = app.menu_selected_index {
+                execute_selected_menu_command(app, idx);
+                return true;
             }
         }
         KeyCode::Char(c) => {
@@ -2120,5 +2138,188 @@ fn get_focused_project_name(app: &App) -> Option<String> {
         project_id.clone()
     } else {
         None
+    }
+}
+
+/// 获取当前菜单的命令列表（不含空行）
+fn get_menu_commands(menu_state: Option<crate::app::MenuState>) -> Vec<char> {
+    use crate::app::MenuState;
+
+    match menu_state {
+        Some(MenuState::Main) | None => {
+            vec!['f', 'p', 'w', 't', 'r', 'R', '?', 'q']
+        }
+        Some(MenuState::Project) => {
+            vec!['o', 'n', 'N', 'd', 'D', 'r', 'i']
+        }
+        Some(MenuState::Window) => {
+            vec!['w', 'v', 's', 'q', 'm', 'h', 'l', 'k', 'j']
+        }
+        Some(MenuState::Task) => {
+            vec!['a', 'e', 'E', 'v', 'V', 'Y', 'd', 'h', 'm', 'l', 'n']
+        }
+    }
+}
+
+/// 向上导航菜单（跳过空行）
+fn navigate_menu_up(app: &mut App) {
+    let commands = get_menu_commands(app.menu_state);
+    if commands.is_empty() {
+        return;
+    }
+
+    let current = app.menu_selected_index.unwrap_or(0);
+    if current > 0 {
+        app.menu_selected_index = Some(current - 1);
+    } else {
+        // 循环到最后一项
+        app.menu_selected_index = Some(commands.len() - 1);
+    }
+}
+
+/// 向下导航菜单（跳过空行）
+fn navigate_menu_down(app: &mut App) {
+    let commands = get_menu_commands(app.menu_state);
+    if commands.is_empty() {
+        return;
+    }
+
+    let current = app.menu_selected_index.unwrap_or(0);
+    if current < commands.len() - 1 {
+        app.menu_selected_index = Some(current + 1);
+    } else {
+        // 循环到第一项
+        app.menu_selected_index = Some(0);
+    }
+}
+
+/// 执行选中的菜单命令
+fn execute_selected_menu_command(app: &mut App, index: usize) {
+    use crate::app::MenuState;
+
+    let commands = get_menu_commands(app.menu_state);
+    if index >= commands.len() {
+        return;
+    }
+
+    let c = commands[index];
+
+    // 执行命令（复用现有的字符处理逻辑）
+    match app.menu_state {
+        Some(MenuState::Main) => {
+            match c {
+                'p' => {
+                    app.menu_state = Some(MenuState::Project);
+                    app.menu_selected_index = Some(0);
+                }
+                'w' => {
+                    app.menu_state = Some(MenuState::Window);
+                    app.menu_selected_index = Some(0);
+                }
+                't' => {
+                    app.menu_state = Some(MenuState::Task);
+                    app.menu_selected_index = Some(0);
+                }
+                'f' => {
+                    app.mode = Mode::Normal;
+                    app.menu_state = None;
+                    app.menu_selected_index = None;
+                    app.key_buffer.clear();
+                    execute_command(app, Command::OpenProject);
+                }
+                'r' => {
+                    app.mode = Mode::Normal;
+                    app.menu_state = None;
+                    app.menu_selected_index = None;
+                    app.key_buffer.clear();
+                    execute_command(app, Command::ReloadCurrentProject);
+                }
+                'R' => {
+                    app.mode = Mode::Normal;
+                    app.menu_state = None;
+                    app.menu_selected_index = None;
+                    app.key_buffer.clear();
+                    execute_command(app, Command::ReloadAllProjects);
+                }
+                'q' => {
+                    app.mode = Mode::Normal;
+                    app.menu_state = None;
+                    app.menu_selected_index = None;
+                    app.key_buffer.clear();
+                    execute_command(app, Command::Quit);
+                }
+                '?' => {
+                    app.mode = Mode::Help;
+                    app.menu_state = None;
+                    app.menu_selected_index = None;
+                    app.key_buffer.clear();
+                }
+                _ => {}
+            }
+        }
+        Some(MenuState::Project) => {
+            let cmd = match c {
+                'o' => Some(Command::OpenProject),
+                'n' => Some(Command::NewLocalProject),
+                'N' => Some(Command::NewGlobalProject),
+                'd' => Some(Command::HideProject),
+                'D' => Some(Command::DeleteProject),
+                'r' => Some(Command::RenameProject),
+                'i' => Some(Command::CopyProjectInfo),
+                _ => None,
+            };
+            if let Some(cmd) = cmd {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, cmd);
+            }
+        }
+        Some(MenuState::Window) => {
+            let cmd = match c {
+                'w' => Some(Command::FocusNextPane),
+                'v' => Some(Command::SplitVertical),
+                's' => Some(Command::SplitHorizontal),
+                'q' => Some(Command::ClosePane),
+                'h' => Some(Command::FocusLeft),
+                'l' => Some(Command::FocusRight),
+                'k' => Some(Command::FocusUp),
+                'j' => Some(Command::FocusDown),
+                'm' => Some(Command::MaximizePane),
+                _ => None,
+            };
+            if let Some(cmd) = cmd {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, cmd);
+            }
+        }
+        Some(MenuState::Task) => {
+            let cmd = match c {
+                'a' => Some(Command::NewTask),
+                'e' => Some(Command::EditTask),
+                'E' => Some(Command::EditTaskInEditor),
+                'v' => Some(Command::ViewTask),
+                'V' => Some(Command::ViewTaskExternal),
+                'd' => Some(Command::DeleteTask),
+                'Y' => Some(Command::CopyTask),
+                'h' => Some(Command::SetTaskPriority("high".to_string())),
+                'm' => Some(Command::SetTaskPriority("medium".to_string())),
+                'l' => Some(Command::SetTaskPriority("low".to_string())),
+                'n' => Some(Command::SetTaskPriority("none".to_string())),
+                _ => None,
+            };
+            if let Some(cmd) = cmd {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, cmd);
+            }
+        }
+        None => {}
     }
 }

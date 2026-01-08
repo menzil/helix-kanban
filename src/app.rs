@@ -102,6 +102,8 @@ pub struct App {
     pub dialog: Option<DialogType>,
     /// 空格菜单状态 (None = 关闭)
     pub menu_state: Option<MenuState>,
+    /// 菜单选中的项目索引 (用于上下键导航)
+    pub menu_selected_index: Option<usize>,
     /// 待打开的编辑器文件路径（用于外部编辑器调用）
     pub pending_editor_file: Option<String>,
     /// 标识待编辑文件是否是新任务（true=新任务，false=编辑现有任务）
@@ -158,6 +160,7 @@ impl App {
             should_quit: false,
             dialog: None,
             menu_state: None,
+            menu_selected_index: None,
             pending_editor_file: None,
             is_new_task_file: false,
             pending_preview_file: None,
