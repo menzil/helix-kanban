@@ -195,6 +195,56 @@ pub fn render(f: &mut Frame, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
+            Span::styled("状态管理 (Space s)", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  a", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         创建新状态"),
+        ]),
+        Line::from(vec![
+            Span::styled("  r", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         重命名状态"),
+        ]),
+        Line::from(vec![
+            Span::styled("  e", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         编辑显示名"),
+        ]),
+        Line::from(vec![
+            Span::styled("  h", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         状态列左移"),
+        ]),
+        Line::from(vec![
+            Span::styled("  l", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         状态列右移"),
+        ]),
+        Line::from(vec![
+            Span::styled("  d", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         删除状态"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("布局控制", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("+", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          增加当前列宽"),
+        ]),
+        Line::from(vec![
+            Span::styled("-", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          减少当前列宽"),
+        ]),
+        Line::from(vec![
+            Span::styled("=", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          重置列宽等分"),
+        ]),
+        Line::from(vec![
+            Span::styled("m", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          最大化/恢复列"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
             Span::styled("窗口管理", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
         ]),
         Line::from(""),

@@ -753,18 +753,21 @@ fn print_help() {
     println!("  hxk --help              显示此帮助信息");
     println!("  hxk --version           显示版本信息\n");
 
-    println!("CLI 命令（AI 友好接口）:");
-    println!("  project                项目管理命令");
-    println!("  task                   任务管理命令");
-    println!("  status                 状态列管理命令\n");
+    println!("结构化命令（推荐）:");
+    println!("  hxk project list                     列出项目");
+    println!("  hxk task list <project>              列出任务");
+    println!("  hxk task show <project> <id>        显示任务详情");
+    println!("  hxk task create <project> --status <status> --title <title>  创建任务");
+    println!("  hxk status list <project>            列出状态列");
+    println!("  hxk status create <project> <name> [--display <name>]  创建状态\n");
 
-    println!("传统命令（向后兼容）:");
-    println!("  create <名称>           在当前目录创建 .kanban/ 看板");
-    println!("  list                   列出所有项目");
-    println!("  add <标题>              快速添加任务");
-    println!("  config show             显示配置");
-    println!("  config editor <命令>    设置编辑器");
-    println!("  config viewer <命令>    设置预览器\n");
+    println!("简单命令（功能有限）:");
+    println!("  hxk list                              列出项目");
+    println!("  hxk create <名称>                     创建项目");
+    println!("  hxk add <标题>                       添加任务");
+    println!("  hxk config show                      显示配置");
+    println!("  hxk config editor <命令>             设置编辑器");
+    println!("  hxk config viewer <命令>             设置预览器\n");
 
     println!("详细用法:");
     println!("  hxk project --help     查看项目管理命令");
@@ -779,11 +782,13 @@ fn print_help() {
     println!("  # 交互式 TUI");
     println!("  hxk\n");
 
-    println!("  # CLI 命令（AI 友好）");
-    println!("  hxk project list");
-    println!("  hxk task list myproject --status todo");
-    println!("  hxk task create myproject --status todo --title \"新任务\"");
-    println!("  hxk status create myproject review --display \"Review\"\n");
+    println!("  # 列出项目和配置");
+    println!("  hxk list");
+    println!("  hxk config show\n");
+
+    println!("  # AI 协作");
+    println!("  在 TUI 中按 Space+p+i 复制项目信息到剪贴板");
+    println!("  AI 文档: ~/.kanban/CLAUDE.md\n");
 
     println!("  # 传统命令");
     println!("  hxk create 我的项目");

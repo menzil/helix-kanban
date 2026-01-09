@@ -1330,14 +1330,11 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                     // 格式化项目信息
                     let project_info = format!(
-                        "{} {}\n看板路径: {}\n文档: {}\n\n# Commands\n\n# 查看\nhxk project list\nhxk task list {} --status todo\nhxk task show {} <task-id>\n\n# 任务信息包含: ID | Order | Title | Priority | Tags | Created\n# 示例: 1 | 1000 | 标题 | high | tag1,tag2 | 1234567890\n\n# 任务操作\nhxk task create {} --status todo --title \"标题\"\nhxk task move {} <task-id> --to doing\nhxk task update {} <task-id> --priority high --tags \"tag1,tag2\"\n\n# 状态管理\nhxk status list {}\nhxk status create {} review --display \"Review\"\n\n完整文档: {}",
+                        "{} {}\n看板路径: {}\n文档: {}\n\n# 可用命令\n\n# 查看\nhxk list                                    # 列出所有项目\nhxk config show                           # 查看配置\n\n# 项目操作\nhxk create {}                         # 创建新项目\n\n# 任务操作\nhxk add \"任务标题\"                         # 快速添加任务\n\n# 结构化命令（推荐，但需要重新安装）\nhxk project list                          # 项目管理\nhxk task list {} --status todo           # 列出任务\nhxk task create {} --status todo --title \"标题\"  # 创建任务\nhxk status list {}                      # 状态管理\n\n详细文档: {}",
                         project_type_label,
                         project.name,
                         kanban_path,
                         claude_md_str,
-                        project.name,
-                        project.name,
-                        project.name,
                         project.name,
                         project.name,
                         project.name,
