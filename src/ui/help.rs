@@ -71,10 +71,6 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::styled("?", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("          显示帮助"),
         ]),
-        Line::from(vec![
-            Span::styled("ESC / Enter", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("      取消 / 执行"),
-        ]),
         Line::from(""),
         Line::from(vec![
             Span::styled("任务操作", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
@@ -266,7 +262,7 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("   关闭/清空窗口"),
         ]),
         Line::from(vec![
-            Span::styled("Space w hjkl", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::styled("Space w 方向键", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw(" 移动焦点"),
         ]),
     ];
@@ -350,6 +346,12 @@ pub fn render(f: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("  Enter", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("      确认选择"),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("ESC (取消)", Style::default().fg(Color::Rgb(129, 161, 193))),
+            Span::raw("   |   "),
+            Span::styled("Enter (确认)", Style::default().fg(Color::Rgb(129, 161, 193))),
         ]),
         Line::from(""),
         // Line::from(vec![
