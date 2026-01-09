@@ -238,7 +238,18 @@ pub fn move_task(
         .ok_or_else(|| "Invalid file path".to_string())?;
     let new_path = new_dir.join(filename);
 
+    // 移动文件
     fs::rename(old_path, &new_path).map_err(|e| e.to_string())?;
+
+    // 如果使用新格式（tasks.toml），需要更新元数据中的 status
+    let tasks_toml = project_path.join("tasks.toml");
+    if tasks_toml.exists() {
+        let mut metadata_map = load_tasks_metadata(project_path)?;
+        if let Some(metadata) = metadata_map.get_mut(&task.id.to_string()) {
+            metadata.status = new_status.to_string();
+            save_tasks_metadata(project_path, &metadata_map)?;
+        }
+    }
 
     Ok(new_path)
 }
