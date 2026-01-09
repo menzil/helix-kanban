@@ -563,22 +563,25 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 crate::ui::dialogs::ConfirmAction::DeleteTask => {
                     // 删除任务
                     if let Some(task) = get_selected_task(app) {
-                        let task_file = task.file_path.clone();
+                        // 获取项目路径
+                        if let Some(project) = app.get_focused_project() {
+                            let project_path = project.path.clone();
 
-                        // 删除任务文件
-                        if let Err(e) = std::fs::remove_file(&task_file) {
-                            log_debug(format!("删除任务文件失败: {}", e));
-                        } else {
-                            // 重新加载当前项目
-                            if let Err(e) = app.reload_current_project() {
-                                log_debug(format!("重新加载项目失败: {}", e));
-                            }
+                            // 删除任务（包括文件和 tasks.toml 中的元数据）
+                            if let Err(e) = crate::fs::delete_task(&project_path, &task) {
+                                log_debug(format!("删除任务失败: {}", e));
+                            } else {
+                                // 重新加载当前项目
+                                if let Err(e) = app.reload_current_project() {
+                                    log_debug(format!("重新加载项目失败: {}", e));
+                                }
 
-                            // 调整选中的任务索引
-                            let task_idx =
-                                app.selected_task_index.entry(app.focused_pane).or_insert(0);
-                            if *task_idx > 0 {
-                                *task_idx -= 1;
+                                // 调整选中的任务索引
+                                let task_idx =
+                                    app.selected_task_index.entry(app.focused_pane).or_insert(0);
+                                if *task_idx > 0 {
+                                    *task_idx -= 1;
+                                }
                             }
                         }
                     }

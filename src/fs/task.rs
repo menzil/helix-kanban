@@ -254,9 +254,21 @@ pub fn move_task(project_path: &Path, task: &Task, new_status: &str) -> Result<P
     Ok(new_path)
 }
 
-/// Delete a task
-pub fn delete_task(task: &Task) -> Result<(), String> {
-    fs::remove_file(&task.file_path).map_err(|e| e.to_string())
+/// Delete a task (removes file and metadata from tasks.toml)
+pub fn delete_task(project_path: &Path, task: &Task) -> Result<(), String> {
+    // 1. 删除文件
+    fs::remove_file(&task.file_path).map_err(|e| e.to_string())?;
+
+    // 2. 如果使用新格式，同步删除 tasks.toml 中的元数据
+    let tasks_toml = project_path.join("tasks.toml");
+    if tasks_toml.exists() {
+        let mut metadata_map = load_tasks_metadata(project_path)?;
+        if metadata_map.remove(&task.id.to_string()).is_some() {
+            save_tasks_metadata(project_path, &metadata_map)?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Slugify a string for use as a filename
@@ -832,9 +844,38 @@ Content.
         let task = load_task(&project_path.join("todo/1.md"), "todo").unwrap();
 
         // 删除任务
-        let result = delete_task(&task);
+        let result = delete_task(project_path, &task);
         assert!(result.is_ok());
         assert!(!project_path.join("todo/1.md").exists());
+    }
+
+    #[test]
+    fn test_delete_task_removes_metadata() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        // 创建任务
+        let mut task = Task::new(1, "Test Task".to_string(), "todo".to_string());
+        task.order = 1000;
+        save_task(project_path, &task).unwrap();
+
+        // 验证任务存在
+        let metadata = load_tasks_metadata(project_path).unwrap();
+        assert!(metadata.contains_key("1"));
+        assert!(project_path.join("todo/1.md").exists());
+
+        // 重新加载任务以获取正确的 file_path
+        let tasks = load_tasks_from_metadata(project_path, "todo").unwrap();
+        let task = &tasks[0];
+
+        // 删除任务
+        let result = delete_task(project_path, task);
+        assert!(result.is_ok());
+
+        // 验证文件和元数据都已删除
+        assert!(!project_path.join("todo/1.md").exists());
+        let metadata = load_tasks_metadata(project_path).unwrap();
+        assert!(!metadata.contains_key("1"));
     }
 
     #[test]

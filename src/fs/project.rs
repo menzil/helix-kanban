@@ -397,7 +397,8 @@ pub fn create_project(name: &str) -> Result<PathBuf, String> {
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
     // Create empty tasks.toml for new format (metadata separated)
-    fs::write(project_dir.join("tasks.toml"), "[tasks]\n")
+    // 使用空字符串而不是 "[tasks]"，因为 TasksConfig 使用 #[serde(flatten)]
+    fs::write(project_dir.join("tasks.toml"), "")
         .map_err(|e| format!("Failed to create tasks.toml: {}", e))?;
 
     Ok(project_dir)
@@ -453,7 +454,8 @@ pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
     // Create empty tasks.toml for new format (metadata separated)
-    fs::write(project_dir.join("tasks.toml"), "[tasks]\n")
+    // 使用空字符串而不是 "[tasks]"，因为 TasksConfig 使用 #[serde(flatten)]
+    fs::write(project_dir.join("tasks.toml"), "")
         .map_err(|e| format!("Failed to create tasks.toml: {}", e))?;
 
     // 自动将新创建的本地项目添加到索引

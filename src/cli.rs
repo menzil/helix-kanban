@@ -567,7 +567,7 @@ fn task_delete(project_name: &str, task_id: u32) -> Result<(), String> {
         .find(|t| t.id == task_id)
         .ok_or_else(|| format!("Task {} not found", task_id))?;
 
-    fs::delete_task(task)?;
+    fs::delete_task(&project_path, task)?;
 
     println!("Deleted task #{}", task_id);
 
