@@ -343,7 +343,7 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
             } else if (title.contains("创建") || title.contains("新建")) && title.contains("任务")
             {
                 // 创建新任务
-                log_debug(format!("调试: 识别为创建任务请求"));
+                log_debug("调试: 识别为创建任务请求".to_string());
                 if !value.is_empty() {
                     create_new_task(app, value);
                 } else {
@@ -364,8 +364,8 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 }
             } else if title.contains("创建新状态") {
                 // 创建新状态
-                if !value.is_empty() {
-                    if let Some(project) = app.get_focused_project() {
+                if !value.is_empty()
+                    && let Some(project) = app.get_focused_project() {
                         let project_path = project.path.clone();
 
                         // 使用输入值作为显示名
@@ -388,11 +388,10 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             }
                         }
                     }
-                }
             } else if title.contains("重命名状态") {
                 // 重命名状态
-                if !value.is_empty() {
-                    if let Some(project) = app.get_focused_project() {
+                if !value.is_empty()
+                    && let Some(project) = app.get_focused_project() {
                         let column = app
                             .selected_column
                             .get(&app.focused_pane)
@@ -428,11 +427,10 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             }
                         }
                     }
-                }
             } else if title.contains("编辑显示名") {
                 // 编辑状态显示名
-                if !value.is_empty() {
-                    if let Some(project) = app.get_focused_project() {
+                if !value.is_empty()
+                    && let Some(project) = app.get_focused_project() {
                         let column = app
                             .selected_column
                             .get(&app.focused_pane)
@@ -466,7 +464,6 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             }
                         }
                     }
-                }
             }
         }
         DialogType::Select { title, .. } => {
@@ -568,7 +565,7 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             let project_path = project.path.clone();
 
                             // 删除任务（包括文件和 tasks.toml 中的元数据）
-                            if let Err(e) = crate::fs::delete_task(&project_path, &task) {
+                            if let Err(e) = crate::fs::delete_task(&project_path, task) {
                                 log_debug(format!("删除任务失败: {}", e));
                             } else {
                                 // 重新加载当前项目
@@ -859,7 +856,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             // 隐藏当前项目（软删除）
             if let Some(project) = app.get_focused_project() {
                 let project_name = project.name.clone();
-                let project_type = project.project_type.clone();
+                let project_type = project.project_type;
                 let project_path = project.path.clone();
 
                 // 检查是否是当前工作目录的本地项目
@@ -1235,11 +1232,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                         if let Some(project) = app.get_focused_project() {
                             let project_path = project.path.clone();
                             let tasks_toml = project_path.join("tasks.toml");
-                            if tasks_toml.exists() {
-                                if let Ok(mut metadata_map) =
+                            if tasks_toml.exists()
+                                && let Ok(mut metadata_map) =
                                     crate::fs::task::load_tasks_metadata(&project_path)
-                                {
-                                    if let Some(metadata) =
+                                    && let Some(metadata) =
                                         metadata_map.get_mut(&task.id.to_string())
                                     {
                                         metadata.priority = if priority == "none" {
@@ -1252,8 +1248,6 @@ fn execute_command(app: &mut App, cmd: Command) {
                                             &metadata_map,
                                         );
                                     }
-                                }
-                            }
                         }
                         log_debug(format!("已设置优先级为: {}", priority));
                         // 重新加载项目
@@ -1842,8 +1836,8 @@ fn move_task_to_status(app: &mut App, direction: i32) {
     };
 
     // 找到任务并修改
-    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
-        if let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
+    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
+        && let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
             let old_status = task.status.clone();
             task.status = new_status.clone();
 
@@ -1864,7 +1858,6 @@ fn move_task_to_status(app: &mut App, direction: i32) {
                 }
             }
         }
-    }
 }
 
 /// 在列内上下移动任务
@@ -2044,7 +2037,7 @@ fn create_new_task(app: &mut App, title: String) {
     };
 
     // 获取项目路径（支持本地和全局项目）
-    let project_path = if let Some(project) = app.projects.iter().find(|p| &p.name == &project_name)
+    let project_path = if let Some(project) = app.projects.iter().find(|p| p.name == project_name)
     {
         project.path.clone()
     } else {
@@ -2202,8 +2195,8 @@ fn update_task_title(app: &mut App, new_title: String) {
     };
 
     // 找到任务并更新
-    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
-        if let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
+    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
+        && let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
             let old_title = task.title.clone();
             task.title = new_title;
 
@@ -2214,7 +2207,6 @@ fn update_task_title(app: &mut App, new_title: String) {
                 task.title = old_title; // 回滚
             }
         }
-    }
 }
 
 /// 更新任务标签
@@ -2248,8 +2240,8 @@ fn update_task_tags(app: &mut App, tags_string: String) {
 
     // 找到任务并更新
     let mut result = Ok(());
-    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
-        if let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
+    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
+        && let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
             let old_tags = task.tags.clone();
             task.tags = new_tags;
 
@@ -2260,7 +2252,6 @@ fn update_task_tags(app: &mut App, tags_string: String) {
                 task.tags = old_tags; // 回滚
             }
         }
-    }
 
     // 显示通知
     match result {

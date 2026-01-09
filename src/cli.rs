@@ -364,11 +364,10 @@ EXAMPLES:
     );
 }
 
-fn parse_flag<'a>(args: &'a [String], flag: &str) -> Option<String> {
+fn parse_flag(args: &[String], flag: &str) -> Option<String> {
     args.iter()
         .position(|s| s == flag)
-        .and_then(|i| args.get(i + 1))
-        .map(|s| s.clone())
+        .and_then(|i| args.get(i + 1)).cloned()
 }
 
 fn find_project_path(project_name: &str) -> Result<PathBuf, String> {

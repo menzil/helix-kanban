@@ -118,7 +118,7 @@ fn render_command_list(
 
     // 构建多列文本
     let mut lines = Vec::new();
-    let rows = (display_commands.len() + columns - 1) / columns;
+    let rows = display_commands.len().div_ceil(columns);
 
     for row in 0..rows {
         let mut spans = Vec::new();

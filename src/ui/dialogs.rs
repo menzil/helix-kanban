@@ -234,7 +234,7 @@ fn render_select_dialog(
 
             // 分割成多行
             let lines: Vec<&str> = item.lines().collect();
-            let main_line = lines.get(0).unwrap_or(&"");
+            let main_line = lines.first().unwrap_or(&"");
             let sub_line = lines.get(1);
 
             let mut content_lines = vec![];

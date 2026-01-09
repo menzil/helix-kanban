@@ -27,11 +27,10 @@ pub fn load_tasks_from_dir(dir: &Path, status: &str) -> Result<Vec<Task>, String
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
 
-        if path.extension().and_then(|s| s.to_str()) == Some("md") {
-            if let Ok(task) = load_task(&path, status) {
+        if path.extension().and_then(|s| s.to_str()) == Some("md")
+            && let Ok(task) = load_task(&path, status) {
                 tasks.push(task);
             }
-        }
     }
 
     // Sort by order (not ID)
@@ -120,15 +119,14 @@ pub fn get_next_task_id(project_path: &Path) -> Result<u32, String> {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
 
-        if path.is_dir() && !path.file_name().unwrap().to_str().unwrap().starts_with('.') {
-            if let Ok(tasks) = load_tasks_from_dir(&path, "") {
+        if path.is_dir() && !path.file_name().unwrap().to_str().unwrap().starts_with('.')
+            && let Ok(tasks) = load_tasks_from_dir(&path, "") {
                 for task in tasks {
                     if task.id > max_id {
                         max_id = task.id;
                     }
                 }
             }
-        }
     }
 
     Ok(max_id + 1)
@@ -397,7 +395,7 @@ pub fn load_tasks_from_metadata(project_path: &Path, status: &str) -> Result<Vec
         }
 
         // 3. 加载对应的内容文件
-        let content_path = project_path.join(&status).join(format!("{}.md", id));
+        let content_path = project_path.join(status).join(format!("{}.md", id));
 
         if !content_path.exists() {
             // 内容文件缺失，跳过此任务（可选：记录警告）
@@ -459,12 +457,11 @@ pub fn auto_migrate_project_to_new_format(project_path: &Path) -> Result<bool, S
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
 
-            if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                if let Ok(task) = load_task(&path, status) {
+            if path.extension().and_then(|s| s.to_str()) == Some("md")
+                && let Ok(task) = load_task(&path, status) {
                     all_tasks.push(task);
                     has_tasks = true;
                 }
-            }
         }
     }
 

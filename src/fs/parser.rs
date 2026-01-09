@@ -82,7 +82,7 @@ pub fn generate_task_md(title: &str, metadata: &HashMap<String, String>, content
 
     // Write content if exists
     if !content.is_empty() {
-        output.push_str("\n");
+        output.push('\n');
         output.push_str(content);
         output.push('\n');
     }

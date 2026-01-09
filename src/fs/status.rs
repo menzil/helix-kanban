@@ -24,11 +24,10 @@ pub fn validate_status_name(name: &str, existing_statuses: &[Status]) -> Result<
     }
 
     // 4. 必须以字母或数字开头
-    if let Some(first_char) = name.chars().next() {
-        if !first_char.is_ascii_alphanumeric() {
+    if let Some(first_char) = name.chars().next()
+        && !first_char.is_ascii_alphanumeric() {
             return Err("状态名称必须以字母或数字开头".to_string());
         }
-    }
 
     // 5. 重复检查
     if existing_statuses.iter().any(|s| s.name == name) {
