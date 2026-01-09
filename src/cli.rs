@@ -39,10 +39,6 @@ pub fn handle_cli() -> Result<bool> {
             Ok(false)
         }
         // 向后兼容的旧命令
-        "init" => {
-            cli_init()?;
-            Ok(false)
-        }
         "create" => {
             if args.len() < 3 {
                 eprintln!("用法: hxk create <project-name>");
@@ -65,29 +61,33 @@ pub fn handle_cli() -> Result<bool> {
         }
         "config" => {
             if args.len() < 3 {
-                crate::config::show_config()?;
-            } else {
-                match args[2].as_str() {
-                    "show" => crate::config::show_config()?,
-                    "editor" => {
-                        if args.len() < 4 {
-                            eprintln!("用法: hxk config editor <命令>");
-                            std::process::exit(1);
-                        }
-                        crate::config::set_editor(args[3..].join(" "))?;
-                    }
-                    "viewer" => {
-                        if args.len() < 4 {
-                            eprintln!("用法: hxk config viewer <命令>");
-                            std::process::exit(1);
-                        }
-                        crate::config::set_viewer(args[3..].join(" "))?;
-                    }
-                    _ => {
-                        eprintln!("未知的配置选项: {}", args[2]);
-                        eprintln!("可用选项: show, editor, viewer");
+                eprintln!("用法: hxk config <show|editor|viewer>");
+                eprintln!("示例:");
+                eprintln!("  hxk config show");
+                eprintln!("  hxk config editor nvim");
+                eprintln!("  hxk config viewer glow");
+                std::process::exit(1);
+            }
+            match args[2].as_str() {
+                "show" => crate::config::show_config()?,
+                "editor" => {
+                    if args.len() < 4 {
+                        eprintln!("用法: hxk config editor <命令>");
                         std::process::exit(1);
                     }
+                    crate::config::set_editor(args[3..].join(" "))?;
+                }
+                "viewer" => {
+                    if args.len() < 4 {
+                        eprintln!("用法: hxk config viewer <命令>");
+                        std::process::exit(1);
+                    }
+                    crate::config::set_viewer(args[3..].join(" "))?;
+                }
+                _ => {
+                    eprintln!("未知的配置选项: {}", args[2]);
+                    eprintln!("可用选项: show, editor, viewer");
+                    std::process::exit(1);
                 }
             }
             Ok(false)
@@ -655,15 +655,6 @@ fn status_delete(project_name: &str, name: &str, move_to: Option<&str>) -> Resul
 // Legacy Commands (Backward Compatibility)
 // ============================================================================
 
-/// 初始化本地看板（已废弃，保留以兼容旧版本）
-fn cli_init() -> Result<()> {
-    println!("提示: 'kanban init' 命令已废弃");
-    println!("本地项目会自动创建在 .kanban/ 目录");
-    println!("\n使用 'kanban create <name>' 创建本地看板");
-
-    Ok(())
-}
-
 /// 创建本地项目
 fn cli_create(name: &str) -> Result<()> {
     // 直接创建 .kanban 目录
@@ -771,7 +762,9 @@ fn print_help() {
     println!("  create <名称>           在当前目录创建 .kanban/ 看板");
     println!("  list                   列出所有项目");
     println!("  add <标题>              快速添加任务");
-    println!("  config [选项]           配置编辑器和预览器\n");
+    println!("  config show             显示配置");
+    println!("  config editor <命令>    设置编辑器");
+    println!("  config viewer <命令>    设置预览器\n");
 
     println!("详细用法:");
     println!("  hxk project --help     查看项目管理命令");
