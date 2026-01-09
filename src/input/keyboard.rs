@@ -126,154 +126,36 @@ fn handle_task_select_mode(app: &mut App, key: KeyEvent) -> bool {
 /// 处理对话框模式的按键
 fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
     use crate::ui::dialogs::DialogType;
+    use crate::ui::text_input::InputAction;
 
     if let Some(dialog) = &mut app.dialog {
         match dialog {
             DialogType::Input {
-                value,
-                cursor_pos,
-                title,
+                textarea,
                 ..
             } => {
-                // 判断是否是任务输入（支持多行）
-                let is_task_input = title.contains("任务");
-
-                // 调试：记录按键信息
-                log_debug(format!(
-                    "对话框按键: code={:?}, modifiers={:?}, is_task_input={}",
-                    key.code, key.modifiers, is_task_input
-                ));
-
-                match key.code {
-                    KeyCode::Esc => {
+                // 使用 HelixTextArea 处理按键
+                match textarea.handle_key(key) {
+                    InputAction::Submit => {
+                        // 提交内容
+                        let content = textarea.get_content();
+                        let dialog_clone = app.dialog.take().unwrap();
+                        handle_dialog_submit(app, dialog_clone, content);
+                        app.mode = Mode::Normal;
+                        app.ime_state.exit_dialog();
+                        return true;
+                    }
+                    InputAction::Cancel => {
+                        // 取消对话框
                         app.dialog = None;
                         app.mode = Mode::Normal;
-                        // 退出对话框，保存用户输入法并切换回英文
                         app.ime_state.exit_dialog();
+                        return true;
                     }
-                    KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) && is_task_input => {
-                        // Ctrl+J 换行（用于任务输入）
-                        log_debug("检测到 Ctrl+J，插入换行".to_string());
-                        let mut chars: Vec<char> = value.chars().collect();
-                        chars.insert(*cursor_pos, '\n');
-                        *value = chars.into_iter().collect();
-                        *cursor_pos += 1;
+                    InputAction::Continue => {
+                        // 继续编辑
+                        return true;
                     }
-                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        // Ctrl+S: 提交对话框（保存）
-                        log_debug("Ctrl+S: 提交对话框".to_string());
-                        let input_value = value.clone();
-                        let dialog_clone = dialog.clone();
-                        app.dialog = None;
-                        app.mode = Mode::Normal;
-                        // 退出对话框，保存用户输入法并切换回英文
-                        app.ime_state.exit_dialog();
-                        handle_dialog_submit(app, dialog_clone, input_value);
-                    }
-                    KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) && is_task_input => {
-                        // Ctrl+D: 提交对话框（完成）- 仅任务输入
-                        log_debug("Ctrl+D: 提交对话框".to_string());
-                        let input_value = value.clone();
-                        let dialog_clone = dialog.clone();
-                        app.dialog = None;
-                        app.mode = Mode::Normal;
-                        // 退出对话框，保存用户输入法并切换回英文
-                        app.ime_state.exit_dialog();
-                        handle_dialog_submit(app, dialog_clone, input_value);
-                    }
-                    KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        // Ctrl+Enter: 提交对话框（如果终端支持）
-                        log_debug("Ctrl+Enter: 提交对话框".to_string());
-                        let input_value = value.clone();
-                        let dialog_clone = dialog.clone();
-                        app.dialog = None;
-                        app.mode = Mode::Normal;
-                        // 退出对话框，保存用户输入法并切换回英文
-                        app.ime_state.exit_dialog();
-                        handle_dialog_submit(app, dialog_clone, input_value);
-                    }
-                    KeyCode::Enter => {
-                        // 普通 Enter: 根据输入类型决定行为
-                        if is_task_input {
-                            // 任务输入：Enter 插入换行，Ctrl+Enter 提交
-                            log_debug("任务输入: Enter 插入换行".to_string());
-                            let mut chars: Vec<char> = value.chars().collect();
-                            chars.insert(*cursor_pos, '\n');
-                            *value = chars.into_iter().collect();
-                            *cursor_pos += 1;
-                        } else {
-                            // 普通单行输入：Enter 提交
-                            log_debug("普通输入: Enter 提交".to_string());
-                            let input_value = value.clone();
-                            let dialog_clone = dialog.clone();
-                            app.dialog = None;
-                            app.mode = Mode::Normal;
-                            // 退出对话框，保存用户输入法并切换回英文
-                            app.ime_state.exit_dialog();
-                            handle_dialog_submit(app, dialog_clone, input_value);
-                        }
-                    }
-                    KeyCode::Backspace => {
-                    if *cursor_pos > 0 {
-                        // 使用 chars() 正确处理多字节字符
-                        let mut chars: Vec<char> = value.chars().collect();
-                        if *cursor_pos <= chars.len() {
-                            chars.remove(*cursor_pos - 1);
-                            *value = chars.into_iter().collect();
-                            *cursor_pos -= 1;
-                        }
-                    }
-                }
-                KeyCode::Delete => {
-                    let char_count = value.chars().count();
-                    if *cursor_pos < char_count {
-                        // 使用 chars() 正确处理多字节字符
-                        let mut chars: Vec<char> = value.chars().collect();
-                        chars.remove(*cursor_pos);
-                        *value = chars.into_iter().collect();
-                    }
-                }
-                KeyCode::Left => {
-                    *cursor_pos = cursor_pos.saturating_sub(1);
-                }
-                KeyCode::Right => {
-                    let char_count = value.chars().count();
-                    *cursor_pos = (*cursor_pos + 1).min(char_count);
-                }
-                KeyCode::Up if is_task_input => {
-                    // 上移到上一行
-                    *cursor_pos = move_cursor_vertical(value, *cursor_pos, -1);
-                }
-                KeyCode::Down if is_task_input => {
-                    // 下移到下一行
-                    *cursor_pos = move_cursor_vertical(value, *cursor_pos, 1);
-                }
-                KeyCode::Home => {
-                    if is_task_input {
-                        // 多行输入：移到当前行首
-                        *cursor_pos = get_line_start(value, *cursor_pos);
-                    } else {
-                        // 单行输入：移到开头
-                        *cursor_pos = 0;
-                    }
-                }
-                KeyCode::End => {
-                    if is_task_input {
-                        // 多行输入：移到当前行尾
-                        *cursor_pos = get_line_end(value, *cursor_pos);
-                    } else {
-                        // 单行输入：移到结尾
-                        *cursor_pos = value.chars().count();
-                    }
-                }
-                KeyCode::Char(c) => {
-                    // 使用 chars() 正确插入字符
-                    let mut chars: Vec<char> = value.chars().collect();
-                    chars.insert(*cursor_pos, c);
-                    *value = chars.into_iter().collect();
-                    *cursor_pos += 1;
-                }
-                _ => {}
                 }
             }
             DialogType::Select {
@@ -281,7 +163,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 selected,
                 filter,
                 ..
-            } => match key.code {
+            } => {
+                match key.code {
                 KeyCode::Esc => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
@@ -302,12 +185,11 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
 
                     if *selected < filtered_items.len() {
                         let selected_item = filtered_items[*selected].clone();
-                        let dialog_clone = dialog.clone();
-                        app.dialog = None;
+                        let dialog_clone = app.dialog.take().unwrap();
                         app.mode = Mode::Normal;
-                        // 退出对话框，保存用户输入法并切换回英文
                         app.ime_state.exit_dialog();
                         handle_dialog_submit(app, dialog_clone, selected_item);
+                        return true;
                     }
                 }
                 KeyCode::Up => {
@@ -340,8 +222,10 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     *selected = 0;
                 }
                 _ => {}
-            },
-            DialogType::Confirm { yes_selected, .. } => match key.code {
+                }
+            }
+            DialogType::Confirm { yes_selected, .. } => {
+                match key.code {
                 KeyCode::Esc | KeyCode::Char('n') => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
@@ -350,14 +234,13 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 }
                 KeyCode::Enter => {
                     let confirmed = *yes_selected;
-                    let dialog_clone = dialog.clone();
-                    app.dialog = None;
+                    let dialog_clone = app.dialog.take().unwrap();
                     app.mode = Mode::Normal;
-                    // 退出对话框，保存用户输入法并切换回英文
                     app.ime_state.exit_dialog();
                     if confirmed {
                         handle_dialog_submit(app, dialog_clone, String::new());
                     }
+                    return true;
                 }
                 KeyCode::Left | KeyCode::Char('h') => {
                     *yes_selected = false;  // 左边是"否"
@@ -366,17 +249,20 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     *yes_selected = true;   // 右边是"是"
                 }
                 KeyCode::Char('y') => {
-                    let dialog_clone = dialog.clone();
-                    app.dialog = None;
+                    *yes_selected = true;
+                    // 直接确认
+                    let dialog_clone = app.dialog.take().unwrap();
                     app.mode = Mode::Normal;
-                    // 退出对话框，保存用户输入法并切换回英文
                     app.ime_state.exit_dialog();
                     handle_dialog_submit(app, dialog_clone, String::new());
+                    return true;
                 }
                 _ => {}
-            },
+                }
+            }
         }
     }
+
     true
 }
 
@@ -846,8 +732,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新项目".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                value: String::new(),
-                cursor_pos: 0,
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
             });
         }
         Command::NewLocalProject => {
@@ -856,8 +741,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新本地项目 [L]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                value: String::new(),
-                cursor_pos: 0,
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
             });
         }
         Command::NewGlobalProject => {
@@ -866,8 +750,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新全局项目 [G]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                value: String::new(),
-                cursor_pos: 0,
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
             });
         }
         Command::OpenProject => {
@@ -901,14 +784,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             // 获取当前项目名
             if let Some(project) = app.get_focused_project() {
                 let current_name = project.name.clone();
-                let cursor_pos = current_name.chars().count();
                 app.mode = Mode::Dialog;
                 app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Input {
                     title: "重命名项目".to_string(),
                     prompt: "请输入新的项目名称:".to_string(),
-                    value: current_name,
-                    cursor_pos,
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true),
                 });
             }
         }
@@ -961,9 +842,8 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
-                prompt: "任务标题 (Enter=换行, Ctrl+Enter=提交):".to_string(),
-                value: String::new(),
-                cursor_pos: 0,
+                prompt: "任务标题和内容:".to_string(),
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
             });
         }
         Command::NewTaskInEditor => {
@@ -992,14 +872,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             // 获取当前选中的任务
             if let Some(task) = get_selected_task(app) {
                 let title = task.title.clone();
-                let cursor_pos = title.chars().count();
                 app.mode = Mode::Dialog;
                 app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
-                    prompt: "任务标题 (Enter=换行, Ctrl+Enter=提交):".to_string(),
-                    value: title,
-                    cursor_pos,
+                    prompt: "任务标题和内容:".to_string(),
+                    textarea: crate::ui::text_input::HelixTextArea::new(title, true),
                 });
             }
         }
@@ -1290,14 +1168,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             // 编辑任务标签
             if let Some(task) = get_selected_task(app) {
                 let current_tags = task.tags.join(", ");
-                let cursor_pos = current_tags.chars().count();
                 app.mode = Mode::Dialog;
                 app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
                 app.dialog = Some(DialogType::Input {
                     title: "编辑标签".to_string(),
                     prompt: "标签（逗号分隔）:".to_string(),
-                    value: current_tags,
-                    cursor_pos,
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_tags, true),
                 });
             }
         }
@@ -1400,8 +1276,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新状态".to_string(),
                 prompt: "请输入状态内部名称（英文、数字、下划线）:".to_string(),
-                value: String::new(),
-                cursor_pos: 0,
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
             });
         }
         Command::RenameStatus => {
@@ -1417,14 +1292,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             };
 
             if let Some((current_name, current_display)) = status_info {
-                let cursor_pos = current_name.chars().count();
                 app.mode = Mode::Dialog;
                 app.ime_state.enter_dialog();
                 app.dialog = Some(DialogType::Input {
                     title: format!("重命名状态: {}", current_display),
                     prompt: "请输入新的状态名称（英文、数字、下划线）:".to_string(),
-                    value: current_name,
-                    cursor_pos,
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true),
                 });
             }
         }
@@ -1441,14 +1314,12 @@ fn execute_command(app: &mut App, cmd: Command) {
             };
 
             if let Some((status_name, current_display)) = status_info {
-                let cursor_pos = current_display.chars().count();
                 app.mode = Mode::Dialog;
                 app.ime_state.enter_dialog();
                 app.dialog = Some(DialogType::Input {
                     title: format!("编辑显示名: {}", status_name),
                     prompt: "请输入新的显示名称:".to_string(),
-                    value: current_display,
-                    cursor_pos,
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_display, true),
                 });
             }
         }

@@ -30,8 +30,9 @@ clipboard = ["arboard"]
 
 [dependencies]
 # TUI framework
-ratatui = "0.30.0"
+ratatui = "0.29.0"
 crossterm = "0.29"
+tui-textarea = "0.7.0"  # Text editor widget with Helix-style keybindings
 
 # Data serialization
 serde = { version = "1.0", features = ["derive"] }

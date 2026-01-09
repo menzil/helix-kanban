@@ -7,6 +7,7 @@ pub mod layout;
 pub mod preview;
 mod sidebar;
 mod statusbar;
+pub mod text_input;
 pub mod welcome;
 
 use crate::app::App;
@@ -31,7 +32,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
     // statusbar::render(f, main_chunks[1], app);
 
     // 渲染对话框（如果有）
-    if let Some(dialog) = &app.dialog {
+    if let Some(dialog) = &mut app.dialog {
         dialogs::render_dialog(f, dialog);
     }
 

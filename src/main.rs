@@ -151,7 +151,6 @@ fn main() -> Result<()> {
 pub fn suspend_terminal<B>(terminal: &mut Terminal<B>) -> Result<()>
 where
     B: ratatui::backend::Backend + std::io::Write,
-    B::Error: Send + Sync + 'static,
 {
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -162,7 +161,6 @@ where
 pub fn resume_terminal<B>(terminal: &mut Terminal<B>) -> Result<()>
 where
     B: ratatui::backend::Backend + std::io::Write,
-    B::Error: Send + Sync + 'static,
 {
     enable_raw_mode()?;
     execute!(terminal.backend_mut(), EnterAlternateScreen)?;
@@ -173,7 +171,6 @@ where
 fn run_app<B>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()>
 where
     B: ratatui::backend::Backend + std::io::Write,
-    B::Error: Send + Sync + 'static,
 {
     loop {
         // 清除过期的通知

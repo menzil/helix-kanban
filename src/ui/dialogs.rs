@@ -6,6 +6,8 @@ use ratatui::{
     Frame,
 };
 
+use super::text_input::HelixTextArea;
+
 /// 确认操作类型
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConfirmAction {
@@ -16,14 +18,12 @@ pub enum ConfirmAction {
 }
 
 /// 对话框类型
-#[derive(Debug, Clone, PartialEq)]
 pub enum DialogType {
     /// 输入对话框（用于创建项目、任务等）
     Input {
         title: String,
         prompt: String,
-        value: String,
-        cursor_pos: usize,
+        textarea: HelixTextArea,
     },
     /// 选择对话框（用于选择项目等）
     Select {
@@ -42,7 +42,7 @@ pub enum DialogType {
 }
 
 /// 渲染居中的对话框
-pub fn render_dialog(f: &mut Frame, dialog: &DialogType) {
+pub fn render_dialog(f: &mut Frame, dialog: &mut DialogType) {
     // 渲染半透明背景遮罩
     render_backdrop(f, f.area());
 
@@ -55,9 +55,8 @@ pub fn render_dialog(f: &mut Frame, dialog: &DialogType) {
         DialogType::Input {
             title,
             prompt,
-            value,
-            cursor_pos,
-        } => render_input_dialog(f, area, title, prompt, value, *cursor_pos),
+            textarea,
+        } => render_input_dialog(f, area, title, prompt, textarea),
         DialogType::Select {
             title,
             items,
@@ -85,8 +84,7 @@ fn render_input_dialog(
     area: Rect,
     title: &str,
     prompt: &str,
-    value: &str,
-    cursor_pos: usize,
+    textarea: &mut HelixTextArea,
 ) {
     // 判断是否是任务输入（需要更大的输入框）
     let is_task_input = title.contains("任务");
@@ -109,7 +107,7 @@ fn render_input_dialog(
             .constraints([
                 Constraint::Length(2),  // 提示文本
                 Constraint::Min(10),    // 大输入框（多行）
-                Constraint::Length(3),  // 帮助文本
+                Constraint::Length(2),  // 模式指示器
             ])
             .split(inner)
     } else {
@@ -117,22 +115,22 @@ fn render_input_dialog(
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(2), // 提示文本
-                Constraint::Length(3), // 普通输入框
-                Constraint::Length(2), // 帮助文本
+                Constraint::Length(5), // 普通输入框
+                Constraint::Length(2), // 模式指示器
             ])
             .split(inner)
     };
 
     // 提示文本
     let prompt_text = if is_task_input {
-        Paragraph::new(format!("{}\n（支持多行输入，包含任务的所有内容）", prompt))
+        Paragraph::new(format!("{}\n（Helix 模式编辑，Esc 切换模式，:w 或 Ctrl+S 提交）", prompt))
             .style(Style::default().fg(Color::Rgb(129, 161, 193)))  // Nord frost color
     } else {
         Paragraph::new(prompt).style(Style::default().fg(Color::Rgb(129, 161, 193)))
     };
     f.render_widget(prompt_text, chunks[0]);
 
-    // 输入框
+    // 输入框 - 使用 HelixTextArea 渲染
     let input_block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))  // Nord cyan
@@ -141,75 +139,11 @@ fn render_input_dialog(
     let input_inner = input_block.inner(chunks[1]);
     f.render_widget(input_block, chunks[1]);
 
-    // 渲染输入内容和光标（支持多行）
-    let chars: Vec<char> = value.chars().collect();
-    let input_with_cursor = if cursor_pos >= chars.len() {
-        // 光标在末尾 - 使用反色块更明显
-        format!("{}█", value)
-    } else {
-        // 光标在中间 - 使用反色竖线
-        let mut display_chars = chars.clone();
-        display_chars.insert(cursor_pos, '█');
-        display_chars.into_iter().collect()
-    };
+    // 渲染 TextArea
+    textarea.render(f, input_inner);
 
-    // 计算光标所在行号（用于自动滚动）
-    let cursor_line = if cursor_pos == 0 {
-        0
-    } else {
-        // 使用字符迭代器避免字节边界错误
-        value
-            .chars()
-            .take(cursor_pos)
-            .filter(|&c| c == '\n')
-            .count()
-    };
-
-    // 计算可见区域的高度
-    let visible_height = input_inner.height as usize;
-
-    // 计算滚动偏移量，确保光标可见且有上下文
-    // 策略：保持光标在可见区域的中间位置，或至少距离边缘 2 行
-    let scroll_offset = if visible_height <= 4 {
-        // 视图太小，简单处理
-        if cursor_line > 0 {
-            cursor_line.saturating_sub(1) as u16
-        } else {
-            0
-        }
-    } else {
-        // 正常大小的视图，保持光标在中间或距离边缘至少 2 行
-        let margin = 2;
-        let preferred_position = visible_height / 2;
-
-        if cursor_line < margin {
-            // 光标在顶部，不滚动
-            0
-        } else if cursor_line < preferred_position {
-            // 光标在上半部分，轻微滚动
-            0
-        } else {
-            // 光标在下半部分或底部，滚动以保持在中间或距离底部有边距
-            (cursor_line.saturating_sub(preferred_position)) as u16
-        }
-    };
-
-    let input_text = Paragraph::new(input_with_cursor)
-        .wrap(Wrap { trim: false })  // 支持自动换行
-        .scroll((scroll_offset, 0));  // 垂直滚动到光标位置
-    f.render_widget(input_text, input_inner);
-
-    // 帮助文本
-    let help_text = if is_task_input {
-        "Enter: 换行 | Ctrl+S/Ctrl+D: 提交 | ESC: 取消"
-    } else {
-        "Enter: 确认 | ESC: 取消"
-    };
-
-    let help = Paragraph::new(help_text)
-        .style(Style::default().fg(Color::DarkGray))
-        .alignment(Alignment::Center);
-    f.render_widget(help, chunks[2]);
+    // 渲染模式指示器
+    textarea.render_mode_indicator(f, chunks[2]);
 }
 
 /// 渲染选择对话框
