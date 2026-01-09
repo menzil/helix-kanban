@@ -46,7 +46,19 @@ pub fn render_dialog(f: &mut Frame, dialog: &mut DialogType) {
     // 渲染半透明背景遮罩
     render_backdrop(f, f.area());
 
-    let area = centered_rect(60, 50, f.area());
+    // 根据对话框类型和最大化状态决定大小
+    let area = match dialog {
+        DialogType::Input { textarea, .. } => {
+            if textarea.is_maximized() {
+                // 最大化：占据 90% 的屏幕空间
+                centered_rect(90, 90, f.area())
+            } else {
+                // 正常大小
+                centered_rect(60, 50, f.area())
+            }
+        }
+        _ => centered_rect(60, 50, f.area()),
+    };
 
     // 清空对话框区域
     f.render_widget(Clear, area);

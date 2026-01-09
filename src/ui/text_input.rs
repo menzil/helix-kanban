@@ -47,6 +47,8 @@ pub struct HelixTextArea {
     last_key_time: Instant,
     /// 是否显示行号
     show_line_numbers: bool,
+    /// 是否最大化
+    is_maximized: bool,
 }
 
 impl HelixTextArea {
@@ -85,12 +87,23 @@ impl HelixTextArea {
             key_sequence: Vec::new(),
             last_key_time: Instant::now(),
             show_line_numbers,
+            is_maximized: false,  // 默认不最大化
         }
     }
 
     /// 获取当前模式
     pub fn get_mode(&self) -> EditMode {
         self.mode
+    }
+
+    /// 获取是否最大化
+    pub fn is_maximized(&self) -> bool {
+        self.is_maximized
+    }
+
+    /// 切换最大化状态
+    pub fn toggle_maximize(&mut self) {
+        self.is_maximized = !self.is_maximized;
     }
 
     /// 获取内容
@@ -254,8 +267,24 @@ impl HelixTextArea {
                 InputAction::Continue
             }
 
-            // 删除
-            KeyCode::Char('x') | KeyCode::Delete => {
+            // Helix 风格：x 选择当前行，X 扩展到行边界
+            // 注意：tui-textarea 不支持可视选择，所以我们用复制整行来模拟
+            KeyCode::Char('x') => {
+                // 选择当前行（复制整行）
+                self.textarea.move_cursor(CursorMove::Head);
+                self.textarea.start_selection();
+                self.textarea.move_cursor(CursorMove::End);
+                InputAction::Continue
+            }
+            KeyCode::Char('X') => {
+                // 扩展选择到行边界（选择整行包括换行符）
+                self.textarea.move_cursor(CursorMove::Head);
+                self.textarea.start_selection();
+                self.textarea.move_cursor(CursorMove::Down);
+                self.textarea.move_cursor(CursorMove::Head);
+                InputAction::Continue
+            }
+            KeyCode::Delete => {
                 self.textarea.delete_next_char();
                 InputAction::Continue
             }
@@ -277,6 +306,12 @@ impl HelixTextArea {
             // 复制/粘贴
             KeyCode::Char('p') => {
                 self.textarea.paste();
+                InputAction::Continue
+            }
+
+            // 切换最大化（类似 status 的 m 键）
+            KeyCode::Char('m') => {
+                self.toggle_maximize();
                 InputAction::Continue
             }
 
@@ -393,27 +428,30 @@ impl HelixTextArea {
 
     /// 渲染模式指示器
     pub fn render_mode_indicator(&self, f: &mut Frame, area: Rect) {
-        let (mode_text, style) = match self.mode {
+        let (mode_text, style, alignment) = match self.mode {
             EditMode::Insert => (
                 "-- INSERT --".to_string(),
                 RatatuiStyle::default().fg(RatatuiColor::Rgb(163, 190, 140)),  // Nord green
+                Alignment::Center,
             ),
             EditMode::Normal => (
                 "-- NORMAL --".to_string(),
                 RatatuiStyle::default().fg(RatatuiColor::Rgb(136, 192, 208)),  // Nord cyan
+                Alignment::Center,
             ),
             EditMode::Command => {
                 let text = format!(":{}█", self.command_buffer);
                 (
                     text,
                     RatatuiStyle::default().fg(RatatuiColor::Rgb(235, 203, 139)),  // Nord yellow
+                    Alignment::Left,  // 命令模式左对齐
                 )
             }
         };
 
         let paragraph = Paragraph::new(mode_text)
             .style(style)
-            .alignment(Alignment::Center);
+            .alignment(alignment);
         f.render_widget(paragraph, area);
     }
 

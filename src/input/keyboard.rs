@@ -142,14 +142,14 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         let dialog_clone = app.dialog.take().unwrap();
                         handle_dialog_submit(app, dialog_clone, content);
                         app.mode = Mode::Normal;
-                        app.ime_state.exit_dialog();
+                        // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
                         return true;
                     }
                     InputAction::Cancel => {
                         // 取消对话框
                         app.dialog = None;
                         app.mode = Mode::Normal;
-                        app.ime_state.exit_dialog();
+                        // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
                         return true;
                     }
                     InputAction::Continue => {
@@ -168,8 +168,8 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 KeyCode::Esc => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
-                    // 退出对话框，保存用户输入法并切换回英文
-                    app.ime_state.exit_dialog();
+                    // 退出对话框，保存用户输入法并切换回英文（已禁用）
+                    // app.ime_state.exit_dialog();
                 }
                 KeyCode::Enter => {
                     // 选择当前项
@@ -187,7 +187,7 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         let selected_item = filtered_items[*selected].clone();
                         let dialog_clone = app.dialog.take().unwrap();
                         app.mode = Mode::Normal;
-                        app.ime_state.exit_dialog();
+                        // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
                         handle_dialog_submit(app, dialog_clone, selected_item);
                         return true;
                     }
@@ -229,14 +229,14 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 KeyCode::Esc | KeyCode::Char('n') => {
                     app.dialog = None;
                     app.mode = Mode::Normal;
-                    // 退出对话框，保存用户输入法并切换回英文
-                    app.ime_state.exit_dialog();
+                    // 退出对话框，保存用户输入法并切换回英文（已禁用）
+                    // app.ime_state.exit_dialog();
                 }
                 KeyCode::Enter => {
                     let confirmed = *yes_selected;
                     let dialog_clone = app.dialog.take().unwrap();
                     app.mode = Mode::Normal;
-                    app.ime_state.exit_dialog();
+                    // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
                     if confirmed {
                         handle_dialog_submit(app, dialog_clone, String::new());
                     }
@@ -253,7 +253,7 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     // 直接确认
                     let dialog_clone = app.dialog.take().unwrap();
                     app.mode = Mode::Normal;
-                    app.ime_state.exit_dialog();
+                    // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
                     handle_dialog_submit(app, dialog_clone, String::new());
                     return true;
                 }
@@ -728,7 +728,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewProject => {
             app.mode = Mode::Dialog;
-            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+            // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
             app.dialog = Some(DialogType::Input {
                 title: "创建新项目".to_string(),
                 prompt: "请输入项目名称:".to_string(),
@@ -737,7 +737,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewLocalProject => {
             app.mode = Mode::Dialog;
-            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+            // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
             app.dialog = Some(DialogType::Input {
                 title: "创建新本地项目 [L]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
@@ -746,7 +746,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewGlobalProject => {
             app.mode = Mode::Dialog;
-            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+            // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
             app.dialog = Some(DialogType::Input {
                 title: "创建新全局项目 [G]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
@@ -755,7 +755,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::OpenProject => {
             app.mode = Mode::Dialog;
-            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+            // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
             // 生成格式化的项目列表：[G/L] 项目名\n    路径
             let project_items: Vec<String> = app.projects.iter().map(|p| {
                 let type_marker = match p.project_type {
@@ -785,7 +785,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             if let Some(project) = app.get_focused_project() {
                 let current_name = project.name.clone();
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+                // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
                 app.dialog = Some(DialogType::Input {
                     title: "重命名项目".to_string(),
                     prompt: "请输入新的项目名称:".to_string(),
@@ -812,7 +812,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                 // 其他项目（全局项目或其他目录的本地项目）：显示确认对话框
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();
+                // app.ime_state.enter_dialog();  // 已禁用输入法自动切换
                 app.dialog = Some(DialogType::Confirm {
                     title: "隐藏项目".to_string(),
                     message: format!("确定要隐藏项目 \"{}\" 吗？\n项目文件不会被删除，下次从该目录启动时会重新加载。", project_name),
@@ -828,7 +828,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                 // 显示确认对话框
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+                // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
                 app.dialog = Some(DialogType::Confirm {
                     title: "删除项目文件".to_string(),
                     message: format!("确定要彻底删除项目 \"{}\" 吗？\n这将永久删除项目的所有文件和任务！此操作不可恢复！", project_name),
@@ -839,7 +839,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewTask => {
             app.mode = Mode::Dialog;
-            app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+            // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
                 prompt: "任务标题和内容:".to_string(),
@@ -873,7 +873,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             if let Some(task) = get_selected_task(app) {
                 let title = task.title.clone();
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+                // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
                     prompt: "任务标题和内容:".to_string(),
@@ -1053,7 +1053,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                 // 显示确认对话框
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+                // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
                 app.dialog = Some(DialogType::Confirm {
                     title: "删除任务".to_string(),
                     message: format!("确定要删除任务 \"{}\" 吗？", task_title),
@@ -1169,7 +1169,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             if let Some(task) = get_selected_task(app) {
                 let current_tags = task.tags.join(", ");
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法
+                // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
                 app.dialog = Some(DialogType::Input {
                     title: "编辑标签".to_string(),
                     prompt: "标签（逗号分隔）:".to_string(),
@@ -1272,7 +1272,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::CreateStatus => {
             // 创建新状态
             app.mode = Mode::Dialog;
-            app.ime_state.enter_dialog();
+            // app.ime_state.enter_dialog();  // 已禁用输入法自动切换
             app.dialog = Some(DialogType::Input {
                 title: "创建新状态".to_string(),
                 prompt: "请输入状态内部名称（英文、数字、下划线）:".to_string(),
@@ -1293,7 +1293,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
             if let Some((current_name, current_display)) = status_info {
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();
+                // app.ime_state.enter_dialog();  // 已禁用输入法自动切换
                 app.dialog = Some(DialogType::Input {
                     title: format!("重命名状态: {}", current_display),
                     prompt: "请输入新的状态名称（英文、数字、下划线）:".to_string(),
@@ -1315,7 +1315,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
             if let Some((status_name, current_display)) = status_info {
                 app.mode = Mode::Dialog;
-                app.ime_state.enter_dialog();
+                // app.ime_state.enter_dialog();  // 已禁用输入法自动切换
                 app.dialog = Some(DialogType::Input {
                     title: format!("编辑显示名: {}", status_name),
                     prompt: "请输入新的显示名称:".to_string(),
@@ -1419,7 +1419,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                     };
 
                     app.mode = Mode::Dialog;
-                    app.ime_state.enter_dialog();
+                    // app.ime_state.enter_dialog();  // 已禁用输入法自动切换
                     app.dialog = Some(DialogType::Confirm {
                         title: "删除状态".to_string(),
                         message,
