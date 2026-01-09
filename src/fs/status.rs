@@ -110,7 +110,25 @@ pub fn rename_status(
             .map_err(|e| format!("重命名目录失败: {}", e))?;
     }
 
-    // 4. 更新配置文件
+    // 4. 如果使用新格式（tasks.toml），更新所有任务的 status 字段
+    let tasks_toml = project_path.join("tasks.toml");
+    if tasks_toml.exists() && old_name != new_name {
+        let mut metadata_map = crate::fs::task::load_tasks_metadata(project_path)?;
+        let mut updated = false;
+
+        for (_id, metadata) in metadata_map.iter_mut() {
+            if metadata.status == old_name {
+                metadata.status = new_name.to_string();
+                updated = true;
+            }
+        }
+
+        if updated {
+            crate::fs::task::save_tasks_metadata(project_path, &metadata_map)?;
+        }
+    }
+
+    // 5. 更新配置文件
     let mut config = super::load_project_config(project_path)?;
 
     // 更新 order 数组
@@ -127,7 +145,7 @@ pub fn rename_status(
         },
     );
 
-    // 5. 保存配置
+    // 6. 保存配置
     super::save_project_config(project_path, &config)?;
 
     Ok(())
@@ -246,4 +264,309 @@ pub fn move_status_order(
     super::save_project_config(project_path, &config)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    /// 创建测试用的项目目录和配置
+    fn setup_test_project() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+
+        // 创建项目配置
+        let config = r#"name = "Test Project"
+created = "1234567890"
+
+[statuses]
+order = ["todo", "doing", "done"]
+
+[statuses.todo]
+display = "Todo"
+
+[statuses.doing]
+display = "Doing"
+
+[statuses.done]
+display = "Done"
+"#;
+        fs::write(project_path.join(".kanban.toml"), config).unwrap();
+
+        // 创建状态目录
+        fs::create_dir_all(project_path.join("todo")).unwrap();
+        fs::create_dir_all(project_path.join("doing")).unwrap();
+        fs::create_dir_all(project_path.join("done")).unwrap();
+
+        temp_dir
+    }
+
+    #[test]
+    fn test_validate_status_name_empty() {
+        let existing: Vec<Status> = vec![];
+        assert!(validate_status_name("", &existing).is_err());
+        assert!(validate_status_name("   ", &existing).is_err());
+    }
+
+    #[test]
+    fn test_validate_status_name_too_long() {
+        let existing: Vec<Status> = vec![];
+        let long_name = "a".repeat(51);
+        assert!(validate_status_name(&long_name, &existing).is_err());
+    }
+
+    #[test]
+    fn test_validate_status_name_invalid_chars() {
+        let existing: Vec<Status> = vec![];
+        assert!(validate_status_name("hello world", &existing).is_err()); // 空格
+        assert!(validate_status_name("hello@world", &existing).is_err()); // @
+        assert!(validate_status_name("你好", &existing).is_err()); // 中文
+    }
+
+    #[test]
+    fn test_validate_status_name_must_start_with_alphanumeric() {
+        let existing: Vec<Status> = vec![];
+        assert!(validate_status_name("_test", &existing).is_err());
+        assert!(validate_status_name("-test", &existing).is_err());
+    }
+
+    #[test]
+    fn test_validate_status_name_duplicate() {
+        let existing = vec![
+            Status { name: "todo".to_string(), display: "Todo".to_string() },
+        ];
+        assert!(validate_status_name("todo", &existing).is_err());
+    }
+
+    #[test]
+    fn test_validate_status_name_reserved() {
+        let existing: Vec<Status> = vec![];
+        assert!(validate_status_name(".kanban", &existing).is_err());
+        assert!(validate_status_name(".git", &existing).is_err());
+    }
+
+    #[test]
+    fn test_validate_status_name_valid() {
+        let existing: Vec<Status> = vec![];
+        assert!(validate_status_name("todo", &existing).is_ok());
+        assert!(validate_status_name("in-progress", &existing).is_ok());
+        assert!(validate_status_name("done_2024", &existing).is_ok());
+        assert!(validate_status_name("A1", &existing).is_ok());
+    }
+
+    #[test]
+    fn test_validate_display_name_empty() {
+        assert!(validate_display_name("").is_err());
+        assert!(validate_display_name("   ").is_err());
+    }
+
+    #[test]
+    fn test_validate_display_name_too_long() {
+        let long_name = "啊".repeat(51);
+        assert!(validate_display_name(&long_name).is_err());
+    }
+
+    #[test]
+    fn test_validate_display_name_valid() {
+        assert!(validate_display_name("Todo").is_ok());
+        assert!(validate_display_name("进行中").is_ok());
+        assert!(validate_display_name("Done ✓").is_ok());
+    }
+
+    #[test]
+    fn test_create_status() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 创建新状态
+        let result = create_status(project_path, "review", "Review");
+        assert!(result.is_ok());
+
+        // 验证目录已创建
+        assert!(project_path.join("review").exists());
+
+        // 验证配置已更新
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert!(config.statuses.order.contains(&"review".to_string()));
+        assert!(config.statuses.statuses.contains_key("review"));
+        assert_eq!(config.statuses.statuses.get("review").unwrap().display, "Review");
+    }
+
+    #[test]
+    fn test_rename_status() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 在 todo 目录创建一个任务文件
+        fs::write(project_path.join("todo/1.md"), "Test task").unwrap();
+
+        // 重命名状态
+        let result = rename_status(project_path, "todo", "backlog", "Backlog");
+        assert!(result.is_ok());
+
+        // 验证旧目录不存在，新目录存在
+        assert!(!project_path.join("todo").exists());
+        assert!(project_path.join("backlog").exists());
+
+        // 验证任务文件已移动
+        assert!(project_path.join("backlog/1.md").exists());
+
+        // 验证配置已更新
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert!(!config.statuses.order.contains(&"todo".to_string()));
+        assert!(config.statuses.order.contains(&"backlog".to_string()));
+    }
+
+    #[test]
+    fn test_update_status_display() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 更新显示名
+        let result = update_status_display(project_path, "todo", "待办事项");
+        assert!(result.is_ok());
+
+        // 验证配置已更新
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.statuses.get("todo").unwrap().display, "待办事项");
+    }
+
+    #[test]
+    fn test_update_status_display_not_found() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        let result = update_status_display(project_path, "nonexistent", "Test");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_delete_status() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 删除状态
+        let result = delete_status(project_path, "doing", None);
+        assert!(result.is_ok());
+
+        // 验证目录已删除
+        assert!(!project_path.join("doing").exists());
+
+        // 验证配置已更新
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert!(!config.statuses.order.contains(&"doing".to_string()));
+        assert!(!config.statuses.statuses.contains_key("doing"));
+    }
+
+    #[test]
+    fn test_delete_status_with_move() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 在 doing 目录创建任务
+        fs::write(project_path.join("doing/1.md"), "Task 1").unwrap();
+        fs::write(project_path.join("doing/2.md"), "Task 2").unwrap();
+
+        // 删除状态并移动任务到 done
+        let result = delete_status(project_path, "doing", Some("done"));
+        assert!(result.is_ok());
+
+        // 验证任务已移动
+        assert!(project_path.join("done/1.md").exists());
+        assert!(project_path.join("done/2.md").exists());
+
+        // 验证原目录已删除
+        assert!(!project_path.join("doing").exists());
+    }
+
+    #[test]
+    fn test_move_status_order_left() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 初始顺序: [todo, doing, done]
+        // 将 doing 左移
+        let result = move_status_order(project_path, "doing", -1);
+        assert!(result.is_ok());
+
+        // 验证顺序: [doing, todo, done]
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.order, vec!["doing", "todo", "done"]);
+    }
+
+    #[test]
+    fn test_move_status_order_right() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 初始顺序: [todo, doing, done]
+        // 将 doing 右移
+        let result = move_status_order(project_path, "doing", 1);
+        assert!(result.is_ok());
+
+        // 验证顺序: [todo, done, doing]
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.order, vec!["todo", "done", "doing"]);
+    }
+
+    #[test]
+    fn test_move_status_order_to_first() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 初始顺序: [todo, doing, done]
+        // 将 done 移到最左侧 (direction = -2)
+        let result = move_status_order(project_path, "done", -2);
+        assert!(result.is_ok());
+
+        // 验证顺序: [done, todo, doing]
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.order, vec!["done", "todo", "doing"]);
+    }
+
+    #[test]
+    fn test_move_status_order_to_last() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 初始顺序: [todo, doing, done]
+        // 将 todo 移到最右侧 (direction = 2)
+        let result = move_status_order(project_path, "todo", 2);
+        assert!(result.is_ok());
+
+        // 验证顺序: [doing, done, todo]
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.order, vec!["doing", "done", "todo"]);
+    }
+
+    #[test]
+    fn test_move_status_order_boundary() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 将最左边的 todo 继续左移，应该不变
+        let result = move_status_order(project_path, "todo", -1);
+        assert!(result.is_ok());
+
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.order, vec!["todo", "doing", "done"]);
+
+        // 将最右边的 done 继续右移，应该不变
+        let result = move_status_order(project_path, "done", 1);
+        assert!(result.is_ok());
+
+        let config = crate::fs::load_project_config(project_path).unwrap();
+        assert_eq!(config.statuses.order, vec!["todo", "doing", "done"]);
+    }
+
+    #[test]
+    fn test_move_status_order_not_found() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        let result = move_status_order(project_path, "nonexistent", 1);
+        assert!(result.is_err());
+    }
 }

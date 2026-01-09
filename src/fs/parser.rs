@@ -120,6 +120,110 @@ It can span multiple lines.
     }
 
     #[test]
+    fn test_parse_task_with_tags() {
+        let md = r#"# Task with Tags
+
+id: 1
+order: 1000
+tags: bug, urgent, frontend
+
+Content here.
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "Task with Tags");
+        assert_eq!(parsed.metadata.get("id"), Some(&"1".to_string()));
+        assert_eq!(parsed.metadata.get("tags"), Some(&"bug, urgent, frontend".to_string()));
+    }
+
+    #[test]
+    fn test_parse_task_empty_content() {
+        let md = r#"# Task Without Content
+
+id: 1
+created: 1234567890
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "Task Without Content");
+        assert_eq!(parsed.metadata.get("id"), Some(&"1".to_string()));
+        assert!(parsed.content.is_empty());
+    }
+
+    #[test]
+    fn test_parse_task_no_metadata() {
+        let md = r#"# Task Without Metadata
+
+This is just content without any metadata.
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "Task Without Metadata");
+        assert!(parsed.metadata.is_empty());
+        assert!(parsed.content.contains("just content"));
+    }
+
+    #[test]
+    fn test_parse_task_multiline_content() {
+        let md = r#"# Complex Task
+
+id: 1
+
+## Subtasks
+
+- [ ] First subtask
+- [x] Second subtask
+
+## Notes
+
+Some additional notes here.
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "Complex Task");
+        assert!(parsed.content.contains("## Subtasks"));
+        assert!(parsed.content.contains("- [ ] First subtask"));
+        assert!(parsed.content.contains("## Notes"));
+    }
+
+    #[test]
+    fn test_parse_task_colon_in_content() {
+        let md = r#"# Task with Colon
+
+id: 1
+
+This content has colons: like URLs https://example.com
+And times like 10:30 AM
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "Task with Colon");
+        // 内容中的冒号应该被保留
+        assert!(parsed.content.contains("https://example.com"));
+        assert!(parsed.content.contains("10:30 AM"));
+    }
+
+    #[test]
+    fn test_parse_empty_file() {
+        let result = parse_task_md("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_no_title() {
+        let md = "   \n\nSome content";
+        let result = parse_task_md(md);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_title_with_multiple_hashes() {
+        let md = "### Heading Level 3\n\nContent";
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "Heading Level 3");
+    }
+
+    #[test]
     fn test_generate_task_md() {
         let mut metadata = HashMap::new();
         metadata.insert("created".to_string(), "2025-12-08".to_string());
@@ -128,5 +232,87 @@ It can span multiple lines.
         assert!(md.contains("# Test"));
         assert!(md.contains("created: 2025-12-08"));
         assert!(md.contains("Content"));
+    }
+
+    #[test]
+    fn test_generate_task_md_empty_content() {
+        let mut metadata = HashMap::new();
+        metadata.insert("id".to_string(), "1".to_string());
+
+        let md = generate_task_md("Task", &metadata, "");
+        assert!(md.contains("# Task"));
+        assert!(md.contains("id: 1"));
+        // 空内容不应该有额外的换行
+        assert!(!md.ends_with("\n\n"));
+    }
+
+    #[test]
+    fn test_generate_task_md_multiple_metadata() {
+        let mut metadata = HashMap::new();
+        metadata.insert("id".to_string(), "1".to_string());
+        metadata.insert("order".to_string(), "1000".to_string());
+        metadata.insert("priority".to_string(), "high".to_string());
+
+        let md = generate_task_md("Task", &metadata, "Content");
+        assert!(md.contains("id: 1"));
+        assert!(md.contains("order: 1000"));
+        assert!(md.contains("priority: high"));
+    }
+
+    #[test]
+    fn test_roundtrip_parse_generate() {
+        let original_title = "Roundtrip Test";
+        let mut original_metadata = HashMap::new();
+        original_metadata.insert("id".to_string(), "42".to_string());
+        original_metadata.insert("created".to_string(), "1234567890".to_string());
+        let original_content = "This is the content.";
+
+        // Generate markdown
+        let md = generate_task_md(original_title, &original_metadata, original_content);
+
+        // Parse it back
+        let parsed = parse_task_md(&md).unwrap();
+
+        assert_eq!(parsed.title, original_title);
+        assert_eq!(parsed.metadata.get("id"), Some(&"42".to_string()));
+        assert_eq!(parsed.metadata.get("created"), Some(&"1234567890".to_string()));
+        assert_eq!(parsed.content, original_content);
+    }
+
+    #[test]
+    fn test_parse_chinese_title() {
+        let md = r#"# 中文任务标题
+
+id: 1
+priority: 高
+
+这是中文内容。
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(parsed.title, "中文任务标题");
+        assert_eq!(parsed.metadata.get("priority"), Some(&"高".to_string()));
+        assert!(parsed.content.contains("中文内容"));
+    }
+
+    #[test]
+    fn test_parse_special_characters_in_value() {
+        let md = r#"# Task
+
+url: https://example.com/path?query=value&other=123
+command: echo "hello world"
+
+Content.
+"#;
+
+        let parsed = parse_task_md(md).unwrap();
+        assert_eq!(
+            parsed.metadata.get("url"),
+            Some(&"https://example.com/path?query=value&other=123".to_string())
+        );
+        assert_eq!(
+            parsed.metadata.get("command"),
+            Some(&"echo \"hello world\"".to_string())
+        );
     }
 }

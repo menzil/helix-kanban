@@ -484,6 +484,421 @@ pub fn auto_migrate_project_to_new_format(project_path: &Path) -> Result<bool, S
 mod tests {
     use super::*;
     use std::fs;
+    use tempfile::TempDir;
+
+    /// 创建测试用的项目目录和配置（旧格式，无 tasks.toml）
+    fn setup_legacy_project() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+
+        // 创建项目配置
+        let config = r#"name = "Test Project"
+created = "1234567890"
+
+[statuses]
+order = ["todo", "doing", "done"]
+
+[statuses.todo]
+display = "Todo"
+
+[statuses.doing]
+display = "Doing"
+
+[statuses.done]
+display = "Done"
+"#;
+        fs::write(project_path.join(".kanban.toml"), config).unwrap();
+
+        // 创建状态目录
+        fs::create_dir_all(project_path.join("todo")).unwrap();
+        fs::create_dir_all(project_path.join("doing")).unwrap();
+        fs::create_dir_all(project_path.join("done")).unwrap();
+
+        temp_dir
+    }
+
+    /// 创建测试用的项目目录和配置（新格式，有 tasks.toml）
+    fn setup_metadata_project() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = temp_dir.path();
+
+        // 创建项目配置
+        let config = r#"name = "Test Project"
+created = "1234567890"
+
+[statuses]
+order = ["todo", "doing", "done"]
+
+[statuses.todo]
+display = "Todo"
+
+[statuses.doing]
+display = "Doing"
+
+[statuses.done]
+display = "Done"
+"#;
+        fs::write(project_path.join(".kanban.toml"), config).unwrap();
+
+        // 创建空的 tasks.toml（新格式标志）
+        fs::write(project_path.join("tasks.toml"), "").unwrap();
+
+        // 创建状态目录
+        fs::create_dir_all(project_path.join("todo")).unwrap();
+        fs::create_dir_all(project_path.join("doing")).unwrap();
+        fs::create_dir_all(project_path.join("done")).unwrap();
+
+        temp_dir
+    }
+
+    #[test]
+    fn test_load_task_legacy_format() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建旧格式任务文件
+        let task_content = r#"# Test Task
+
+id: 1
+order: 1000
+created: 1234567890
+priority: high
+tags: bug, urgent
+
+This is the task content.
+"#;
+        fs::write(project_path.join("todo/1.md"), task_content).unwrap();
+
+        // 加载任务
+        let task = load_task(&project_path.join("todo/1.md"), "todo").unwrap();
+
+        assert_eq!(task.id, 1);
+        assert_eq!(task.order, 1000);
+        assert_eq!(task.title, "Test Task");
+        assert_eq!(task.status, "todo");
+        assert_eq!(task.priority, Some("high".to_string()));
+        assert_eq!(task.tags, vec!["bug", "urgent"]);
+        assert!(task.content.contains("This is the task content."));
+    }
+
+    #[test]
+    fn test_load_task_from_filename() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建没有 id 元数据的任务文件（从文件名解析 ID）
+        let task_content = r#"# Task Without ID
+
+order: 1000
+created: 1234567890
+
+Content here.
+"#;
+        fs::write(project_path.join("todo/42.md"), task_content).unwrap();
+
+        let task = load_task(&project_path.join("todo/42.md"), "todo").unwrap();
+        assert_eq!(task.id, 42);
+    }
+
+    #[test]
+    fn test_load_tasks_from_dir_legacy() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建多个任务
+        let task1 = r#"# Task 1
+
+id: 1
+order: 2000
+created: 1234567890
+
+Content 1.
+"#;
+        let task2 = r#"# Task 2
+
+id: 2
+order: 1000
+created: 1234567891
+
+Content 2.
+"#;
+        fs::write(project_path.join("todo/1.md"), task1).unwrap();
+        fs::write(project_path.join("todo/2.md"), task2).unwrap();
+
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
+
+        assert_eq!(tasks.len(), 2);
+        // 应该按 order 排序，task2 (order=1000) 在前
+        assert_eq!(tasks[0].id, 2);
+        assert_eq!(tasks[1].id, 1);
+    }
+
+    #[test]
+    fn test_load_tasks_from_dir_empty() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
+        assert!(tasks.is_empty());
+    }
+
+    #[test]
+    fn test_load_tasks_from_dir_nonexistent() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        let tasks = load_tasks_from_dir(&project_path.join("nonexistent"), "nonexistent").unwrap();
+        assert!(tasks.is_empty());
+    }
+
+    #[test]
+    fn test_get_next_task_id() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 空项目，下一个 ID 应该是 1
+        let next_id = get_next_task_id(project_path).unwrap();
+        assert_eq!(next_id, 1);
+
+        // 添加任务
+        let task = r#"# Task
+
+id: 5
+order: 1000
+created: 1234567890
+
+Content.
+"#;
+        fs::write(project_path.join("todo/5.md"), task).unwrap();
+
+        let next_id = get_next_task_id(project_path).unwrap();
+        assert_eq!(next_id, 6);
+    }
+
+    #[test]
+    fn test_save_task_legacy_format() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        let task = Task {
+            id: 1,
+            order: 1000,
+            title: "New Task".to_string(),
+            content: "Task content here.".to_string(),
+            created: "1234567890".to_string(),
+            priority: Some("medium".to_string()),
+            status: "todo".to_string(),
+            tags: vec!["feature".to_string()],
+            file_path: PathBuf::new(),
+        };
+
+        let result = save_task(project_path, &task);
+        assert!(result.is_ok());
+
+        let saved_path = result.unwrap();
+        assert!(saved_path.exists());
+        assert_eq!(saved_path, project_path.join("todo/1.md"));
+
+        // 验证内容
+        let content = fs::read_to_string(&saved_path).unwrap();
+        assert!(content.contains("# New Task"));
+        assert!(content.contains("id: 1"));
+        assert!(content.contains("priority: medium"));
+        assert!(content.contains("tags: feature"));
+    }
+
+    #[test]
+    fn test_save_task_metadata_format() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        let task = Task {
+            id: 1,
+            order: 1000,
+            title: "New Task".to_string(),
+            content: "Task content here.".to_string(),
+            created: "1234567890".to_string(),
+            priority: Some("high".to_string()),
+            status: "todo".to_string(),
+            tags: vec!["bug".to_string(), "urgent".to_string()],
+            file_path: PathBuf::new(),
+        };
+
+        let result = save_task(project_path, &task);
+        assert!(result.is_ok());
+
+        // 验证内容文件只包含纯内容
+        let content_path = project_path.join("todo/1.md");
+        assert!(content_path.exists());
+        let content = fs::read_to_string(&content_path).unwrap();
+        assert_eq!(content, "Task content here.");
+
+        // 验证元数据已保存到 tasks.toml
+        let metadata = load_tasks_metadata(project_path).unwrap();
+        assert!(metadata.contains_key("1"));
+        let task_meta = metadata.get("1").unwrap();
+        assert_eq!(task_meta.title, "New Task");
+        assert_eq!(task_meta.status, "todo");
+        assert_eq!(task_meta.priority, Some("high".to_string()));
+        assert_eq!(task_meta.tags, vec!["bug", "urgent"]);
+    }
+
+    #[test]
+    fn test_move_task_legacy_format() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建任务
+        let task_content = r#"# Task to Move
+
+id: 1
+order: 1000
+created: 1234567890
+
+Content.
+"#;
+        fs::write(project_path.join("todo/1.md"), task_content).unwrap();
+
+        let task = load_task(&project_path.join("todo/1.md"), "todo").unwrap();
+
+        // 移动任务
+        let result = move_task(project_path, &task, "doing");
+        assert!(result.is_ok());
+
+        // 验证文件已移动
+        assert!(!project_path.join("todo/1.md").exists());
+        assert!(project_path.join("doing/1.md").exists());
+    }
+
+    #[test]
+    fn test_move_task_metadata_format() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        // 创建任务（新格式）
+        let task = Task {
+            id: 1,
+            order: 1000,
+            title: "Task to Move".to_string(),
+            content: "Content.".to_string(),
+            created: "1234567890".to_string(),
+            priority: None,
+            status: "todo".to_string(),
+            tags: vec![],
+            file_path: PathBuf::new(),
+        };
+        save_task(project_path, &task).unwrap();
+
+        // 重新加载任务以获取正确的 file_path
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
+        let task = &tasks[0];
+
+        // 移动任务
+        let result = move_task(project_path, task, "done");
+        assert!(result.is_ok());
+
+        // 验证文件已移动
+        assert!(!project_path.join("todo/1.md").exists());
+        assert!(project_path.join("done/1.md").exists());
+
+        // 验证 tasks.toml 中的 status 已更新
+        let metadata = load_tasks_metadata(project_path).unwrap();
+        let task_meta = metadata.get("1").unwrap();
+        assert_eq!(task_meta.status, "done");
+    }
+
+    #[test]
+    fn test_delete_task() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建任务
+        let task_content = "# Task\n\nid: 1\norder: 1000\ncreated: 0\n\nContent.";
+        fs::write(project_path.join("todo/1.md"), task_content).unwrap();
+
+        let task = load_task(&project_path.join("todo/1.md"), "todo").unwrap();
+
+        // 删除任务
+        let result = delete_task(&task);
+        assert!(result.is_ok());
+        assert!(!project_path.join("todo/1.md").exists());
+    }
+
+    #[test]
+    fn test_get_max_order_in_status() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 空目录
+        let max_order = get_max_order_in_status(project_path, "todo").unwrap();
+        assert_eq!(max_order, -1000);
+
+        // 添加任务
+        let task1 = "# Task 1\n\nid: 1\norder: 500\ncreated: 0\n\nContent.";
+        let task2 = "# Task 2\n\nid: 2\norder: 2000\ncreated: 0\n\nContent.";
+        fs::write(project_path.join("todo/1.md"), task1).unwrap();
+        fs::write(project_path.join("todo/2.md"), task2).unwrap();
+
+        let max_order = get_max_order_in_status(project_path, "todo").unwrap();
+        assert_eq!(max_order, 2000);
+    }
+
+    #[test]
+    fn test_load_tasks_from_metadata() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        // 创建多个任务
+        let task1 = Task {
+            id: 1,
+            order: 2000,
+            title: "Task 1".to_string(),
+            content: "Content 1.".to_string(),
+            created: "1234567890".to_string(),
+            priority: None,
+            status: "todo".to_string(),
+            tags: vec![],
+            file_path: PathBuf::new(),
+        };
+        let task2 = Task {
+            id: 2,
+            order: 1000,
+            title: "Task 2".to_string(),
+            content: "Content 2.".to_string(),
+            created: "1234567891".to_string(),
+            priority: Some("high".to_string()),
+            status: "todo".to_string(),
+            tags: vec!["urgent".to_string()],
+            file_path: PathBuf::new(),
+        };
+        let task3 = Task {
+            id: 3,
+            order: 3000,
+            title: "Task 3".to_string(),
+            content: "Content 3.".to_string(),
+            created: "1234567892".to_string(),
+            priority: None,
+            status: "done".to_string(),
+            tags: vec![],
+            file_path: PathBuf::new(),
+        };
+
+        save_task(project_path, &task1).unwrap();
+        save_task(project_path, &task2).unwrap();
+        save_task(project_path, &task3).unwrap();
+
+        // 加载 todo 状态的任务
+        let todo_tasks = load_tasks_from_metadata(project_path, "todo").unwrap();
+        assert_eq!(todo_tasks.len(), 2);
+        // 按 order 排序
+        assert_eq!(todo_tasks[0].id, 2); // order=1000
+        assert_eq!(todo_tasks[1].id, 1); // order=2000
+
+        // 加载 done 状态的任务
+        let done_tasks = load_tasks_from_metadata(project_path, "done").unwrap();
+        assert_eq!(done_tasks.len(), 1);
+        assert_eq!(done_tasks[0].id, 3);
+    }
 
     #[test]
     fn test_auto_migration() {
@@ -563,5 +978,30 @@ Another task.
 
         // 清理
         let _ = fs::remove_dir_all(&test_dir);
+    }
+
+    #[test]
+    fn test_auto_migration_already_new_format() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        // 已经是新格式，不应该迁移
+        let result = auto_migrate_project_to_new_format(project_path);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_auto_migration_empty_project() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 空项目迁移
+        let result = auto_migrate_project_to_new_format(project_path);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // 应该创建空的 tasks.toml
+        assert!(project_path.join("tasks.toml").exists());
     }
 }

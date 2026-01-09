@@ -44,5 +44,8 @@ chrono = "0.4"
 anyhow = "1.0"
 arboard = { version = "3.4", default-features = false, optional = true }  # Clipboard support (text only)
 
+[dev-dependencies]
+tempfile = "3.14"
+
 
 
