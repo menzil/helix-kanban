@@ -1324,31 +1324,17 @@ fn execute_command(app: &mut App, cmd: Command) {
                     };
 
                     let kanban_path = project.path.to_string_lossy();
-                    // CLAUDE.md 路径（项目根目录）
-                    let claude_md_path = std::env::current_dir()
-                        .ok()
-                        .and_then(|p| p.join("CLAUDE.md").to_str().map(|s| s.to_string()))
-                        .unwrap_or_else(|| "./CLAUDE.md".to_string());
+                    // CLAUDE.md 路径（全局数据目录）
+                    let claude_md_path = crate::fs::get_data_dir().join("CLAUDE.md");
+                    let claude_md_str = claude_md_path.to_string_lossy().to_string();
 
-                    // 格式化项目信息，包含 AI 使用指南
+                    // 格式化项目信息
                     let project_info = format!(
-                        "{} {}\n看板路径: {}\n文档: {}\n\n# AI 使用指南\n\n\
-                        ## 查看项目和任务\n\
-                        hxk project list                          # 列出所有项目\n\
-                        hxk task list {} --status todo       # 查看待办任务\n\
-                        hxk task show {} <task-id>           # 查看任务详情\n\n\
-                        ## 创建和编辑任务\n\
-                        hxk task create {} --status todo --title \"任务标题\"\n\
-                        hxk task update {} <task-id> --title \"新标题\" --priority high\n\
-                        hxk task move {} <task-id> --to doing    # 移动任务状态\n\n\
-                        ## 状态管理\n\
-                        hxk status list {}                   # 列出所有状态列\n\
-                        hxk status create {} review --display \"Review\"\n\n\
-                        详细文档请查看: {}",
+                        "{} {}\n看板路径: {}\n文档: {}\n\n# Commands\n\n# 查看\nhxk project list\nhxk task list {} --status todo\nhxk task show {} <task-id>\n\n# 任务信息包含: ID | Order | Title | Priority | Tags | Created\n# 示例: 1 | 1000 | 标题 | high | tag1,tag2 | 1234567890\n\n# 任务操作\nhxk task create {} --status todo --title \"标题\"\nhxk task move {} <task-id> --to doing\nhxk task update {} <task-id> --priority high --tags \"tag1,tag2\"\n\n# 状态管理\nhxk status list {}\nhxk status create {} review --display \"Review\"\n\n完整文档: {}",
                         project_type_label,
                         project.name,
                         kanban_path,
-                        claude_md_path,
+                        claude_md_str,
                         project.name,
                         project.name,
                         project.name,
@@ -1356,10 +1342,9 @@ fn execute_command(app: &mut App, cmd: Command) {
                         project.name,
                         project.name,
                         project.name,
-                        claude_md_path
+                        claude_md_str
                     );
 
-                    // 复制到剪贴板
                     match arboard::Clipboard::new() {
                         Ok(mut clipboard) => {
                             if let Err(e) = clipboard.set_text(project_info) {
