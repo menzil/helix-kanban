@@ -1400,6 +1400,99 @@ fn execute_command(app: &mut App, cmd: Command) {
                 }
             }
         }
+        Command::MoveStatusToFirst => {
+            // 移动状态列到最左侧
+            let focused_pane = app.focused_pane;
+            let status_info = {
+                let project = app.get_focused_project();
+                if let Some(project) = project {
+                    let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
+                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((status_name, status_display, project_path, column)) = status_info {
+                if column == 0 {
+                    app.show_notification(
+                        "状态已在最左侧".to_string(),
+                        crate::app::NotificationLevel::Info
+                    );
+                    return;
+                }
+
+                // 移动到最左侧（索引 0）
+                let move_count = -(column as i32);
+                match crate::fs::status::move_status_order(&project_path, &status_name, move_count) {
+                    Ok(_) => {
+                        // 重新加载项目
+                        if let Err(e) = app.reload_current_project() {
+                            log_debug(format!("重新加载项目失败: {}", e));
+                        }
+                        // 更新选中列到第一列
+                        app.selected_column.insert(focused_pane, 0);
+                        app.show_notification(
+                            format!("状态「{}」已移至最左侧", status_display),
+                            crate::app::NotificationLevel::Success
+                        );
+                    }
+                    Err(e) => {
+                        app.show_notification(
+                            format!("移动失败: {}", e),
+                            crate::app::NotificationLevel::Error
+                        );
+                    }
+                }
+            }
+        }
+        Command::MoveStatusToLast => {
+            // 移动状态列到最右侧
+            let focused_pane = app.focused_pane;
+            let status_info = {
+                let project = app.get_focused_project();
+                if let Some(project) = project {
+                    let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
+                    let statuses_len = project.statuses.len();
+                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column, statuses_len))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((status_name, status_display, project_path, column, statuses_len)) = status_info {
+                if column == statuses_len - 1 {
+                    app.show_notification(
+                        "状态已在最右侧".to_string(),
+                        crate::app::NotificationLevel::Info
+                    );
+                    return;
+                }
+
+                // 移动到最右侧
+                let move_count = (statuses_len - 1 - column) as i32;
+                match crate::fs::status::move_status_order(&project_path, &status_name, move_count) {
+                    Ok(_) => {
+                        // 重新加载项目
+                        if let Err(e) = app.reload_current_project() {
+                            log_debug(format!("重新加载项目失败: {}", e));
+                        }
+                        // 更新选中列到最后一列
+                        app.selected_column.insert(focused_pane, statuses_len - 1);
+                        app.show_notification(
+                            format!("状态「{}」已移至最右侧", status_display),
+                            crate::app::NotificationLevel::Success
+                        );
+                    }
+                    Err(e) => {
+                        app.show_notification(
+                            format!("移动失败: {}", e),
+                            crate::app::NotificationLevel::Error
+                        );
+                    }
+                }
+            }
+        }
         Command::DeleteStatus => {
             // 删除状态
             if let Some(project) = app.get_focused_project() {
@@ -2101,6 +2194,8 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'e' => Some(Command::EditStatusDisplay),
                         'h' => Some(Command::MoveStatusLeft),
                         'l' => Some(Command::MoveStatusRight),
+                        'H' => Some(Command::MoveStatusToFirst),  // 大写 H 移到最左侧
+                        'L' => Some(Command::MoveStatusToLast),   // 大写 L 移到最右侧
                         'd' => Some(Command::DeleteStatus),
                         _ => None,
                     };

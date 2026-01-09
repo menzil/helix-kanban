@@ -163,6 +163,19 @@ hxk config viewer "open -a Marked 2"
 | `Space w j` | 聚焦下面板 |
 | `Space w k` | 聚焦上面板 |
 
+### 状态管理
+
+| 键位 | 功能 |
+|------|------|
+| `Space s a` | 创建新状态 |
+| `Space s r` | 重命名状态 |
+| `Space s e` | 编辑显示名 |
+| `Space s h` | 左移状态列 |
+| `Space s l` | 右移状态列 |
+| `Space s H` | 移到最左侧 |
+| `Space s L` | 移到最右侧 |
+| `Space s d` | 删除状态 |
+
 ### 命令模式
 
 按 `:` 进入命令模式，支持的命令：

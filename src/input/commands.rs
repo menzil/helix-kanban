@@ -106,6 +106,10 @@ pub enum Command {
     MoveStatusLeft,
     /// 右移当前状态列
     MoveStatusRight,
+    /// 移动状态列到最左侧
+    MoveStatusToFirst,
+    /// 移动状态列到最右侧
+    MoveStatusToLast,
     /// 编辑状态显示名
     EditStatusDisplay,
 

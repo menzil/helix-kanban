@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Status column quick positioning**: New keyboard shortcuts for moving status columns to edges
+  - Press `Space s H` (Shift+H) to move current status column to the leftmost position
+  - Press `Space s L` (Shift+L) to move current status column to the rightmost position
+  - Complements existing `Space s h`/`Space s l` for incremental movement
+- **Helix-style modal editing**: Integrated tui-textarea with Helix-inspired keybindings
+  - Normal mode: Navigate with `hjkl`, `gg`/`G`, `w`/`b`/`e`, etc.
+  - Insert mode: Press `i`/`a`/`o`/`O` to enter insert mode
+  - Command mode: Press `:` for commands (`:w` to save, `:q` to cancel)
+  - Visual feedback: Mode indicator shows current editing mode
+  - New task creation and task editing now default to Normal mode
+  - Other dialogs remain in Insert mode for quick input
+
+### Changed
+- **Removed automatic IME switching**: Simplified input handling by removing automatic input method switching
+  - Removed `ime.rs` module and all IME-related code
+  - Users now manually control their input method as needed
+  - Reduces complexity and potential issues with input method management
+
+### Fixed
+- Fixed compilation errors with `HelixTextArea::new()` missing third parameter
+- Cleaned up unused imports across the codebase
+- Added `#[allow(dead_code)]` attributes for utility functions reserved for future use
+
 ## [0.2.20] - 2026-01-08
 
 ### Added

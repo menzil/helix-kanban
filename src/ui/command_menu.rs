@@ -109,6 +109,8 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                     CommandItem { key: "", label: "", color: None },
                     CommandItem { key: "h", label: "左移状态列", color: None },
                     CommandItem { key: "l", label: "右移状态列", color: None },
+                    CommandItem { key: "H", label: "移到最左侧", color: None },
+                    CommandItem { key: "L", label: "移到最右侧", color: None },
                     CommandItem { key: "", label: "", color: None },
                     CommandItem { key: "d", label: "删除状态", color: None },
                 ],

@@ -128,8 +128,6 @@ pub struct App {
     pub config: crate::config::Config,
     /// 是否显示首次运行欢迎对话框
     pub show_welcome_dialog: bool,
-    /// 输入法状态
-    pub ime_state: crate::ime::ImeState,
     /// 最大化前的窗口布局（用于恢复）
     pub saved_layout: Option<SplitNode>,
     /// 通知消息
@@ -178,7 +176,6 @@ impl App {
             command_registry: CommandRegistry::new(),
             config,
             show_welcome_dialog: is_first_run,
-            ime_state: crate::ime::ImeState::new(),
             saved_layout: None,
             notification: None,
             last_column_resize_time: None,
@@ -194,9 +191,6 @@ impl App {
             log_debug(format!("加载状态后: focused_pane={}, next_pane_id={}, pane_ids={:?}",
                 app.focused_pane, app.next_pane_id, app.split_tree.collect_pane_ids()));
         }
-
-        // 启动时切换到英文输入法
-        app.ime_state.switch_to_english();
 
         Ok(app)
     }
