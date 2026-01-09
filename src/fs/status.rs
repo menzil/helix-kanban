@@ -575,4 +575,56 @@ display = "Done"
         let result = move_status_order(project_path, "nonexistent", 1);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_rename_status_updates_tasks_toml() {
+        let temp_dir = setup_test_project();
+        let project_path = temp_dir.path();
+
+        // 创建 tasks.toml 和任务
+        let tasks_content = r#"[1]
+id = 1
+order = 1000
+title = "Task 1"
+status = "todo"
+created = "1234567890"
+tags = []
+
+[2]
+id = 2
+order = 2000
+title = "Task 2"
+status = "todo"
+created = "1234567891"
+tags = []
+
+[3]
+id = 3
+order = 3000
+title = "Task 3"
+status = "doing"
+created = "1234567892"
+tags = []
+"#;
+        fs::write(project_path.join("tasks.toml"), tasks_content).unwrap();
+
+        // 创建任务文件
+        fs::write(project_path.join("todo/1.md"), "Task 1 content").unwrap();
+        fs::write(project_path.join("todo/2.md"), "Task 2 content").unwrap();
+        fs::write(project_path.join("doing/3.md"), "Task 3 content").unwrap();
+
+        // 重命名 todo 为 backlog
+        let result = rename_status(project_path, "todo", "backlog", "Backlog");
+        assert!(result.is_ok());
+
+        // 验证 tasks.toml 中的 status 已更新
+        let metadata = crate::fs::task::load_tasks_metadata(project_path).unwrap();
+
+        // task 1 和 2 应该更新为 backlog
+        assert_eq!(metadata.get("1").unwrap().status, "backlog");
+        assert_eq!(metadata.get("2").unwrap().status, "backlog");
+
+        // task 3 应该保持 doing
+        assert_eq!(metadata.get("3").unwrap().status, "doing");
+    }
 }

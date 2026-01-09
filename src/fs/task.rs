@@ -1017,4 +1017,84 @@ Another task.
         // 应该创建空的 tasks.toml
         assert!(project_path.join("tasks.toml").exists());
     }
+
+    #[test]
+    fn test_load_tasks_metadata_empty_file() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_path = temp_dir.path();
+
+        // 创建空的 tasks.toml
+        fs::write(project_path.join("tasks.toml"), "").unwrap();
+
+        // 应该返回空的 HashMap，而不是错误
+        let result = load_tasks_metadata(project_path);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_load_tasks_metadata_old_tasks_section_format() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let project_path = temp_dir.path();
+
+        // 创建旧格式的 tasks.toml（只有 [tasks] 节）
+        fs::write(project_path.join("tasks.toml"), "[tasks]").unwrap();
+
+        // 应该返回空的 HashMap，而不是解析错误
+        let result = load_tasks_metadata(project_path);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_save_task_updates_tasks_toml() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        // 创建新任务
+        let mut task = Task::new(99, "New Task".to_string(), "todo".to_string());
+        task.order = 99000;
+        task.priority = Some("high".to_string());
+
+        // 保存任务
+        save_task(project_path, &task).unwrap();
+
+        // 验证 tasks.toml 已更新
+        let metadata = load_tasks_metadata(project_path).unwrap();
+        assert!(metadata.contains_key("99"));
+
+        let task_meta = metadata.get("99").unwrap();
+        assert_eq!(task_meta.title, "New Task");
+        assert_eq!(task_meta.status, "todo");
+        assert_eq!(task_meta.priority, Some("high".to_string()));
+    }
+
+    #[test]
+    fn test_move_task_updates_status_in_tasks_toml() {
+        let temp_dir = setup_metadata_project();
+        let project_path = temp_dir.path();
+
+        // 先创建一个任务
+        let mut task = Task::new(1, "Test Task".to_string(), "todo".to_string());
+        task.order = 1000;
+        save_task(project_path, &task).unwrap();
+
+        // 重新加载任务
+        let tasks = load_tasks_from_metadata(project_path, "todo").unwrap();
+        assert!(!tasks.is_empty());
+        let task = &tasks[0];
+        let original_id = task.id;
+
+        // 移动任务到 done 状态
+        move_task(project_path, task, "done").unwrap();
+
+        // 验证 tasks.toml 中的 status 已更新
+        let metadata = load_tasks_metadata(project_path).unwrap();
+        let task_meta = metadata.get(&original_id.to_string()).unwrap();
+        assert_eq!(task_meta.status, "done");
+
+        // 验证文件已移动
+        assert!(project_path.join("done").join(format!("{}.md", original_id)).exists());
+        assert!(!project_path.join("todo").join(format!("{}.md", original_id)).exists());
+    }
 }
