@@ -47,36 +47,33 @@ pub fn render(f: &mut Frame, area: Rect) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("j, ↓", Style::default().fg(Color::Rgb(136, 192, 208))),  // Nord cyan
-            Span::raw("       下一个任务"),
+            Span::styled("↑", Style::default().fg(Color::Rgb(136, 192, 208))),  // Nord cyan
+            Span::raw("         上一个任务"),
         ]),
         Line::from(vec![
-            Span::styled("k, ↑", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("       上一个任务"),
+            Span::styled("↓", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         下一个任务"),
         ]),
         Line::from(vec![
-            Span::styled("h, ←", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("       左边的列"),
+            Span::styled("←", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         左边的列"),
         ]),
         Line::from(vec![
-            Span::styled("l, →", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("       右边的列"),
+            Span::styled("→", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("         右边的列"),
         ]),
+        Line::from(""),
         Line::from(vec![
             Span::styled("Space", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("      命令菜单"),
-        ]),
-        Line::from(vec![
-            Span::styled(":", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("          命令模式"),
         ]),
         Line::from(vec![
             Span::styled("?", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("          显示帮助"),
         ]),
         Line::from(vec![
-            Span::styled("ESC", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("        取消/返回"),
+            Span::styled("ESC / Enter", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("      取消 / 执行"),
         ]),
         Line::from(""),
         Line::from(vec![
@@ -355,22 +352,22 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("      确认选择"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("命令模式", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("  :q", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("         退出程序"),
-        ]),
-        Line::from(vec![
-            Span::styled("  :help", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("      显示帮助"),
-        ]),
-        Line::from(vec![
-            Span::styled("  :reload", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("    重新加载"),
-        ]),
+        // Line::from(vec![
+        //     Span::styled("命令模式", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
+        // ]),
+        // Line::from(""),
+        // Line::from(vec![
+        //     Span::styled("  :q", Style::default().fg(Color::Rgb(136, 192, 208))),
+        //     Span::raw("         退出程序"),
+        // ]),
+        // Line::from(vec![
+        //     Span::styled("  :help", Style::default().fg(Color::Rgb(136, 192, 208))),
+        //     Span::raw("      显示帮助"),
+        // ]),
+        // Line::from(vec![
+        //     Span::styled("  :reload", Style::default().fg(Color::Rgb(136, 192, 208))),
+        //     Span::raw("    重新加载"),
+        // ]),
     ];
 
     let nav_widget = Paragraph::new(navigation_help)
