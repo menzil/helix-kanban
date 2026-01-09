@@ -2881,8 +2881,6 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
                 'q' => Some(Command::ClosePane),
                 'h' => Some(Command::FocusLeft),
                 'l' => Some(Command::FocusRight),
-                'k' => Some(Command::FocusUp),
-                'j' => Some(Command::FocusDown),
                 'm' => Some(Command::MaximizePane),
                 _ => None,
             };
