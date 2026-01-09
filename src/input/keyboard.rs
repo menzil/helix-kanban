@@ -1228,6 +1228,30 @@ fn execute_command(app: &mut App, cmd: Command) {
                     if let Err(e) = std::fs::write(&task.file_path, new_content) {
                         log_debug(format!("保存任务失败: {}", e));
                     } else {
+                        // 同步更新 tasks.toml 中的 priority 字段
+                        if let Some(project) = app.get_focused_project() {
+                            let project_path = project.path.clone();
+                            let tasks_toml = project_path.join("tasks.toml");
+                            if tasks_toml.exists() {
+                                if let Ok(mut metadata_map) =
+                                    crate::fs::task::load_tasks_metadata(&project_path)
+                                {
+                                    if let Some(metadata) =
+                                        metadata_map.get_mut(&task.id.to_string())
+                                    {
+                                        metadata.priority = if priority == "none" {
+                                            None
+                                        } else {
+                                            Some(priority.clone())
+                                        };
+                                        let _ = crate::fs::task::save_tasks_metadata(
+                                            &project_path,
+                                            &metadata_map,
+                                        );
+                                    }
+                                }
+                            }
+                        }
                         log_debug(format!("已设置优先级为: {}", priority));
                         // 重新加载项目
                         let _ = app.reload_current_project();
