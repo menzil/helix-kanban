@@ -14,7 +14,7 @@ use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::Frame;
 
 /// 主渲染函数
-pub fn render(f: &mut Frame, app: &App) {
+pub fn render(f: &mut Frame, app: &mut App) {
     // 不显示状态栏，使用全屏布局
     // let main_chunks = Layout::default()
     //     .direction(Direction::Vertical)

@@ -96,6 +96,8 @@ pub struct App {
     pub selected_column: HashMap<usize, usize>,
     /// 命令输入缓冲
     pub command_input: String,
+    /// 命令补全选中的索引
+    pub completion_selected_index: Option<usize>,
     /// 下一个面板ID
     pub next_pane_id: usize,
     /// 是否应该退出
@@ -158,6 +160,7 @@ impl App {
             selected_task_index: HashMap::new(),
             selected_column: HashMap::new(),
             command_input: String::new(),
+            completion_selected_index: None,
             next_pane_id: 1,
             should_quit: false,
             dialog: None,

@@ -67,12 +67,32 @@ fn handle_command_mode(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Esc => {
             app.mode = Mode::Normal;
             app.command_input.clear();
+            app.completion_selected_index = None;
+        }
+        KeyCode::Tab => {
+            // 下一个补全项
+            let matches = app.command_registry.find_matches(&app.command_input);
+            if !matches.is_empty() {
+                let current = app.completion_selected_index.unwrap_or(0);
+                let next = if current + 1 >= matches.len() { 0 } else { current + 1 };
+                app.completion_selected_index = Some(next);
+            }
+        }
+        KeyCode::BackTab => {
+            // 上一个补全项
+            let matches = app.command_registry.find_matches(&app.command_input);
+            if !matches.is_empty() {
+                let current = app.completion_selected_index.unwrap_or(0);
+                let prev = if current == 0 { matches.len() - 1 } else { current - 1 };
+                app.completion_selected_index = Some(prev);
+            }
         }
         KeyCode::Enter => {
             // 执行命令
             let should_continue = execute_text_command(app, &app.command_input.clone());
             app.command_input.clear();
             app.mode = Mode::Normal;
+            app.completion_selected_index = None;
             return should_continue;
         }
         KeyCode::Backspace => {
