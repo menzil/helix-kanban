@@ -8,6 +8,7 @@ use ratatui::widgets::{Block, Borders, List, ListItem};
 use ratatui::Frame;
 
 /// 渲染左侧项目侧边栏
+#[allow(dead_code)]
 pub fn render(f: &mut Frame, area: Rect, app: &App) {
     // 获取当前聚焦面板的项目名称
     let current_project = if let Some(SplitNode::Leaf { project_id, .. }) =

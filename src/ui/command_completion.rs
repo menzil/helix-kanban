@@ -1,13 +1,14 @@
 /// 命令补全 UI - 类似 Helix 的命令提示
 use crate::app::App;
 use crate::input::CommandDef;
-use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 
 /// 渲染命令补全提示
+#[allow(dead_code)]
 pub fn render(f: &mut Frame, area: Rect, app: &mut App) {
     let input = &app.command_input;
 
@@ -56,6 +57,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &mut App) {
 }
 
 /// 渲染命令输入框
+#[allow(dead_code)]
 fn render_command_input(f: &mut Frame, area: Rect, input: &str) {
     // 清空区域
     f.render_widget(Clear, area);
@@ -86,6 +88,7 @@ fn render_command_input(f: &mut Frame, area: Rect, input: &str) {
 }
 
 /// 渲染命令列表（底部多列布局）
+#[allow(dead_code)]
 fn render_command_list(f: &mut Frame, area: Rect, commands: &[&CommandDef], selected_index: Option<usize>) {
     // 清空区域
     f.render_widget(Clear, area);
@@ -157,6 +160,7 @@ fn render_command_list(f: &mut Frame, area: Rect, commands: &[&CommandDef], sele
 }
 
 /// 渲染命令详细信息（中央弹窗）
+#[allow(dead_code)]
 fn render_command_detail(f: &mut Frame, area: Rect, cmd: &CommandDef) {
     // 创建居中弹窗
     let popup_width = 60.min(area.width.saturating_sub(4));

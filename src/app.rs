@@ -1,5 +1,5 @@
 use crate::input::CommandRegistry;
-use crate::models::{Project, Task};
+use crate::models::Project;
 use crate::ui::layout::SplitNode;
 use crate::ui::dialogs::DialogType;
 use anyhow::Result;
@@ -22,6 +22,7 @@ fn log_debug(msg: String) {
 
 /// 通知级别
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum NotificationLevel {
     Info,
     Success,
@@ -46,6 +47,7 @@ impl Notification {
 
 /// 应用模式
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Mode {
     /// 正常模式 - 导航和查看
     Normal,
@@ -97,10 +99,12 @@ pub struct App {
     /// 命令输入缓冲
     pub command_input: String,
     /// 命令补全选中的索引
+    #[allow(dead_code)]
     pub completion_selected_index: Option<usize>,
     /// 下一个面板ID
     pub next_pane_id: usize,
     /// 是否应该退出
+    #[allow(dead_code)]
     pub should_quit: bool,
     /// 当前显示的对话框
     pub dialog: Option<DialogType>,
@@ -215,6 +219,7 @@ impl App {
     }
 
     /// 获取当前聚焦面板显示的项目（可变）
+    #[allow(dead_code)]
     pub fn get_focused_project_mut(&mut self) -> Option<&mut Project> {
         if let Some(SplitNode::Leaf { project_id, .. }) = self.split_tree.find_pane(self.focused_pane)
         {

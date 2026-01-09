@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 /// 渲染状态栏（Helix 风格）
+#[allow(dead_code)]
 pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let mode_text = match app.mode {
         Mode::Normal => ("NORMAL", Color::Green),

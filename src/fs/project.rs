@@ -459,6 +459,7 @@ pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
 }
 
 /// Rename a project
+#[allow(dead_code)]
 pub fn rename_project(old_name: &str, new_name: &str) -> Result<(), String> {
     let projects_dir = get_projects_dir();
     let old_path = projects_dir.join(old_name);
@@ -511,6 +512,7 @@ pub fn delete_project_by_path(project_path: &std::path::Path) -> Result<(), Stri
 }
 
 /// 删除项目（硬删除）- 根据项目名称和类型删除
+#[allow(dead_code)]
 pub fn delete_project(project_name: &str, project_type: &ProjectType) -> Result<(), String> {
     let project_dir = match project_type {
         ProjectType::Global => get_projects_dir().join(project_name),

@@ -53,7 +53,12 @@ pub struct HelixTextArea {
 
 impl HelixTextArea {
     /// 创建新的 HelixTextArea
-    pub fn new(initial_value: String, show_line_numbers: bool) -> Self {
+    ///
+    /// # 参数
+    /// - `initial_value`: 初始文本内容
+    /// - `show_line_numbers`: 是否显示行号
+    /// - `start_in_normal_mode`: 是否从 Normal 模式开始（true 为 Normal，false 为 Insert）
+    pub fn new(initial_value: String, show_line_numbers: bool, start_in_normal_mode: bool) -> Self {
         let mut textarea = if initial_value.is_empty() {
             TextArea::default()
         } else {
@@ -82,7 +87,11 @@ impl HelixTextArea {
 
         Self {
             textarea,
-            mode: EditMode::Insert,  // 默认从插入模式开始
+            mode: if start_in_normal_mode {
+                EditMode::Normal  // 从 Normal 模式开始
+            } else {
+                EditMode::Insert  // 从 Insert 模式开始
+            },
             command_buffer: String::new(),
             key_sequence: Vec::new(),
             last_key_time: Instant::now(),
@@ -92,6 +101,7 @@ impl HelixTextArea {
     }
 
     /// 获取当前模式
+    #[allow(dead_code)]
     pub fn get_mode(&self) -> EditMode {
         self.mode
     }
@@ -428,34 +438,33 @@ impl HelixTextArea {
 
     /// 渲染模式指示器
     pub fn render_mode_indicator(&self, f: &mut Frame, area: Rect) {
-        let (mode_text, style, alignment) = match self.mode {
+        let (mode_text, style) = match self.mode {
             EditMode::Insert => (
                 "-- INSERT --".to_string(),
                 RatatuiStyle::default().fg(RatatuiColor::Rgb(163, 190, 140)),  // Nord green
-                Alignment::Center,
             ),
             EditMode::Normal => (
                 "-- NORMAL --".to_string(),
                 RatatuiStyle::default().fg(RatatuiColor::Rgb(136, 192, 208)),  // Nord cyan
-                Alignment::Center,
             ),
             EditMode::Command => {
                 let text = format!(":{}█", self.command_buffer);
                 (
                     text,
                     RatatuiStyle::default().fg(RatatuiColor::Rgb(235, 203, 139)),  // Nord yellow
-                    Alignment::Left,  // 命令模式左对齐
                 )
             }
         };
 
+        // 所有模式指示器都左对齐
         let paragraph = Paragraph::new(mode_text)
             .style(style)
-            .alignment(alignment);
+            .alignment(Alignment::Left);
         f.render_widget(paragraph, area);
     }
 
     /// 渲染按键序列提示
+    #[allow(dead_code)]
     pub fn render_key_sequence(&self, f: &mut Frame, area: Rect) {
         if !self.key_sequence.is_empty() && self.mode == EditMode::Normal {
             let text = self.key_sequence.iter().collect::<String>();

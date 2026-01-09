@@ -732,7 +732,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新项目".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
             });
         }
         Command::NewLocalProject => {
@@ -741,7 +741,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新本地项目 [L]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
             });
         }
         Command::NewGlobalProject => {
@@ -750,7 +750,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新全局项目 [G]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
             });
         }
         Command::OpenProject => {
@@ -789,7 +789,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "重命名项目".to_string(),
                     prompt: "请输入新的项目名称:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true),
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false),  // 默认 Insert 模式
                 });
             }
         }
@@ -843,7 +843,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
                 prompt: "任务标题和内容:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, true),  // 默认 Normal 模式
             });
         }
         Command::NewTaskInEditor => {
@@ -877,7 +877,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
                     prompt: "任务标题和内容:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(title, true),
+                    textarea: crate::ui::text_input::HelixTextArea::new(title, true, true),  // 默认 Normal 模式
                 });
             }
         }
@@ -1173,7 +1173,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "编辑标签".to_string(),
                     prompt: "标签（逗号分隔）:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_tags, true),
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_tags, true, false),
                 });
             }
         }
@@ -1276,7 +1276,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新状态".to_string(),
                 prompt: "请输入状态内部名称（英文、数字、下划线）:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true),
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
             });
         }
         Command::RenameStatus => {
@@ -1297,7 +1297,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: format!("重命名状态: {}", current_display),
                     prompt: "请输入新的状态名称（英文、数字、下划线）:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true),
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false),  // 默认 Insert 模式
                 });
             }
         }
@@ -1319,7 +1319,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: format!("编辑显示名: {}", status_name),
                     prompt: "请输入新的显示名称:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_display, true),
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_display, true, false),
                 });
             }
         }
@@ -1438,6 +1438,7 @@ fn execute_command(app: &mut App, cmd: Command) {
 
 /// 执行文本命令（从命令模式输入）
 /// 返回 false 表示应该退出应用
+#[allow(dead_code)]
 fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
     let cmd_str = cmd_str.trim();
 
@@ -2140,6 +2141,7 @@ fn handle_preview_mode(app: &mut App, key: KeyEvent) -> bool {
 }
 
 /// 获取当前光标所在行的起始位置
+#[allow(dead_code)]
 fn get_line_start(text: &str, cursor_pos: usize) -> usize {
     let chars: Vec<char> = text.chars().collect();
 
@@ -2155,6 +2157,7 @@ fn get_line_start(text: &str, cursor_pos: usize) -> usize {
 }
 
 /// 获取当前光标所在行的结束位置
+#[allow(dead_code)]
 fn get_line_end(text: &str, cursor_pos: usize) -> usize {
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
@@ -2172,6 +2175,7 @@ fn get_line_end(text: &str, cursor_pos: usize) -> usize {
 
 /// 垂直移动光标（上下移动行）
 /// direction: -1 表示上移，1 表示下移
+#[allow(dead_code)]
 fn move_cursor_vertical(text: &str, cursor_pos: usize, direction: i32) -> usize {
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 /// 命令定义
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CommandDef {
     /// 完整命令名
     pub name: &'static str,
@@ -218,6 +219,7 @@ impl CommandRegistry {
     }
 
     /// 根据输入查找匹配的命令（支持模糊匹配）
+    #[allow(dead_code)]
     pub fn find_matches(&self, input: &str) -> Vec<&CommandDef> {
         if input.is_empty() {
             // 如果输入为空，返回所有命令
@@ -254,6 +256,7 @@ impl CommandRegistry {
     }
 
     /// 获取所有命令
+    #[allow(dead_code)]
     pub fn all_commands(&self) -> &[CommandDef] {
         &self.commands
     }

@@ -8,6 +8,7 @@ use std::process::Command;
 /// 输入法状态
 pub struct ImeState {
     /// 进入对话框前的输入法
+    #[allow(dead_code)]
     previous_ime: Option<String>,
     /// 英文输入法标识
     english_ime: String,
@@ -37,6 +38,7 @@ impl ImeState {
     }
 
     /// 进入对话框时：保存当前输入法（应该是英文）并恢复用户之前的输入法
+    #[allow(dead_code)]
     pub fn enter_dialog(&mut self) {
         // 如果有保存的用户输入法，恢复它
         if let Some(ref ime) = self.previous_ime.clone() {
@@ -46,6 +48,7 @@ impl ImeState {
     }
 
     /// 退出对话框时：保存当前输入法（可能是用户的中文输入法）并切换到英文
+    #[allow(dead_code)]
     pub fn exit_dialog(&mut self) {
         // 保存当前输入法（用户在对话框中可能切换到了中文）
         if let Some(current) = self.get_current_ime() {
@@ -60,6 +63,7 @@ impl ImeState {
     }
 
     /// 保存当前输入法并切换到英文（在进入对话框前调用）
+    #[allow(dead_code)]
     pub fn save_and_switch_to_english(&mut self) {
         // 保存当前输入法
         if let Some(current) = self.get_current_ime() {
@@ -71,6 +75,7 @@ impl ImeState {
     }
 
     /// 恢复之前保存的输入法（在退出对话框时调用）
+    #[allow(dead_code)]
     pub fn restore_previous(&mut self) {
         if let Some(ref ime) = self.previous_ime.clone() {
             let _ = self.switch_ime(ime);
@@ -79,6 +84,7 @@ impl ImeState {
     }
 
     /// 获取当前输入法
+    #[allow(dead_code)]
     fn get_current_ime(&self) -> Option<String> {
         if cfg!(target_os = "macos") {
             // 使用 macism 工具获取当前输入法

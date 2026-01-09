@@ -4,16 +4,12 @@ pub mod task;
 pub mod status;
 
 pub use project::{
-    create_project, create_local_project, delete_project, delete_project_by_path, get_data_dir, get_projects_dir, get_local_kanban_dir,
+    create_project, create_local_project, delete_project_by_path, get_data_dir, get_projects_dir, get_local_kanban_dir,
     init_data_dir, list_local_project_dirs, list_project_dirs, load_project,
-    load_project_config, load_project_with_type, rename_project, ensure_global_ai_config,
+    load_project_config, load_project_with_type, ensure_global_ai_config,
     save_project_config,
 };
-pub use task::{delete_task, get_next_task_id, get_max_order_in_status, load_task, move_task, save_task};
-pub use status::{
-    create_status, rename_status, update_status_display, delete_status, move_status_order,
-    validate_status_name, validate_display_name,
-};
+pub use task::{delete_task, get_next_task_id, get_max_order_in_status, move_task, save_task};
 
 use crate::models::{Project, ProjectType};
 use anyhow::Result;

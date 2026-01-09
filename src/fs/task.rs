@@ -250,6 +250,7 @@ pub fn delete_task(task: &Task) -> Result<(), String> {
 
 /// Slugify a string for use as a filename
 /// Example: "Checkout Flow!" -> "checkout-flow"
+#[allow(dead_code)]
 fn slugify(title: &str) -> String {
     title
         .to_lowercase()
@@ -276,6 +277,7 @@ fn slugify(title: &str) -> String {
 
 /// Generate a unique filename for a task
 /// Returns something like "checkout-flow.md" or "checkout-flow-2.md" if conflict
+#[allow(dead_code)]
 fn generate_task_filename(title: &str, status_dir: &Path) -> String {
     let base_slug = slugify(title);
 

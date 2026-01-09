@@ -82,6 +82,7 @@ pub fn hide_project(config: &mut Config, project_name: &str) -> Result<()> {
 }
 
 /// 显示项目（取消隐藏）
+#[allow(dead_code)]
 pub fn unhide_project(config: &mut Config, project_name: &str) -> Result<()> {
     config.hidden_projects.retain(|p| p != project_name);
     save_config(config)?;
@@ -189,6 +190,7 @@ fn which(cmd: &str) -> Result<PathBuf> {
 }
 
 /// 检查配置是否完整
+#[allow(dead_code)]
 pub fn is_config_complete(config: &Config) -> bool {
     !config.editor.is_empty() && !config.markdown_viewer.is_empty()
 }
@@ -210,6 +212,7 @@ pub fn check_first_run() -> Result<(Config, bool)> {
 }
 
 /// 打印欢迎信息
+#[allow(dead_code)]
 fn print_welcome_message(config: &Config) {
     println!("🎉 欢迎使用 Kanban！");
     println!();

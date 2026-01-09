@@ -202,17 +202,17 @@ impl SplitNode {
             // 3. 检查父节点类型是否匹配方向，并获取兄弟节点
             let sibling_node = match (parent_node, direction, step) {
                 // 水平容器 + 左右方向
-                (Some(SplitNode::Horizontal { left, right, .. }), Direction::Left, PathStep::Right) => {
+                (Some(SplitNode::Horizontal { left, right: _, .. }), Direction::Left, PathStep::Right) => {
                     Some(left.as_ref())
                 }
-                (Some(SplitNode::Horizontal { left, right, .. }), Direction::Right, PathStep::Left) => {
+                (Some(SplitNode::Horizontal { left: _, right, .. }), Direction::Right, PathStep::Left) => {
                     Some(right.as_ref())
                 }
                 // 垂直容器 + 上下方向
-                (Some(SplitNode::Vertical { top, bottom, .. }), Direction::Up, PathStep::Bottom) => {
+                (Some(SplitNode::Vertical { top, bottom: _, .. }), Direction::Up, PathStep::Bottom) => {
                     Some(top.as_ref())
                 }
-                (Some(SplitNode::Vertical { top, bottom, .. }), Direction::Down, PathStep::Top) => {
+                (Some(SplitNode::Vertical { top: _, bottom, .. }), Direction::Down, PathStep::Top) => {
                     Some(bottom.as_ref())
                 }
                 _ => None,
@@ -243,6 +243,7 @@ impl SplitNode {
     }
 
     /// 检查是否包含指定ID的面板
+    #[allow(dead_code)]
     fn contains_pane(&self, id: usize) -> bool {
         match self {
             SplitNode::Leaf { id: leaf_id, .. } => *leaf_id == id,
@@ -256,6 +257,7 @@ impl SplitNode {
     }
 
     /// 获取最左边的面板ID
+    #[allow(dead_code)]
     fn get_leftmost_pane(&self) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),
@@ -265,6 +267,7 @@ impl SplitNode {
     }
 
     /// 获取最右边的面板ID
+    #[allow(dead_code)]
     fn get_rightmost_pane(&self) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),
@@ -274,6 +277,7 @@ impl SplitNode {
     }
 
     /// 获取最上面的面板ID
+    #[allow(dead_code)]
     fn get_topmost_pane(&self) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),
@@ -283,6 +287,7 @@ impl SplitNode {
     }
 
     /// 获取最下面的面板ID
+    #[allow(dead_code)]
     fn get_bottommost_pane(&self) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),
@@ -327,6 +332,7 @@ impl SplitNode {
     }
 
     /// 获取分支的第一个 Leaf ID
+    #[allow(dead_code)]
     fn get_first_leaf(&self) -> Option<usize> {
         match self {
             SplitNode::Leaf { id, .. } => Some(*id),

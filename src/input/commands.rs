@@ -1,5 +1,6 @@
 /// 应用命令枚举
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Command {
     // ===== 退出 =====
     Quit,

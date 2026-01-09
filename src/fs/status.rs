@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 
 /// 验证状态名称
+#[allow(dead_code)]
 pub fn validate_status_name(name: &str, existing_statuses: &[Status]) -> Result<(), String> {
     // 1. 非空检查
     if name.trim().is_empty() {
@@ -41,6 +42,7 @@ pub fn validate_status_name(name: &str, existing_statuses: &[Status]) -> Result<
 }
 
 /// 验证显示名称
+#[allow(dead_code)]
 pub fn validate_display_name(display: &str) -> Result<(), String> {
     // 1. 非空检查
     if display.trim().is_empty() {
