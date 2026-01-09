@@ -41,7 +41,7 @@ fn save_local_projects_index(index: &LocalProjectsIndex) -> std::io::Result<()> 
     }
 
     let content = serde_json::to_string_pretty(index)
-        .map_err(|e| std::io::Error::other(e))?;
+        .map_err(std::io::Error::other)?;
 
     fs::write(&index_path, content)
 }

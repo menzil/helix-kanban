@@ -61,7 +61,7 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
     true
 }
 
-/// 处理命令模式的按键 - 已注释
+// /// 处理命令模式的按键 - 已注释
 // fn handle_command_mode(app: &mut App, key: KeyEvent) -> bool {
 //     match key.code {
 //         KeyCode::Esc => {
