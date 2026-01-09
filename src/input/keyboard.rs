@@ -2015,10 +2015,27 @@ fn move_task_in_column(app: &mut App, direction: i32) {
 }
 
 /// 创建新任务
-fn create_new_task(app: &mut App, title: String) {
+fn create_new_task(app: &mut App, input: String) {
     use crate::models::Task;
 
-    log_debug(format!("调试: 准备创建任务 '{}'", title));
+    log_debug(format!("调试: 准备创建任务，输入内容: '{}'", input));
+
+    // 解析输入：第一行是标题，其余是内容
+    let lines: Vec<&str> = input.lines().collect();
+    let title = if lines.is_empty() {
+        log_debug("调试: 输入为空".to_string());
+        return;
+    } else {
+        lines[0].trim().to_string()
+    };
+
+    let content = if lines.len() > 1 {
+        lines[1..].join("\n")
+    } else {
+        String::new()
+    };
+
+    log_debug(format!("调试: 标题='{}', 内容长度={}", title, content.len()));
 
     // 获取当前项目
     let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
@@ -2064,9 +2081,10 @@ fn create_new_task(app: &mut App, title: String) {
         let new_order = max_order + 1000;
         log_debug(format!("调试: 新任务order值 {}", new_order));
 
-        // 创建任务并设置order
+        // 创建任务并设置order和content
         let mut task = Task::new(next_id, title.clone(), status.clone());
         task.order = new_order;
+        task.content = content;
 
         // 保存到文件
         match crate::fs::save_task(&project_path, &task) {
