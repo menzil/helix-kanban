@@ -2205,6 +2205,7 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'E' => Some(Command::EditTaskInEditor),
                         'v' => Some(Command::ViewTask),
                         'V' => Some(Command::ViewTaskExternal),
+                        't' => Some(Command::EditTags),  // 编辑标签
                         'd' => Some(Command::DeleteTask),
                         'Y' => Some(Command::CopyTask),  // 大写 Y 复制任务
                         'h' => Some(Command::SetTaskPriority("high".to_string())),
@@ -2518,7 +2519,7 @@ fn get_menu_commands(menu_state: Option<crate::app::MenuState>) -> Vec<char> {
             vec!['w', 'v', 's', 'q', 'm', 'h', 'l', 'k', 'j']
         }
         Some(MenuState::Task) => {
-            vec!['a', 'e', 'E', 'v', 'V', 'Y', 'd', 'h', 'm', 'l', 'n']
+            vec!['a', 'e', 'E', 'v', 'V', 't', 'Y', 'd', 'h', 'm', 'l', 'n']
         }
         Some(MenuState::Status) => {
             vec!['a', 'r', 'e', 'h', 'l', 'd']
@@ -2673,6 +2674,7 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
                 'E' => Some(Command::EditTaskInEditor),
                 'v' => Some(Command::ViewTask),
                 'V' => Some(Command::ViewTaskExternal),
+                't' => Some(Command::EditTags),
                 'd' => Some(Command::DeleteTask),
                 'Y' => Some(Command::CopyTask),
                 'h' => Some(Command::SetTaskPriority("high".to_string())),

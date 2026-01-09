@@ -89,6 +89,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 CommandItem { key: "v", label: "预览任务", color: None },
                 CommandItem { key: "V", label: "外部预览", color: None },
                 CommandItem { key: "", label: "", color: None },
+                CommandItem { key: "t", label: "编辑标签", color: None },
                 CommandItem { key: "Y", label: "复制到剪贴板", color: None },
                 CommandItem { key: "d", label: "删除任务", color: None },
                 CommandItem { key: "", label: "", color: None },
@@ -214,12 +215,12 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     if help_area.y < area.height {
         let help_line = Line::from(vec![
             Span::styled("  ", Style::default()),
-            Span::styled("↑↓/jk", Style::default().fg(Color::Cyan)),
+            Span::styled("↑↓", Style::default().fg(Color::Cyan)),
             Span::styled(" 导航  ", Style::default().fg(Color::DarkGray)),
-            Span::styled("Enter", Style::default().fg(Color::Cyan)),
-            Span::styled(" 执行  ", Style::default().fg(Color::DarkGray)),
             Span::styled("Esc", Style::default().fg(Color::Cyan)),
-            Span::styled(" 返回", Style::default().fg(Color::DarkGray)),
+            Span::styled(" 返回  ", Style::default().fg(Color::DarkGray)),
+            Span::styled("Enter", Style::default().fg(Color::Cyan)),
+            Span::styled(" 执行", Style::default().fg(Color::DarkGray)),
         ]);
 
         f.render_widget(

@@ -37,7 +37,7 @@ pub struct StatusConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TasksConfig {
     #[serde(flatten)]
-    pub tasks: HashMap<u32, TaskMetadata>,
+    pub tasks: HashMap<String, TaskMetadata>,
 }
 
 #[derive(Debug, Clone)]

@@ -200,6 +200,9 @@ pub fn load_project(project_path: &Path) -> Result<Project, String> {
 
 /// Load a project with all its tasks, specifying project type
 pub fn load_project_with_type(project_path: &Path, project_type: ProjectType) -> Result<Project, String> {
+    // 0. 自动迁移到新格式（如果需要）
+    let _ = super::task::auto_migrate_project_to_new_format(project_path);
+
     // 1. 扫描实际存在的目录
     let actual_dirs = scan_status_directories(project_path)?;
 
@@ -389,6 +392,10 @@ pub fn create_project(name: &str) -> Result<PathBuf, String> {
     fs::write(project_dir.join(".kanban.toml"), config)
         .map_err(|e| format!("Failed to write config: {}", e))?;
 
+    // Create empty tasks.toml for new format (metadata separated)
+    fs::write(project_dir.join("tasks.toml"), "[tasks]\n")
+        .map_err(|e| format!("Failed to create tasks.toml: {}", e))?;
+
     Ok(project_dir)
 }
 
@@ -440,6 +447,10 @@ pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
 
     fs::write(project_dir.join(".kanban.toml"), config)
         .map_err(|e| format!("Failed to write config: {}", e))?;
+
+    // Create empty tasks.toml for new format (metadata separated)
+    fs::write(project_dir.join("tasks.toml"), "[tasks]\n")
+        .map_err(|e| format!("Failed to create tasks.toml: {}", e))?;
 
     // 自动将新创建的本地项目添加到索引
     let _ = add_local_project_to_index(&project_dir);

@@ -201,7 +201,7 @@ fn save_task_metadata_format(project_path: &Path, task: &Task) -> Result<PathBuf
 
     // 2. 更新当前任务的元数据
     let task_metadata = crate::models::TaskMetadata::from(task);
-    metadata_map.insert(task.id, task_metadata);
+    metadata_map.insert(task.id.to_string(), task_metadata);
 
     // 3. 保存元数据到 tasks.toml
     save_tasks_metadata(project_path, &metadata_map)?;
@@ -315,7 +315,7 @@ pub fn get_max_order_in_status(project_path: &Path, status: &str) -> Result<i32,
 }
 
 /// 加载任务元数据文件（tasks.toml）
-pub fn load_tasks_metadata(project_path: &Path) -> Result<HashMap<u32, crate::models::TaskMetadata>, String> {
+pub fn load_tasks_metadata(project_path: &Path) -> Result<HashMap<String, crate::models::TaskMetadata>, String> {
     let tasks_toml = project_path.join("tasks.toml");
 
     if !tasks_toml.exists() {
@@ -331,7 +331,7 @@ pub fn load_tasks_metadata(project_path: &Path) -> Result<HashMap<u32, crate::mo
 }
 
 /// 保存任务元数据到 tasks.toml
-pub fn save_tasks_metadata(project_path: &Path, metadata: &HashMap<u32, crate::models::TaskMetadata>) -> Result<(), String> {
+pub fn save_tasks_metadata(project_path: &Path, metadata: &HashMap<String, crate::models::TaskMetadata>) -> Result<(), String> {
     let tasks_toml = project_path.join("tasks.toml");
 
     let config = crate::models::TasksConfig {
@@ -381,3 +381,174 @@ pub fn load_tasks_from_metadata(project_path: &Path, status: &str) -> Result<Vec
     Ok(tasks)
 }
 
+/// 自动迁移项目从旧格式到新格式
+///
+/// 此函数会：
+/// 1. 检查项目是否使用旧格式（没有 tasks.toml）
+/// 2. 如果是旧格式且有任务，则自动迁移
+/// 3. 创建 tasks.toml 并提取所有任务的元数据
+/// 4. 将任务内容文件改为纯内容（移除元数据）
+pub fn auto_migrate_project_to_new_format(project_path: &Path) -> Result<bool, String> {
+    let tasks_toml = project_path.join("tasks.toml");
+
+    // 如果已经是新格式，不需要迁移
+    if tasks_toml.exists() {
+        return Ok(false);
+    }
+
+    // 读取项目配置以获取所有状态
+    let config_path = project_path.join(".kanban.toml");
+    if !config_path.exists() {
+        return Err("Project config not found".to_string());
+    }
+
+    let config_content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read config: {}", e))?;
+
+    let project_config: crate::models::ProjectConfig = toml::from_str(&config_content)
+        .map_err(|e| format!("Failed to parse config: {}", e))?;
+
+    // 收集所有任务
+    let mut all_tasks = Vec::new();
+    let mut has_tasks = false;
+
+    for status in &project_config.statuses.order {
+        let status_dir = project_path.join(status);
+        if !status_dir.exists() {
+            continue;
+        }
+
+        // 使用旧格式加载任务
+        for entry in fs::read_dir(&status_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+
+            if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                if let Ok(task) = load_task(&path, status) {
+                    all_tasks.push(task);
+                    has_tasks = true;
+                }
+            }
+        }
+    }
+
+    // 如果没有任务，只创建空的 tasks.toml
+    if !has_tasks {
+        fs::write(&tasks_toml, "[tasks]\n")
+            .map_err(|e| format!("Failed to create tasks.toml: {}", e))?;
+        return Ok(true);
+    }
+
+    // 创建元数据映射
+    let mut metadata_map = HashMap::new();
+
+    for task in &all_tasks {
+        let metadata = crate::models::TaskMetadata::from(task);
+        metadata_map.insert(task.id.to_string(), metadata);
+    }
+
+    // 保存元数据到 tasks.toml
+    save_tasks_metadata(project_path, &metadata_map)?;
+
+    // 更新所有任务文件：移除元数据，只保留内容
+    for task in &all_tasks {
+        let new_path = project_path.join(&task.status).join(format!("{}.md", task.id));
+
+        // 只保存纯内容
+        fs::write(&new_path, &task.content)
+            .map_err(|e| format!("Failed to write task content: {}", e))?;
+
+        // 如果旧文件路径不同，删除旧文件
+        if task.file_path != new_path && task.file_path.exists() {
+            let _ = fs::remove_file(&task.file_path);
+        }
+    }
+
+    Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_auto_migration() {
+        // 创建临时测试目录
+        let test_dir = std::env::temp_dir().join("kanban_test_migration");
+        let _ = fs::remove_dir_all(&test_dir);
+        fs::create_dir_all(&test_dir).unwrap();
+
+        // 创建项目配置
+        let config = r#"name = "Test Project"
+created = "1234567890"
+
+[statuses]
+order = ["todo", "done"]
+
+[statuses.todo]
+display = "Todo"
+
+[statuses.done]
+display = "Done"
+"#;
+        fs::write(test_dir.join(".kanban.toml"), config).unwrap();
+
+        // 创建状态目录
+        fs::create_dir_all(test_dir.join("todo")).unwrap();
+        fs::create_dir_all(test_dir.join("done")).unwrap();
+
+        // 创建旧格式的任务文件
+        let task1 = r#"# Test Task 1
+
+id: 1
+order: 1000
+created: 1234567890
+priority: high
+tags: test, feature
+
+This is task content.
+"#;
+        fs::write(test_dir.join("todo/1.md"), task1).unwrap();
+
+        let task2 = r#"# Test Task 2
+
+id: 2
+order: 2000
+created: 1234567891
+
+Another task.
+"#;
+        fs::write(test_dir.join("done/2.md"), task2).unwrap();
+
+        // 执行迁移
+        let result = auto_migrate_project_to_new_format(&test_dir);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // 验证 tasks.toml 已创建
+        assert!(test_dir.join("tasks.toml").exists());
+
+        // 验证元数据已提取
+        let metadata = load_tasks_metadata(&test_dir).unwrap();
+        assert_eq!(metadata.len(), 2);
+        assert!(metadata.contains_key("1"));
+        assert!(metadata.contains_key("2"));
+
+        // 验证任务1的元数据
+        let task1_meta = metadata.get("1").unwrap();
+        assert_eq!(task1_meta.title, "Test Task 1");
+        assert_eq!(task1_meta.status, "todo");
+        assert_eq!(task1_meta.priority, Some("high".to_string()));
+        assert_eq!(task1_meta.tags, vec!["test", "feature"]);
+
+        // 验证内容文件已更新为纯内容
+        let content1 = fs::read_to_string(test_dir.join("todo/1.md")).unwrap();
+        assert!(!content1.contains("id:"));
+        assert!(!content1.contains("order:"));
+        assert!(content1.contains("This is task content."));
+
+        // 清理
+        let _ = fs::remove_dir_all(&test_dir);
+    }
+}
