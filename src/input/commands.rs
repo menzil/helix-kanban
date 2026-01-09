@@ -109,8 +109,8 @@ pub enum Command {
     EditStatusDisplay,
 
     // ===== 模式切换 =====
-    /// 进入命令模式
-    EnterCommandMode,
+    // /// 进入命令模式 - 已注释
+    // EnterCommandMode,
     /// 进入正常模式
     EnterNormalMode,
     /// 取消当前操作

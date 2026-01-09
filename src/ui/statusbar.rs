@@ -11,7 +11,7 @@ use ratatui::{
 pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let mode_text = match app.mode {
         Mode::Normal => ("NORMAL", Color::Green),
-        Mode::Command => ("COMMAND", Color::Yellow),
+        // Mode::Command => ("COMMAND", Color::Yellow), // 已注释
         Mode::TaskSelect => ("SELECT", Color::Cyan),
         Mode::Dialog => ("DIALOG", Color::Magenta),
         Mode::Help => ("HELP", Color::Blue),
@@ -26,12 +26,12 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         String::new()
     };
 
-    // 命令输入
-    let command_display = if app.mode == Mode::Command {
-        format!(" :{}", app.command_input)
-    } else {
-        String::new()
-    };
+    // 命令输入 - 已注释
+    // let command_display = if app.mode == Mode::Command {
+    //     format!(" :{}", app.command_input)
+    // } else {
+    //     String::new()
+    // };
 
     let line = Line::from(vec![
         Span::styled(
@@ -42,7 +42,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(key_sequence),
-        Span::raw(command_display),
+        // command_display 已注释
         Span::raw(format!(
             " | {} 项目 | 面板 {} ",
             app.projects.len(),

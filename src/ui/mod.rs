@@ -50,10 +50,10 @@ pub fn render(f: &mut Frame, app: &mut App) {
         command_menu::render(f, f.area(), app);
     }
 
-    // 渲染命令补全（如果处于命令模式且有输入）
-    if app.mode == crate::app::Mode::Command {
-        command_completion::render(f, f.area(), app);
-    }
+    // 渲染命令补全（如果处于命令模式且有输入） - 已注释
+    // if app.mode == crate::app::Mode::Command {
+    //     command_completion::render(f, f.area(), app);
+    // }
 
     // 渲染欢迎对话框（如果是首次运行）
     if app.show_welcome_dialog {

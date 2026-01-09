@@ -13,7 +13,7 @@ pub fn handle_key_input(app: &mut App, key: KeyEvent) -> bool {
 
     match app.mode {
         Mode::Normal => handle_normal_mode(app, key),
-        Mode::Command => handle_command_mode(app, key),
+        // Mode::Command => handle_command_mode(app, key), // 已注释
         Mode::TaskSelect => handle_task_select_mode(app, key),
         Mode::Dialog => handle_dialog_mode(app, key),
         Mode::Help => handle_help_mode(app, key),
@@ -61,50 +61,50 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
     true
 }
 
-/// 处理命令模式的按键
-fn handle_command_mode(app: &mut App, key: KeyEvent) -> bool {
-    match key.code {
-        KeyCode::Esc => {
-            app.mode = Mode::Normal;
-            app.command_input.clear();
-            app.completion_selected_index = None;
-        }
-        KeyCode::Tab => {
-            // 下一个补全项
-            let matches = app.command_registry.find_matches(&app.command_input);
-            if !matches.is_empty() {
-                let current = app.completion_selected_index.unwrap_or(0);
-                let next = if current + 1 >= matches.len() { 0 } else { current + 1 };
-                app.completion_selected_index = Some(next);
-            }
-        }
-        KeyCode::BackTab => {
-            // 上一个补全项
-            let matches = app.command_registry.find_matches(&app.command_input);
-            if !matches.is_empty() {
-                let current = app.completion_selected_index.unwrap_or(0);
-                let prev = if current == 0 { matches.len() - 1 } else { current - 1 };
-                app.completion_selected_index = Some(prev);
-            }
-        }
-        KeyCode::Enter => {
-            // 执行命令
-            let should_continue = execute_text_command(app, &app.command_input.clone());
-            app.command_input.clear();
-            app.mode = Mode::Normal;
-            app.completion_selected_index = None;
-            return should_continue;
-        }
-        KeyCode::Backspace => {
-            app.command_input.pop();
-        }
-        KeyCode::Char(c) => {
-            app.command_input.push(c);
-        }
-        _ => {}
-    }
-    true
-}
+/// 处理命令模式的按键 - 已注释
+// fn handle_command_mode(app: &mut App, key: KeyEvent) -> bool {
+//     match key.code {
+//         KeyCode::Esc => {
+//             app.mode = Mode::Normal;
+//             app.command_input.clear();
+//             app.completion_selected_index = None;
+//         }
+//         KeyCode::Tab => {
+//             // 下一个补全项
+//             let matches = app.command_registry.find_matches(&app.command_input);
+//             if !matches.is_empty() {
+//                 let current = app.completion_selected_index.unwrap_or(0);
+//                 let next = if current + 1 >= matches.len() { 0 } else { current + 1 };
+//                 app.completion_selected_index = Some(next);
+//             }
+//         }
+//         KeyCode::BackTab => {
+//             // 上一个补全项
+//             let matches = app.command_registry.find_matches(&app.command_input);
+//             if !matches.is_empty() {
+//                 let current = app.completion_selected_index.unwrap_or(0);
+//                 let prev = if current == 0 { matches.len() - 1 } else { current - 1 };
+//                 app.completion_selected_index = Some(prev);
+//             }
+//         }
+//         KeyCode::Enter => {
+//             // 执行命令
+//             let should_continue = execute_text_command(app, &app.command_input.clone());
+//             app.command_input.clear();
+//             app.mode = Mode::Normal;
+//             app.completion_selected_index = None;
+//             return should_continue;
+//         }
+//         KeyCode::Backspace => {
+//             app.command_input.pop();
+//         }
+//         KeyCode::Char(c) => {
+//             app.command_input.push(c);
+//         }
+//         _ => {}
+//     }
+//     true
+// }
 
 /// 处理任务选择模式的按键
 fn handle_task_select_mode(app: &mut App, key: KeyEvent) -> bool {
@@ -721,7 +721,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('L'), KeyModifiers::SHIFT) => Some(Command::MoveTaskRight),
         ([], KeyCode::Char('J'), KeyModifiers::SHIFT) => Some(Command::MoveTaskDown),
         ([], KeyCode::Char('K'), KeyModifiers::SHIFT) => Some(Command::MoveTaskUp),
-        ([], KeyCode::Char(':'), KeyModifiers::NONE) => Some(Command::EnterCommandMode),
+        // ([], KeyCode::Char(':'), KeyModifiers::NONE) => Some(Command::EnterCommandMode), // 已注释
         ([], KeyCode::Esc, _) => Some(Command::EnterNormalMode),
         ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask),  // 删除任务
         ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject),  // 硬删除项目
@@ -832,13 +832,13 @@ fn execute_command(app: &mut App, cmd: Command) {
             // 切换列时重置任务索引到 0
             app.selected_task_index.insert(focused_pane, 0);
         }
-        Command::EnterCommandMode => {
-            app.mode = Mode::Command;
-        }
+        // Command::EnterCommandMode => {
+        //     app.mode = Mode::Command; // 已注释
+        // }
         Command::EnterNormalMode | Command::Cancel => {
             app.mode = Mode::Normal;
             app.key_buffer.clear();
-            app.command_input.clear();
+            app.command_input.clear(); // 已注释，但仍保留清理逻辑
         }
         Command::NewProject => {
             app.mode = Mode::Dialog;

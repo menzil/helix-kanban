@@ -49,8 +49,8 @@ impl Notification {
 pub enum Mode {
     /// 正常模式 - 导航和查看
     Normal,
-    /// 命令模式 - 输入命令
-    Command,
+    // /// 命令模式 - 输入命令 (已注释)
+    // Command,
     /// 任务选择模式
     TaskSelect,
     /// 对话框模式
