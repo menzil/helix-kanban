@@ -1,10 +1,10 @@
 use crate::app::{App, Mode};
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
-    Frame,
 };
 
 /// 渲染状态栏（Helix 风格）

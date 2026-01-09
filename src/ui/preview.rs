@@ -1,9 +1,9 @@
 use crate::app::App;
+use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-use ratatui::Frame;
 
 /// 渲染预览界面
 pub fn render(f: &mut Frame, area: Rect, app: &App) {
@@ -20,9 +20,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),       // 标题栏
-            Constraint::Min(0),           // 内容区
-            Constraint::Length(1),        // 状态栏
+            Constraint::Length(3), // 标题栏
+            Constraint::Min(0),    // 内容区
+            Constraint::Length(1), // 状态栏
         ])
         .split(popup_area);
 
@@ -69,13 +69,13 @@ fn render_header(f: &mut Frame, area: Rect) {
         .title(" 任务预览 ")
         .title_style(
             Style::default()
-                .fg(Color::Rgb(136, 192, 208))  // Nord cyan
+                .fg(Color::Rgb(136, 192, 208)) // Nord cyan
                 .add_modifier(Modifier::BOLD),
         )
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))  // Nord cyan
+        .border_style(Style::default().fg(Color::Rgb(136, 192, 208))) // Nord cyan
         .border_type(ratatui::widgets::BorderType::Rounded)
-        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
+        .style(Style::default().bg(Color::Rgb(46, 52, 64))); // Nord background
 
     f.render_widget(title_block, area);
 }
@@ -96,7 +96,7 @@ fn render_content(f: &mut Frame, area: Rect, app: &App) {
                 Line::from(Span::styled(
                     line,
                     Style::default()
-                        .fg(Color::Rgb(235, 203, 139))  // Nord yellow
+                        .fg(Color::Rgb(235, 203, 139)) // Nord yellow
                         .add_modifier(Modifier::BOLD),
                 ))
             } else if trimmed.starts_with("## ") {
@@ -104,7 +104,7 @@ fn render_content(f: &mut Frame, area: Rect, app: &App) {
                 Line::from(Span::styled(
                     line,
                     Style::default()
-                        .fg(Color::Rgb(136, 192, 208))  // Nord frost
+                        .fg(Color::Rgb(136, 192, 208)) // Nord frost
                         .add_modifier(Modifier::BOLD),
                 ))
             } else if trimmed.starts_with("### ") || trimmed.starts_with("#### ") {
@@ -112,40 +112,43 @@ fn render_content(f: &mut Frame, area: Rect, app: &App) {
                 Line::from(Span::styled(
                     line,
                     Style::default()
-                        .fg(Color::Rgb(129, 161, 193))  // Nord light blue
+                        .fg(Color::Rgb(129, 161, 193)) // Nord light blue
                         .add_modifier(Modifier::BOLD),
                 ))
             } else if trimmed.starts_with("- [ ]") || trimmed.starts_with("* [ ]") {
                 // 未完成任务列表 - Nord frost
                 Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::Rgb(136, 192, 208))
+                    Style::default().fg(Color::Rgb(136, 192, 208)),
                 ))
             } else if trimmed.starts_with("- [x]") || trimmed.starts_with("* [x]") {
                 // 已完成任务列表 - Nord green
                 Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::Rgb(163, 190, 140))  // Nord green
+                    Style::default().fg(Color::Rgb(163, 190, 140)), // Nord green
                 ))
-            } else if trimmed.starts_with("- ") || trimmed.starts_with("* ") || trimmed.starts_with("+ ") {
+            } else if trimmed.starts_with("- ")
+                || trimmed.starts_with("* ")
+                || trimmed.starts_with("+ ")
+            {
                 // 普通列表 - Nord green
                 Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::Rgb(163, 190, 140))
+                    Style::default().fg(Color::Rgb(163, 190, 140)),
                 ))
             } else if trimmed.starts_with("> ") {
                 // 引用 - Nord purple (斜体)
                 Line::from(Span::styled(
                     line,
                     Style::default()
-                        .fg(Color::Rgb(180, 142, 173))  // Nord purple
+                        .fg(Color::Rgb(180, 142, 173)) // Nord purple
                         .add_modifier(Modifier::ITALIC),
                 ))
             } else if trimmed.starts_with("```") {
                 // 代码块标记 - Nord orange
                 Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::Rgb(208, 135, 112))  // Nord orange
+                    Style::default().fg(Color::Rgb(208, 135, 112)), // Nord orange
                 ))
             } else if trimmed.starts_with("    ") || trimmed.starts_with("\t") {
                 // 缩进代码块 - Nord snow storm (dim)
@@ -159,7 +162,7 @@ fn render_content(f: &mut Frame, area: Rect, app: &App) {
                 // 普通文本 - Nord snow storm
                 Line::from(Span::styled(
                     line,
-                    Style::default().fg(Color::Rgb(216, 222, 233))
+                    Style::default().fg(Color::Rgb(216, 222, 233)),
                 ))
             }
         })
@@ -169,9 +172,9 @@ fn render_content(f: &mut Frame, area: Rect, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Rgb(76, 86, 106)))  // Nord comment
+                .border_style(Style::default().fg(Color::Rgb(76, 86, 106))) // Nord comment
                 .border_type(ratatui::widgets::BorderType::Rounded)
-                .style(Style::default().bg(Color::Rgb(46, 52, 64))),  // Nord background
+                .style(Style::default().bg(Color::Rgb(46, 52, 64))), // Nord background
         )
         .wrap(Wrap { trim: false });
 
@@ -182,15 +185,15 @@ fn render_content(f: &mut Frame, area: Rect, app: &App) {
 fn render_statusbar(f: &mut Frame, area: Rect) {
     let help_text = Line::from(vec![
         Span::raw("  "),
-        Span::styled("j/k", Style::default().fg(Color::Rgb(136, 192, 208))),  // Nord cyan
+        Span::styled("j/k", Style::default().fg(Color::Rgb(136, 192, 208))), // Nord cyan
         Span::raw(" 滚动  "),
-        Span::styled("ESC", Style::default().fg(Color::Rgb(136, 192, 208))),  // Nord cyan
+        Span::styled("ESC", Style::default().fg(Color::Rgb(136, 192, 208))), // Nord cyan
         Span::raw(" 返回  "),
     ]);
 
     let paragraph = Paragraph::new(help_text)
         .alignment(Alignment::Left)
-        .style(Style::default().bg(Color::Rgb(59, 66, 82)));  // Nord darker background
+        .style(Style::default().bg(Color::Rgb(59, 66, 82))); // Nord darker background
 
     f.render_widget(paragraph, area);
 }

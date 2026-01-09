@@ -2,9 +2,9 @@ use anyhow::Result;
 use crossterm::{
     event::{self, Event},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 
 mod app;
@@ -33,7 +33,8 @@ fn handle_new_task_from_file(app: &mut App, temp_file_path: &str) -> Result<()> 
     }
 
     // 解析第一行作为任务标题
-    let title = content.lines()
+    let title = content
+        .lines()
         .next()
         .unwrap_or("未命名任务")
         .trim_start_matches('#')
@@ -47,7 +48,8 @@ fn handle_new_task_from_file(app: &mut App, temp_file_path: &str) -> Result<()> 
 
     // 获取当前项目名称
     let project_name = if let Some(SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
+        app.split_tree.find_pane(app.focused_pane)
+    {
         if let Some(name) = project_id {
             name.clone()
         } else {
@@ -58,19 +60,24 @@ fn handle_new_task_from_file(app: &mut App, temp_file_path: &str) -> Result<()> 
     };
 
     // 获取项目路径
-    let project_path = if let Some(project) = app.projects.iter().find(|p| &p.name == &project_name) {
+    let project_path = if let Some(project) = app.projects.iter().find(|p| &p.name == &project_name)
+    {
         project.path.clone()
     } else {
         anyhow::bail!("在项目列表中找不到项目");
     };
 
     // 获取下一个任务 ID
-    let next_id = crate::fs::get_next_task_id(&project_path)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let next_id = crate::fs::get_next_task_id(&project_path).map_err(|e| anyhow::anyhow!(e))?;
 
     // 获取当前选中的列作为初始状态
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-    let status = app.get_status_name_by_column(column)
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
+    let status = app
+        .get_status_name_by_column(column)
         .unwrap_or_else(|| "todo".to_string());
 
     // 创建任务
@@ -92,13 +99,16 @@ fn handle_new_task_from_file(app: &mut App, temp_file_path: &str) -> Result<()> 
                 *project = updated_project;
 
                 // 找到新任务在当前列的索引（应该是最后一个）
-                let new_task_idx = project.tasks.iter()
+                let new_task_idx = project
+                    .tasks
+                    .iter()
                     .filter(|t| t.status == status)
                     .count()
                     .saturating_sub(1);
 
                 // 自动选中新创建的任务
-                app.selected_task_index.insert(app.focused_pane, new_task_idx);
+                app.selected_task_index
+                    .insert(app.focused_pane, new_task_idx);
             }
         }
         Err(e) => {
@@ -180,7 +190,7 @@ where
         // 检查是否需要打开外部编辑器
         if let Some(file_path) = app.pending_editor_file.take() {
             let is_new_task = app.is_new_task_file;
-            app.is_new_task_file = false;  // 重置标志
+            app.is_new_task_file = false; // 重置标志
 
             suspend_terminal(terminal)?;
 
@@ -188,7 +198,7 @@ where
             if let Err(e) = open_external_editor(&file_path, &app.config.editor) {
                 app.show_notification(
                     format!("打开编辑器失败: {}", e),
-                    app::NotificationLevel::Error
+                    app::NotificationLevel::Error,
                 );
             }
 
@@ -199,7 +209,7 @@ where
                 if let Err(e) = handle_new_task_from_file(app, &file_path) {
                     app.show_notification(
                         format!("创建任务失败: {}", e),
-                        app::NotificationLevel::Error
+                        app::NotificationLevel::Error,
                     );
                 }
                 // 删除临时文件
@@ -209,7 +219,7 @@ where
                 if let Err(e) = app.reload_current_project() {
                     app.show_notification(
                         format!("重新加载项目失败: {}", e),
-                        app::NotificationLevel::Error
+                        app::NotificationLevel::Error,
                     );
                 }
             }
@@ -223,7 +233,7 @@ where
             if let Err(e) = open_external_previewer(&file_path, &app.config.markdown_viewer) {
                 app.show_notification(
                     format!("打开预览工具失败: {}", e),
-                    app::NotificationLevel::Error
+                    app::NotificationLevel::Error,
                 );
             }
 

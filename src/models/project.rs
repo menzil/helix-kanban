@@ -62,9 +62,6 @@ impl Project {
 
     #[allow(dead_code)]
     pub fn get_tasks_by_status(&self, status: &str) -> Vec<&Task> {
-        self.tasks
-            .iter()
-            .filter(|t| t.status == status)
-            .collect()
+        self.tasks.iter().filter(|t| t.status == status).collect()
     }
 }

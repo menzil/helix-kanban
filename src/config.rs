@@ -106,11 +106,7 @@ fn detect_editor() -> String {
 
     // 2. 检查常见编辑器（按优先级）
     let common_editors = vec![
-        "nvim",
-        "vim",
-        "nano",
-        "emacs",
-        "code", // VS Code
+        "nvim", "vim", "nano", "emacs", "code", // VS Code
         "subl", // Sublime Text
     ];
 
@@ -132,11 +128,11 @@ fn detect_markdown_viewer() -> String {
         "macos" => {
             // macOS 上检查常见的 Markdown 预览器
             let viewers = vec![
-                "open -a Marked\\ 2",     // Marked 2
-                "open -a iA\\ Writer",    // iA Writer
-                "open -a Typora",         // Typora
-                "glow",                   // 终端预览器
-                "open",                   // 默认应用
+                "open -a Marked\\ 2",  // Marked 2
+                "open -a iA\\ Writer", // iA Writer
+                "open -a Typora",      // Typora
+                "glow",                // 终端预览器
+                "open",                // 默认应用
             ];
 
             for viewer in viewers {
@@ -151,9 +147,9 @@ fn detect_markdown_viewer() -> String {
         "linux" => {
             // Linux 上的选项
             let viewers = vec![
-                "glow",        // 终端预览器
-                "mdcat",       // 终端预览器
-                "xdg-open",    // 默认应用
+                "glow",     // 终端预览器
+                "mdcat",    // 终端预览器
+                "xdg-open", // 默认应用
             ];
 
             for viewer in viewers {
@@ -175,14 +171,10 @@ fn detect_markdown_viewer() -> String {
 fn which(cmd: &str) -> Result<PathBuf> {
     use std::process::Command;
 
-    let output = Command::new("which")
-        .arg(cmd)
-        .output()?;
+    let output = Command::new("which").arg(cmd).output()?;
 
     if output.status.success() {
-        let path = String::from_utf8(output.stdout)?
-            .trim()
-            .to_string();
+        let path = String::from_utf8(output.stdout)?.trim().to_string();
         Ok(PathBuf::from(path))
     } else {
         Err(anyhow::anyhow!("Command not found: {}", cmd))

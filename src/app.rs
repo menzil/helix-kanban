@@ -1,7 +1,7 @@
 use crate::input::CommandRegistry;
 use crate::models::Project;
-use crate::ui::layout::SplitNode;
 use crate::ui::dialogs::DialogType;
+use crate::ui::layout::SplitNode;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -16,7 +16,12 @@ fn log_debug(msg: String) {
         .append(true)
         .open("/tmp/kanban_debug.log")
     {
-        let _ = writeln!(file, "[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg);
+        let _ = writeln!(
+            file,
+            "[{}] {}",
+            chrono::Local::now().format("%H:%M:%S"),
+            msg
+        );
     }
 }
 
@@ -182,14 +187,22 @@ impl App {
         };
 
         // 调试：记录初始状态
-        log_debug(format!("App初始化: focused_pane={}, next_pane_id={}, pane_ids={:?}",
-            app.focused_pane, app.next_pane_id, app.split_tree.collect_pane_ids()));
+        log_debug(format!(
+            "App初始化: focused_pane={}, next_pane_id={}, pane_ids={:?}",
+            app.focused_pane,
+            app.next_pane_id,
+            app.split_tree.collect_pane_ids()
+        ));
 
         // 尝试加载保存的状态
         if let Ok(state) = crate::state::load_state() {
             crate::state::apply_state(&mut app, state);
-            log_debug(format!("加载状态后: focused_pane={}, next_pane_id={}, pane_ids={:?}",
-                app.focused_pane, app.next_pane_id, app.split_tree.collect_pane_ids()));
+            log_debug(format!(
+                "加载状态后: focused_pane={}, next_pane_id={}, pane_ids={:?}",
+                app.focused_pane,
+                app.next_pane_id,
+                app.split_tree.collect_pane_ids()
+            ));
         }
 
         Ok(app)
@@ -203,7 +216,8 @@ impl App {
 
     /// 获取当前聚焦面板显示的项目
     pub fn get_focused_project(&self) -> Option<&Project> {
-        if let Some(SplitNode::Leaf { project_id, .. }) = self.split_tree.find_pane(self.focused_pane)
+        if let Some(SplitNode::Leaf { project_id, .. }) =
+            self.split_tree.find_pane(self.focused_pane)
         {
             if let Some(pid) = project_id {
                 return self.projects.iter().find(|p| &p.name == pid);
@@ -215,7 +229,8 @@ impl App {
     /// 获取当前聚焦面板显示的项目（可变）
     #[allow(dead_code)]
     pub fn get_focused_project_mut(&mut self) -> Option<&mut Project> {
-        if let Some(SplitNode::Leaf { project_id, .. }) = self.split_tree.find_pane(self.focused_pane)
+        if let Some(SplitNode::Leaf { project_id, .. }) =
+            self.split_tree.find_pane(self.focused_pane)
         {
             if let Some(pid) = project_id.clone() {
                 return self.projects.iter_mut().find(|p| p.name == pid);
@@ -241,7 +256,8 @@ impl App {
         }
 
         // 设置当前面板的项目
-        if let Some(SplitNode::Leaf { project_id, .. }) = self.split_tree.find_pane_mut(self.focused_pane)
+        if let Some(SplitNode::Leaf { project_id, .. }) =
+            self.split_tree.find_pane_mut(self.focused_pane)
         {
             *project_id = Some(project_name);
             // 重置选中索引到 0
@@ -256,7 +272,8 @@ impl App {
 
     /// 重新加载当前聚焦面板的项目（用于外部编辑器保存后刷新）
     pub fn reload_current_project(&mut self) -> Result<()> {
-        if let Some(SplitNode::Leaf { project_id, .. }) = self.split_tree.find_pane(self.focused_pane)
+        if let Some(SplitNode::Leaf { project_id, .. }) =
+            self.split_tree.find_pane(self.focused_pane)
         {
             if let Some(pid) = project_id {
                 // 从项目列表中找到项目路径和类型
@@ -265,7 +282,9 @@ impl App {
                     let project_type = project.project_type;
 
                     // 重新加载项目
-                    if let Ok(updated_project) = crate::fs::load_project_with_type(&project_path, project_type) {
+                    if let Ok(updated_project) =
+                        crate::fs::load_project_with_type(&project_path, project_type)
+                    {
                         if let Some(project) = self.projects.iter_mut().find(|p| &p.name == pid) {
                             *project = updated_project;
                         }
@@ -292,7 +311,9 @@ impl App {
                 self.saved_layout = Some(self.split_tree.clone());
 
                 // 获取当前聚焦面板的内容
-                if let Some(SplitNode::Leaf { project_id, id }) = self.split_tree.find_pane(self.focused_pane) {
+                if let Some(SplitNode::Leaf { project_id, id }) =
+                    self.split_tree.find_pane(self.focused_pane)
+                {
                     let project_id = project_id.clone();
                     let pane_id = *id;
 

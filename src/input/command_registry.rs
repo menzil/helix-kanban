@@ -237,7 +237,10 @@ impl CommandRegistry {
             }
 
             // 检查别名是否匹配
-            let alias_match = cmd.aliases.iter().any(|alias| alias.starts_with(&input_lower));
+            let alias_match = cmd
+                .aliases
+                .iter()
+                .any(|alias| alias.starts_with(&input_lower));
             if alias_match {
                 matches.push(cmd);
             }

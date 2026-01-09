@@ -1,9 +1,9 @@
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
-    Frame,
 };
 
 use super::text_input::HelixTextArea;
@@ -37,7 +37,7 @@ pub enum DialogType {
         title: String,
         message: String,
         yes_selected: bool,
-        action: ConfirmAction,  // 添加操作类型
+        action: ConfirmAction, // 添加操作类型
     },
 }
 
@@ -105,9 +105,9 @@ fn render_input_dialog(
         .title(format!("  {}  ", title))
         .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Rgb(76, 86, 106)))  // Nord border color
+        .border_style(Style::default().fg(Color::Rgb(76, 86, 106))) // Nord border color
         .border_type(ratatui::widgets::BorderType::Rounded)
-        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
+        .style(Style::default().bg(Color::Rgb(46, 52, 64))); // Nord background
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -117,9 +117,9 @@ fn render_input_dialog(
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(2),  // 提示文本
-                Constraint::Min(10),    // 大输入框（多行）
-                Constraint::Length(2),  // 模式指示器
+                Constraint::Length(2), // 提示文本
+                Constraint::Min(10),   // 大输入框（多行）
+                Constraint::Length(2), // 模式指示器
             ])
             .split(inner)
     } else {
@@ -135,8 +135,11 @@ fn render_input_dialog(
 
     // 提示文本
     let prompt_text = if is_task_input {
-        Paragraph::new(format!("{}\n（Helix 模式编辑，Esc 切换模式，:w 或 Ctrl+S 提交）", prompt))
-            .style(Style::default().fg(Color::Rgb(129, 161, 193)))  // Nord frost color
+        Paragraph::new(format!(
+            "{}\n（Helix 模式编辑，Esc 切换模式，:w 或 Ctrl+S 提交）",
+            prompt
+        ))
+        .style(Style::default().fg(Color::Rgb(129, 161, 193))) // Nord frost color
     } else {
         Paragraph::new(prompt).style(Style::default().fg(Color::Rgb(129, 161, 193)))
     };
@@ -145,7 +148,7 @@ fn render_input_dialog(
     // 输入框 - 使用 HelixTextArea 渲染
     let input_block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))  // Nord cyan
+        .border_style(Style::default().fg(Color::Rgb(136, 192, 208))) // Nord cyan
         .border_type(ratatui::widgets::BorderType::Rounded);
 
     let input_inner = input_block.inner(chunks[1]);
@@ -171,9 +174,9 @@ fn render_select_dialog(
         .title(format!("  {}  ", title))
         .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Rgb(76, 86, 106)))  // Nord border color
+        .border_style(Style::default().fg(Color::Rgb(76, 86, 106))) // Nord border color
         .border_type(ratatui::widgets::BorderType::Rounded)
-        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
+        .style(Style::default().bg(Color::Rgb(46, 52, 64))); // Nord background
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -195,9 +198,9 @@ fn render_select_dialog(
     };
 
     let search_style = if filter.is_empty() {
-        Style::default().fg(Color::Rgb(129, 161, 193))  // 灰色提示
+        Style::default().fg(Color::Rgb(129, 161, 193)) // 灰色提示
     } else {
-        Style::default().fg(Color::Rgb(136, 192, 208))  // 高亮搜索文本
+        Style::default().fg(Color::Rgb(136, 192, 208)) // 高亮搜索文本
     };
 
     let search_block = Block::default()
@@ -208,8 +211,7 @@ fn render_select_dialog(
     let search_inner = search_block.inner(chunks[0]);
     f.render_widget(search_block, chunks[0]);
 
-    let search_paragraph = Paragraph::new(search_text)
-        .style(search_style);
+    let search_paragraph = Paragraph::new(search_text).style(search_style);
     f.render_widget(search_paragraph, search_inner);
 
     // 过滤项目列表
@@ -252,16 +254,18 @@ fn render_select_dialog(
                         sequence_num,
                         Style::default()
                             .fg(Color::White)
-                            .bg(Color::Rgb(94, 129, 172))  // 蓝色序号标记
+                            .bg(Color::Rgb(94, 129, 172)) // 蓝色序号标记
                             .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw("  "),
                     Span::styled(
                         *main_line,
-                        Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD),
                     ),
                     Span::raw("  "),
-                    Span::styled("✓", Style::default().fg(Color::Rgb(163, 190, 140))),  // 绿色勾
+                    Span::styled("✓", Style::default().fg(Color::Rgb(163, 190, 140))), // 绿色勾
                     Span::raw("  "),
                     Span::styled(
                         "Enter",
@@ -282,24 +286,19 @@ fn render_select_dialog(
                 } else {
                     Style::default().fg(Color::Rgb(129, 161, 193))
                 };
-                content_lines.push(Line::from(vec![
-                    Span::styled(*sub, sub_style),
-                ]));
+                content_lines.push(Line::from(vec![Span::styled(*sub, sub_style)]));
             }
 
             // 添加分隔线（除了最后一项）
             if *idx < filtered_items.len() - 1 {
-                content_lines.push(Line::from(vec![
-                    Span::styled(
-                        "  ────────────────────────────────────────────────────────",
-                        Style::default().fg(Color::Rgb(76, 86, 106)),  // 灰色分隔线
-                    ),
-                ]));
+                content_lines.push(Line::from(vec![Span::styled(
+                    "  ────────────────────────────────────────────────────────",
+                    Style::default().fg(Color::Rgb(76, 86, 106)), // 灰色分隔线
+                )]));
             }
 
             let style = if is_selected {
-                Style::default()
-                    .bg(Color::Rgb(59, 66, 82))  // Nord 深蓝背景
+                Style::default().bg(Color::Rgb(59, 66, 82)) // Nord 深蓝背景
             } else {
                 Style::default()
             };
@@ -314,7 +313,8 @@ fn render_select_dialog(
     let mut list_state = ratatui::widgets::ListState::default();
 
     // 在过滤后的项目中找到当前选中项的索引
-    let filtered_selected = filtered_items.iter()
+    let filtered_selected = filtered_items
+        .iter()
         .position(|(idx, _)| *idx == selected)
         .unwrap_or(0);
 
@@ -323,9 +323,13 @@ fn render_select_dialog(
     f.render_stateful_widget(list, chunks[1], &mut list_state);
 
     // 帮助文本 - 简化提示（搜索框已经在顶部显示）
-    let help_text = format!("↑↓ 导航  Enter 确认  Esc 取消  [{}/{}]", filtered_items.len(), items.len());
+    let help_text = format!(
+        "↑↓ 导航  Enter 确认  Esc 取消  [{}/{}]",
+        filtered_items.len(),
+        items.len()
+    );
     let help_paragraph = Paragraph::new(help_text)
-        .style(Style::default().fg(Color::Rgb(129, 161, 193)))  // Nord frost color
+        .style(Style::default().fg(Color::Rgb(129, 161, 193))) // Nord frost color
         .alignment(Alignment::Center);
     f.render_widget(help_paragraph, chunks[2]);
 
@@ -337,8 +341,8 @@ fn render_select_dialog(
         width: count_text.len() as u16 + 2,
         height: 1,
     };
-    let count_paragraph = Paragraph::new(count_text)
-        .style(Style::default().fg(Color::Rgb(129, 161, 193)));
+    let count_paragraph =
+        Paragraph::new(count_text).style(Style::default().fg(Color::Rgb(129, 161, 193)));
     f.render_widget(count_paragraph, count_area);
 }
 
@@ -354,9 +358,9 @@ fn render_confirm_dialog(
         .title(format!("  {}  ", title))
         .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Rgb(235, 203, 139)))  // Nord yellow for warnings
+        .border_style(Style::default().fg(Color::Rgb(235, 203, 139))) // Nord yellow for warnings
         .border_type(ratatui::widgets::BorderType::Rounded)
-        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
+        .style(Style::default().bg(Color::Rgb(46, 52, 64))); // Nord background
 
     let inner = block.inner(area);
     f.render_widget(block, area);
@@ -373,7 +377,7 @@ fn render_confirm_dialog(
     let message_text = Paragraph::new(message)
         .wrap(Wrap { trim: true })
         .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Rgb(216, 222, 233)));  // Nord snow storm
+        .style(Style::default().fg(Color::Rgb(216, 222, 233))); // Nord snow storm
     f.render_widget(message_text, chunks[0]);
 
     // 按钮区域 - 添加快捷键提示
@@ -390,8 +394,8 @@ fn render_confirm_dialog(
     // 否按钮 (n) - 放在左侧
     let no_style = if !yes_selected {
         Style::default()
-            .bg(Color::Rgb(191, 97, 106))   // Nord 柔和红色
-            .fg(Color::Rgb(46, 52, 64))      // Nord 深色背景
+            .bg(Color::Rgb(191, 97, 106)) // Nord 柔和红色
+            .fg(Color::Rgb(46, 52, 64)) // Nord 深色背景
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default()
@@ -406,8 +410,8 @@ fn render_confirm_dialog(
     // 是按钮 (y) - 放在右侧
     let yes_style = if yes_selected {
         Style::default()
-            .bg(Color::Rgb(163, 190, 140))  // Nord 柔和绿色
-            .fg(Color::Rgb(46, 52, 64))      // Nord 深色背景
+            .bg(Color::Rgb(163, 190, 140)) // Nord 柔和绿色
+            .fg(Color::Rgb(46, 52, 64)) // Nord 深色背景
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default()

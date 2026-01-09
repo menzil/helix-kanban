@@ -1,9 +1,9 @@
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
-    Frame,
 };
 
 /// 渲染帮助面板
@@ -22,9 +22,9 @@ pub fn render(f: &mut Frame, area: Rect) {
         .title(" 键盘快捷键帮助 (按 ESC 或 ? 关闭) ")
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))  // Nord cyan
+        .border_style(Style::default().fg(Color::Rgb(136, 192, 208))) // Nord cyan
         .border_type(ratatui::widgets::BorderType::Rounded)
-        .style(Style::default().bg(Color::Rgb(46, 52, 64)));  // Nord background
+        .style(Style::default().bg(Color::Rgb(46, 52, 64))); // Nord background
 
     f.render_widget(block.clone(), popup_area);
 
@@ -43,11 +43,16 @@ pub fn render(f: &mut Frame, area: Rect) {
     // 左列：基础导航
     let navigation_help = vec![
         Line::from(vec![
-            Span::styled("基础导航", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),  // Nord yellow
+            Span::styled(
+                "基础导航",
+                Style::default()
+                    .fg(Color::Rgb(235, 203, 139))
+                    .add_modifier(Modifier::BOLD),
+            ), // Nord yellow
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("↑", Style::default().fg(Color::Rgb(136, 192, 208))),  // Nord cyan
+            Span::styled("↑", Style::default().fg(Color::Rgb(136, 192, 208))), // Nord cyan
             Span::raw("         上一个任务"),
         ]),
         Line::from(vec![
@@ -72,9 +77,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("          显示帮助"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("任务操作", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "任务操作",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("a", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -109,9 +117,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("          删除任务"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("设置优先级 (Space t)", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "设置优先级 (Space t)",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("h", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -133,9 +144,12 @@ pub fn render(f: &mut Frame, area: Rect) {
 
     // 中列：项目管理
     let project_help = vec![
-        Line::from(vec![
-            Span::styled("任务移动", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "任务移动",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("H", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -154,9 +168,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("          任务在列内上移"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("项目管理", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "项目管理",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("n", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -187,9 +204,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("     退出程序"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("状态管理 (Space s)", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "状态管理 (Space s)",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("  a", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -216,9 +236,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("         删除状态"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("布局控制", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "布局控制",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("+", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -237,9 +260,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("          最大化/恢复列"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("窗口管理", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "窗口管理",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("Space w w", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -262,16 +288,22 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("   关闭/清空窗口"),
         ]),
         Line::from(vec![
-            Span::styled("Space w 方向键", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::styled(
+                "Space w 方向键",
+                Style::default().fg(Color::Rgb(136, 192, 208)),
+            ),
             Span::raw(" 移动焦点"),
         ]),
     ];
 
     // 右列：对话框操作
     let dialog_help = vec![
-        Line::from(vec![
-            Span::styled("Space 菜单", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "Space 菜单",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("Space", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -290,11 +322,17 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("         任务操作子菜单"),
         ]),
         Line::from(vec![
-            Span::styled("    a/e/E/v/V/d/Y", Style::default().fg(Color::Rgb(129, 161, 193))),  // 略浅的蓝色
+            Span::styled(
+                "    a/e/E/v/V/d/Y",
+                Style::default().fg(Color::Rgb(129, 161, 193)),
+            ), // 略浅的蓝色
             Span::raw(" 任务操作"),
         ]),
         Line::from(vec![
-            Span::styled("    h/m/l/n", Style::default().fg(Color::Rgb(129, 161, 193))),
+            Span::styled(
+                "    h/m/l/n",
+                Style::default().fg(Color::Rgb(129, 161, 193)),
+            ),
             Span::raw("     优先级: 高/中/低/无"),
         ]),
         Line::from(vec![
@@ -302,9 +340,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("       返回上级/退出"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("输入框 (多行)", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "输入框 (多行)",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("  Enter", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -331,9 +372,12 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("        取消"),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("选择对话框", Style::default().fg(Color::Rgb(235, 203, 139)).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            "选择对话框",
+            Style::default()
+                .fg(Color::Rgb(235, 203, 139))
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("  ↑/↓", Style::default().fg(Color::Rgb(136, 192, 208))),
@@ -351,7 +395,10 @@ pub fn render(f: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("ESC (取消)", Style::default().fg(Color::Rgb(129, 161, 193))),
             Span::raw("   |   "),
-            Span::styled("Enter (确认)", Style::default().fg(Color::Rgb(129, 161, 193))),
+            Span::styled(
+                "Enter (确认)",
+                Style::default().fg(Color::Rgb(129, 161, 193)),
+            ),
         ]),
         Line::from(""),
         // Line::from(vec![
@@ -380,8 +427,7 @@ pub fn render(f: &mut Frame, area: Rect) {
         .block(Block::default().borders(Borders::RIGHT))
         .wrap(Wrap { trim: false });
 
-    let dialog_widget = Paragraph::new(dialog_help)
-        .wrap(Wrap { trim: false });
+    let dialog_widget = Paragraph::new(dialog_help).wrap(Wrap { trim: false });
 
     f.render_widget(nav_widget, columns[0]);
     f.render_widget(proj_widget, columns[1]);

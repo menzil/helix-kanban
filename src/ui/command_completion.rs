@@ -1,11 +1,11 @@
 /// 命令补全 UI - 类似 Helix 的命令提示
 use crate::app::App;
 use crate::input::CommandDef;
+use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-use ratatui::Frame;
 
 /// 渲染命令补全提示
 #[allow(dead_code)]
@@ -20,7 +20,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &mut App) {
     }
 
     // 确保有选中的索引，如果没有则默认选中第一项
-    if app.completion_selected_index.is_none() || app.completion_selected_index >= Some(matches.len()) {
+    if app.completion_selected_index.is_none()
+        || app.completion_selected_index >= Some(matches.len())
+    {
         app.completion_selected_index = Some(0);
     }
 
@@ -50,7 +52,12 @@ pub fn render(f: &mut Frame, area: Rect, app: &mut App) {
     render_command_list(f, completion_area, &matches, app.completion_selected_index);
 
     // 如果只有一个匹配且是精确匹配，显示详细信息
-    if matches.len() == 1 || (!input.is_empty() && matches.iter().any(|cmd| cmd.name == input || cmd.aliases.contains(&input.as_str()))) {
+    if matches.len() == 1
+        || (!input.is_empty()
+            && matches
+                .iter()
+                .any(|cmd| cmd.name == input || cmd.aliases.contains(&input.as_str())))
+    {
         let cmd = matches[0];
         render_command_detail(f, area, cmd);
     }
@@ -76,9 +83,7 @@ fn render_command_input(f: &mut Frame, area: Rect, input: &str) {
 
     // 显示当前输入
     let input_text = format!(":{}", input);
-    let line = Line::from(vec![
-        Span::raw(input_text),
-    ]);
+    let line = Line::from(vec![Span::raw(input_text)]);
 
     let paragraph = Paragraph::new(line)
         .style(Style::default().fg(Color::White))
@@ -89,13 +94,17 @@ fn render_command_input(f: &mut Frame, area: Rect, input: &str) {
 
 /// 渲染命令列表（底部多列布局）
 #[allow(dead_code)]
-fn render_command_list(f: &mut Frame, area: Rect, commands: &[&CommandDef], selected_index: Option<usize>) {
+fn render_command_list(
+    f: &mut Frame,
+    area: Rect,
+    commands: &[&CommandDef],
+    selected_index: Option<usize>,
+) {
     // 清空区域
     f.render_widget(Clear, area);
 
     // 使用深色背景
-    let bg_block = Block::default()
-        .style(Style::default().bg(Color::Rgb(30, 30, 30)));
+    let bg_block = Block::default().style(Style::default().bg(Color::Rgb(30, 30, 30)));
     f.render_widget(bg_block, area);
 
     // 计算列数（每列最多20个字符）
@@ -180,30 +189,30 @@ fn render_command_detail(f: &mut Frame, area: Rect, cmd: &CommandDef) {
     let mut lines = Vec::new();
 
     // 标题行：完整命令名
-    lines.push(Line::from(vec![
-        Span::styled(
-            cmd.name,
-            Style::default()
-                .fg(Color::Rgb(136, 192, 208))
-                .add_modifier(Modifier::BOLD),
-        ),
-    ]));
+    lines.push(Line::from(vec![Span::styled(
+        cmd.name,
+        Style::default()
+            .fg(Color::Rgb(136, 192, 208))
+            .add_modifier(Modifier::BOLD),
+    )]));
 
     // 空行
     lines.push(Line::from(""));
 
     // 描述
-    lines.push(Line::from(vec![
-        Span::styled(cmd.description, Style::default().fg(Color::White)),
-    ]));
+    lines.push(Line::from(vec![Span::styled(
+        cmd.description,
+        Style::default().fg(Color::White),
+    )]));
 
     // 别名
     if !cmd.aliases.is_empty() {
         lines.push(Line::from(""));
         let aliases_str = format!("Aliases: {}", cmd.aliases.join(", "));
-        lines.push(Line::from(vec![
-            Span::styled(aliases_str, Style::default().fg(Color::Gray)),
-        ]));
+        lines.push(Line::from(vec![Span::styled(
+            aliases_str,
+            Style::default().fg(Color::Gray),
+        )]));
     }
 
     let paragraph = Paragraph::new(lines)

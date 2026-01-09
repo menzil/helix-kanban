@@ -1,8 +1,8 @@
+use crate::fs;
+use crate::models::{ProjectType, Task};
 use anyhow::Result;
 use std::env;
 use std::path::PathBuf;
-use crate::fs;
-use crate::models::{Task, ProjectType};
 
 /// 处理 CLI 命令
 /// 返回 true 表示应该继续进入 TUI，false 表示已处理完毕应该退出
@@ -128,7 +128,9 @@ fn handle_project_command(args: &[String]) -> Result<(), String> {
         }
         "create" => {
             if args.len() < 3 {
-                return Err("Missing project name\nUsage: hxk project create <name> [--local]".to_string());
+                return Err(
+                    "Missing project name\nUsage: hxk project create <name> [--local]".to_string(),
+                );
             }
             let is_local = args.get(3).map(|s| s.as_str()) == Some("--local");
             project_create(&args[2], is_local)
@@ -137,12 +139,16 @@ fn handle_project_command(args: &[String]) -> Result<(), String> {
             print_project_usage();
             Ok(())
         }
-        cmd => Err(format!("Unknown project command: {}\nRun 'hxk project help' for usage", cmd)),
+        cmd => Err(format!(
+            "Unknown project command: {}\nRun 'hxk project help' for usage",
+            cmd
+        )),
     }
 }
 
 fn print_project_usage() {
-    println!("Kanban Project Commands
+    println!(
+        "Kanban Project Commands
 
 USAGE:
     hxk project <SUBCOMMAND>
@@ -157,7 +163,8 @@ EXAMPLES:
     hxk project list
     hxk project info myproject
     hxk project create newproject
-    hxk project create localproject --local");
+    hxk project create localproject --local"
+    );
 }
 
 fn project_list() -> Result<(), String> {
@@ -186,15 +193,19 @@ fn project_list() -> Result<(), String> {
 
 fn project_info(name: &str) -> Result<(), String> {
     let projects = fs::load_all_projects().map_err(|e| e.to_string())?;
-    let project = projects.iter()
+    let project = projects
+        .iter()
         .find(|p| p.name == name)
         .ok_or_else(|| format!("Project '{}' not found", name))?;
 
     println!("Project: {}", project.name);
-    println!("Type: {}", match project.project_type {
-        ProjectType::Global => "Global (~/.kanban/projects)",
-        ProjectType::Local => "Local (.kanban)",
-    });
+    println!(
+        "Type: {}",
+        match project.project_type {
+            ProjectType::Global => "Global (~/.kanban/projects)",
+            ProjectType::Local => "Local (.kanban)",
+        }
+    );
     println!("Path: {}", project.path.to_string_lossy());
     println!("\nStatuses:");
     println!("  NAME                DISPLAY");
@@ -216,7 +227,8 @@ fn project_create(name: &str, is_local: bool) -> Result<(), String> {
         fs::create_project(name)?
     };
 
-    println!("Created {} project: {}",
+    println!(
+        "Created {} project: {}",
         if is_local { "local" } else { "global" },
         path.to_string_lossy()
     );
@@ -237,16 +249,22 @@ fn handle_task_command(args: &[String]) -> Result<(), String> {
     match args[1].as_str() {
         "list" => {
             if args.len() < 3 {
-                return Err("Missing project name\nUsage: hxk task list <project> [--status <status>]".to_string());
+                return Err(
+                    "Missing project name\nUsage: hxk task list <project> [--status <status>]"
+                        .to_string(),
+                );
             }
             let status = parse_flag(&args[3..], "--status");
             task_list(&args[2], status)
         }
         "show" => {
             if args.len() < 4 {
-                return Err("Missing arguments\nUsage: hxk task show <project> <task-id>".to_string());
+                return Err(
+                    "Missing arguments\nUsage: hxk task show <project> <task-id>".to_string(),
+                );
             }
-            let task_id: u32 = args[3].parse()
+            let task_id: u32 = args[3]
+                .parse()
                 .map_err(|_| "Invalid task ID (must be a number)".to_string())?;
             task_show(&args[2], task_id)
         }
@@ -254,10 +272,10 @@ fn handle_task_command(args: &[String]) -> Result<(), String> {
             if args.len() < 3 {
                 return Err("Missing project name\nUsage: hxk task create <project> --status <status> --title <title> [--content <content>]".to_string());
             }
-            let status = parse_flag(&args[3..], "--status")
-                .ok_or("Missing --status flag".to_string())?;
-            let title = parse_flag(&args[3..], "--title")
-                .ok_or("Missing --title flag".to_string())?;
+            let status =
+                parse_flag(&args[3..], "--status").ok_or("Missing --status flag".to_string())?;
+            let title =
+                parse_flag(&args[3..], "--title").ok_or("Missing --title flag".to_string())?;
             let content = parse_flag(&args[3..], "--content");
             task_create(&args[2], &status, &title, content)
         }
@@ -265,7 +283,8 @@ fn handle_task_command(args: &[String]) -> Result<(), String> {
             if args.len() < 4 {
                 return Err("Missing arguments\nUsage: hxk task update <project> <task-id> [--title <title>] [--content <content>] [--priority <priority>]".to_string());
             }
-            let task_id: u32 = args[3].parse()
+            let task_id: u32 = args[3]
+                .parse()
                 .map_err(|_| "Invalid task ID (must be a number)".to_string())?;
             let title = parse_flag(&args[4..], "--title");
             let content = parse_flag(&args[4..], "--content");
@@ -274,19 +293,26 @@ fn handle_task_command(args: &[String]) -> Result<(), String> {
         }
         "move" => {
             if args.len() < 4 {
-                return Err("Missing arguments\nUsage: hxk task move <project> <task-id> --to <status>".to_string());
+                return Err(
+                    "Missing arguments\nUsage: hxk task move <project> <task-id> --to <status>"
+                        .to_string(),
+                );
             }
-            let task_id: u32 = args[3].parse()
+            let task_id: u32 = args[3]
+                .parse()
                 .map_err(|_| "Invalid task ID (must be a number)".to_string())?;
-            let to_status = parse_flag(&args[4..], "--to")
-                .ok_or("Missing --to flag".to_string())?;
+            let to_status =
+                parse_flag(&args[4..], "--to").ok_or("Missing --to flag".to_string())?;
             task_move(&args[2], task_id, &to_status)
         }
         "delete" => {
             if args.len() < 4 {
-                return Err("Missing arguments\nUsage: hxk task delete <project> <task-id>".to_string());
+                return Err(
+                    "Missing arguments\nUsage: hxk task delete <project> <task-id>".to_string(),
+                );
             }
-            let task_id: u32 = args[3].parse()
+            let task_id: u32 = args[3]
+                .parse()
                 .map_err(|_| "Invalid task ID (must be a number)".to_string())?;
             task_delete(&args[2], task_id)
         }
@@ -294,12 +320,16 @@ fn handle_task_command(args: &[String]) -> Result<(), String> {
             print_task_usage();
             Ok(())
         }
-        cmd => Err(format!("Unknown task command: {}\nRun 'hxk task help' for usage", cmd)),
+        cmd => Err(format!(
+            "Unknown task command: {}\nRun 'hxk task help' for usage",
+            cmd
+        )),
     }
 }
 
 fn print_task_usage() {
-    println!("Kanban Task Commands
+    println!(
+        "Kanban Task Commands
 
 USAGE:
     hxk task <SUBCOMMAND>
@@ -330,7 +360,8 @@ EXAMPLES:
     hxk task create myproject --status todo --title \"新任务\"
     hxk task update myproject 42 --priority high
     hxk task move myproject 42 --to doing
-    hxk task delete myproject 42");
+    hxk task delete myproject 42"
+    );
 }
 
 fn parse_flag<'a>(args: &'a [String], flag: &str) -> Option<String> {
@@ -342,7 +373,8 @@ fn parse_flag<'a>(args: &'a [String], flag: &str) -> Option<String> {
 
 fn find_project_path(project_name: &str) -> Result<PathBuf, String> {
     let projects = fs::load_all_projects().map_err(|e| e.to_string())?;
-    projects.iter()
+    projects
+        .iter()
         .find(|p| p.name == project_name)
         .map(|p| p.path.clone())
         .ok_or_else(|| format!("Project '{}' not found", project_name))
@@ -353,7 +385,11 @@ fn task_list(project_name: &str, filter_status: Option<String>) -> Result<(), St
     let project = fs::load_project(&project_path)?;
 
     let tasks: Vec<&Task> = if let Some(status) = filter_status {
-        project.tasks.iter().filter(|t| t.status == status).collect()
+        project
+            .tasks
+            .iter()
+            .filter(|t| t.status == status)
+            .collect()
     } else {
         project.tasks.iter().collect()
     };
@@ -369,9 +405,14 @@ fn task_list(project_name: &str, filter_status: Option<String>) -> Result<(), St
     for task in tasks {
         let priority = task.priority.as_deref().unwrap_or("-");
         let tags = task.tags.join(", ");
-        let tags_display = if tags.is_empty() { "-".to_string() } else { tags };
+        let tags_display = if tags.is_empty() {
+            "-".to_string()
+        } else {
+            tags
+        };
 
-        println!("{:<4}  {:<5}  {:<35}  {:<8}  {:<8}  {}",
+        println!(
+            "{:<4}  {:<5}  {:<35}  {:<8}  {:<8}  {}",
             task.id,
             task.order,
             truncate(&task.title, 35),
@@ -388,7 +429,9 @@ fn task_show(project_name: &str, task_id: u32) -> Result<(), String> {
     let project_path = find_project_path(project_name)?;
     let project = fs::load_project(&project_path)?;
 
-    let task = project.tasks.iter()
+    let task = project
+        .tasks
+        .iter()
         .find(|t| t.id == task_id)
         .ok_or_else(|| format!("Task {} not found", task_id))?;
 
@@ -397,7 +440,14 @@ fn task_show(project_name: &str, task_id: u32) -> Result<(), String> {
     println!("Status: {}", task.status);
     println!("Order: {}", task.order);
     println!("Priority: {}", task.priority.as_deref().unwrap_or("-"));
-    println!("Tags: {}", if task.tags.is_empty() { "-".to_string() } else { task.tags.join(", ") });
+    println!(
+        "Tags: {}",
+        if task.tags.is_empty() {
+            "-".to_string()
+        } else {
+            task.tags.join(", ")
+        }
+    );
     println!("Created: {}", task.created);
     println!("File: {}", task.file_path.to_string_lossy());
     println!("\nContent:");
@@ -406,7 +456,12 @@ fn task_show(project_name: &str, task_id: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn task_create(project_name: &str, status: &str, title: &str, content: Option<String>) -> Result<(), String> {
+fn task_create(
+    project_name: &str,
+    status: &str,
+    title: &str,
+    content: Option<String>,
+) -> Result<(), String> {
     let project_path = find_project_path(project_name)?;
 
     // Get next task ID
@@ -440,7 +495,9 @@ fn task_update(
     let project_path = find_project_path(project_name)?;
     let mut project = fs::load_project(&project_path)?;
 
-    let task = project.tasks.iter_mut()
+    let task = project
+        .tasks
+        .iter_mut()
         .find(|t| t.id == task_id)
         .ok_or_else(|| format!("Task {} not found", task_id))?;
 
@@ -479,7 +536,9 @@ fn task_move(project_name: &str, task_id: u32, new_status: &str) -> Result<(), S
     let project_path = find_project_path(project_name)?;
     let mut project = fs::load_project(&project_path)?;
 
-    let task = project.tasks.iter_mut()
+    let task = project
+        .tasks
+        .iter_mut()
         .find(|t| t.id == task_id)
         .ok_or_else(|| format!("Task {} not found", task_id))?;
 
@@ -490,7 +549,10 @@ fn task_move(project_name: &str, task_id: u32, new_status: &str) -> Result<(), S
     let new_path = fs::move_task(&project_path, task, new_status)?;
     task.file_path = new_path;
 
-    println!("Moved task #{} from '{}' to '{}'", task_id, old_status, new_status);
+    println!(
+        "Moved task #{} from '{}' to '{}'",
+        task_id, old_status, new_status
+    );
 
     Ok(())
 }
@@ -499,7 +561,9 @@ fn task_delete(project_name: &str, task_id: u32) -> Result<(), String> {
     let project_path = find_project_path(project_name)?;
     let project = fs::load_project(&project_path)?;
 
-    let task = project.tasks.iter()
+    let task = project
+        .tasks
+        .iter()
         .find(|t| t.id == task_id)
         .ok_or_else(|| format!("Task {} not found", task_id))?;
 
@@ -539,13 +603,15 @@ fn handle_status_command(args: &[String]) -> Result<(), String> {
             if args.len() < 4 {
                 return Err("Missing arguments\nUsage: hxk status create <project> <name> [--display <display-name>]".to_string());
             }
-            let display = parse_flag(&args[4..], "--display")
-                .unwrap_or_else(|| args[3].clone());
+            let display = parse_flag(&args[4..], "--display").unwrap_or_else(|| args[3].clone());
             status_create(&args[2], &args[3], &display)
         }
         "rename" => {
             if args.len() < 5 {
-                return Err("Missing arguments\nUsage: hxk status rename <project> <old-name> <new-name>".to_string());
+                return Err(
+                    "Missing arguments\nUsage: hxk status rename <project> <old-name> <new-name>"
+                        .to_string(),
+                );
             }
             status_rename(&args[2], &args[3], &args[4])
         }
@@ -560,12 +626,16 @@ fn handle_status_command(args: &[String]) -> Result<(), String> {
             print_status_usage();
             Ok(())
         }
-        cmd => Err(format!("Unknown status command: {}\nRun 'hxk status help' for usage", cmd)),
+        cmd => Err(format!(
+            "Unknown status command: {}\nRun 'hxk status help' for usage",
+            cmd
+        )),
     }
 }
 
 fn print_status_usage() {
-    println!("Kanban Status Commands
+    println!(
+        "Kanban Status Commands
 
 USAGE:
     hxk status <SUBCOMMAND>
@@ -587,7 +657,8 @@ EXAMPLES:
     hxk status list myproject
     hxk status create myproject review --display \"Review\"
     hxk status rename myproject todo backlog
-    hxk status delete myproject archived --move-to done");
+    hxk status delete myproject archived --move-to done"
+    );
 }
 
 fn status_list(project_name: &str) -> Result<(), String> {
@@ -603,14 +674,15 @@ fn status_list(project_name: &str) -> Result<(), String> {
     println!("------------------  -------------------  -----");
 
     for status in &project.statuses {
-        let task_count = project.tasks.iter()
+        let task_count = project
+            .tasks
+            .iter()
             .filter(|t| t.status == status.name)
             .count();
 
-        println!("{:<18}  {:<19}  {}",
-            status.name,
-            status.display,
-            task_count
+        println!(
+            "{:<18}  {:<19}  {}",
+            status.name, status.display, task_count
         );
     }
 
@@ -726,7 +798,8 @@ fn cli_add(args: &[String]) -> Result<()> {
     let next_id = fs::get_next_task_id(&project_path).map_err(|e| anyhow::anyhow!(e))?;
 
     // 获取 todo 状态的最大 order
-    let max_order = fs::get_max_order_in_status(&project_path, "todo").map_err(|e| anyhow::anyhow!(e))?;
+    let max_order =
+        fs::get_max_order_in_status(&project_path, "todo").map_err(|e| anyhow::anyhow!(e))?;
     let new_order = max_order + 1000;
 
     // 创建任务

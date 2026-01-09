@@ -130,10 +130,7 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
 
     if let Some(dialog) = &mut app.dialog {
         match dialog {
-            DialogType::Input {
-                textarea,
-                ..
-            } => {
+            DialogType::Input { textarea, .. } => {
                 // 使用 HelixTextArea 处理按键
                 match textarea.handle_key(key) {
                     InputAction::Submit => {
@@ -165,99 +162,99 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                 ..
             } => {
                 match key.code {
-                KeyCode::Esc => {
-                    app.dialog = None;
-                    app.mode = Mode::Normal;
-                    // 退出对话框，保存用户输入法并切换回英文（已禁用）
-                    // app.ime_state.exit_dialog();
-                }
-                KeyCode::Enter => {
-                    // 选择当前项
-                    let filtered_items: Vec<_> = if filter.is_empty() {
-                        items.clone()
-                    } else {
-                        items
-                            .iter()
-                            .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
-                            .cloned()
-                            .collect()
-                    };
-
-                    if *selected < filtered_items.len() {
-                        let selected_item = filtered_items[*selected].clone();
-                        let dialog_clone = app.dialog.take().unwrap();
+                    KeyCode::Esc => {
+                        app.dialog = None;
                         app.mode = Mode::Normal;
-                        // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
-                        handle_dialog_submit(app, dialog_clone, selected_item);
-                        return true;
+                        // 退出对话框，保存用户输入法并切换回英文（已禁用）
+                        // app.ime_state.exit_dialog();
                     }
-                }
-                KeyCode::Up => {
-                    // 向上移动选择
-                    if *selected > 0 {
-                        *selected -= 1;
-                    }
-                }
-                KeyCode::Down => {
-                    // 向下移动选择
-                    let filtered_count = if filter.is_empty() {
-                        items.len()
-                    } else {
-                        items
-                            .iter()
-                            .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
-                            .count()
-                    };
+                    KeyCode::Enter => {
+                        // 选择当前项
+                        let filtered_items: Vec<_> = if filter.is_empty() {
+                            items.clone()
+                        } else {
+                            items
+                                .iter()
+                                .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
+                                .cloned()
+                                .collect()
+                        };
 
-                    if filtered_count > 0 && *selected < filtered_count - 1 {
-                        *selected += 1;
+                        if *selected < filtered_items.len() {
+                            let selected_item = filtered_items[*selected].clone();
+                            let dialog_clone = app.dialog.take().unwrap();
+                            app.mode = Mode::Normal;
+                            // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
+                            handle_dialog_submit(app, dialog_clone, selected_item);
+                            return true;
+                        }
                     }
-                }
-                KeyCode::Backspace => {
-                    filter.pop();
-                    *selected = 0;
-                }
-                KeyCode::Char(c) => {
-                    filter.push(c);
-                    *selected = 0;
-                }
-                _ => {}
+                    KeyCode::Up => {
+                        // 向上移动选择
+                        if *selected > 0 {
+                            *selected -= 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        // 向下移动选择
+                        let filtered_count = if filter.is_empty() {
+                            items.len()
+                        } else {
+                            items
+                                .iter()
+                                .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
+                                .count()
+                        };
+
+                        if filtered_count > 0 && *selected < filtered_count - 1 {
+                            *selected += 1;
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        filter.pop();
+                        *selected = 0;
+                    }
+                    KeyCode::Char(c) => {
+                        filter.push(c);
+                        *selected = 0;
+                    }
+                    _ => {}
                 }
             }
             DialogType::Confirm { yes_selected, .. } => {
                 match key.code {
-                KeyCode::Esc | KeyCode::Char('n') => {
-                    app.dialog = None;
-                    app.mode = Mode::Normal;
-                    // 退出对话框，保存用户输入法并切换回英文（已禁用）
-                    // app.ime_state.exit_dialog();
-                }
-                KeyCode::Enter => {
-                    let confirmed = *yes_selected;
-                    let dialog_clone = app.dialog.take().unwrap();
-                    app.mode = Mode::Normal;
-                    // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
-                    if confirmed {
-                        handle_dialog_submit(app, dialog_clone, String::new());
+                    KeyCode::Esc | KeyCode::Char('n') => {
+                        app.dialog = None;
+                        app.mode = Mode::Normal;
+                        // 退出对话框，保存用户输入法并切换回英文（已禁用）
+                        // app.ime_state.exit_dialog();
                     }
-                    return true;
-                }
-                KeyCode::Left | KeyCode::Char('h') => {
-                    *yes_selected = false;  // 左边是"否"
-                }
-                KeyCode::Right | KeyCode::Char('l') => {
-                    *yes_selected = true;   // 右边是"是"
-                }
-                KeyCode::Char('y') => {
-                    *yes_selected = true;
-                    // 直接确认
-                    let dialog_clone = app.dialog.take().unwrap();
-                    app.mode = Mode::Normal;
-                    // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
-                    handle_dialog_submit(app, dialog_clone, String::new());
-                    return true;
-                }
-                _ => {}
+                    KeyCode::Enter => {
+                        let confirmed = *yes_selected;
+                        let dialog_clone = app.dialog.take().unwrap();
+                        app.mode = Mode::Normal;
+                        // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
+                        if confirmed {
+                            handle_dialog_submit(app, dialog_clone, String::new());
+                        }
+                        return true;
+                    }
+                    KeyCode::Left | KeyCode::Char('h') => {
+                        *yes_selected = false; // 左边是"否"
+                    }
+                    KeyCode::Right | KeyCode::Char('l') => {
+                        *yes_selected = true; // 右边是"是"
+                    }
+                    KeyCode::Char('y') => {
+                        *yes_selected = true;
+                        // 直接确认
+                        let dialog_clone = app.dialog.take().unwrap();
+                        app.mode = Mode::Normal;
+                        // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
+                        handle_dialog_submit(app, dialog_clone, String::new());
+                        return true;
+                    }
+                    _ => {}
                 }
             }
         }
@@ -276,7 +273,12 @@ fn log_debug(msg: String) {
         .append(true)
         .open("/tmp/kanban_debug.log")
     {
-        let _ = writeln!(file, "[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg);
+        let _ = writeln!(
+            file,
+            "[{}] {}",
+            chrono::Local::now().format("%H:%M:%S"),
+            msg
+        );
     }
     // 移除 eprintln! 避免干扰 TUI 界面
 }
@@ -318,7 +320,10 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             // 重新加载项目列表
                             match crate::fs::load_all_projects() {
                                 Ok(projects) => {
-                                    log_debug(format!("调试: 重新加载了 {} 个项目", projects.len()));
+                                    log_debug(format!(
+                                        "调试: 重新加载了 {} 个项目",
+                                        projects.len()
+                                    ));
                                     app.projects = projects;
                                 }
                                 Err(e) => {
@@ -335,7 +340,8 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 } else {
                     log_debug("调试: 项目名称为空".to_string());
                 }
-            } else if (title.contains("创建") || title.contains("新建")) && title.contains("任务") {
+            } else if (title.contains("创建") || title.contains("新建")) && title.contains("任务")
+            {
                 // 创建新任务
                 log_debug(format!("调试: 识别为创建任务请求"));
                 if !value.is_empty() {
@@ -371,13 +377,13 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                 }
                                 app.show_notification(
                                     format!("已创建状态「{}」", value),
-                                    crate::app::NotificationLevel::Success
+                                    crate::app::NotificationLevel::Success,
                                 );
                             }
                             Err(e) => {
                                 app.show_notification(
                                     format!("创建失败: {}", e),
-                                    crate::app::NotificationLevel::Error
+                                    crate::app::NotificationLevel::Error,
                                 );
                             }
                         }
@@ -387,13 +393,22 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 // 重命名状态
                 if !value.is_empty() {
                     if let Some(project) = app.get_focused_project() {
-                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        let column = app
+                            .selected_column
+                            .get(&app.focused_pane)
+                            .copied()
+                            .unwrap_or(0);
                         if let Some(status) = project.statuses.get(column) {
                             let old_name = status.name.clone();
                             let old_display = status.display.clone();
                             let project_path = project.path.clone();
 
-                            match crate::fs::status::rename_status(&project_path, &old_name, &value, &value) {
+                            match crate::fs::status::rename_status(
+                                &project_path,
+                                &old_name,
+                                &value,
+                                &value,
+                            ) {
                                 Ok(_) => {
                                     // 重新加载项目
                                     if let Err(e) = app.reload_current_project() {
@@ -401,13 +416,13 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                     }
                                     app.show_notification(
                                         format!("已将「{}」重命名为「{}」", old_display, value),
-                                        crate::app::NotificationLevel::Success
+                                        crate::app::NotificationLevel::Success,
                                     );
                                 }
                                 Err(e) => {
                                     app.show_notification(
                                         format!("重命名失败: {}", e),
-                                        crate::app::NotificationLevel::Error
+                                        crate::app::NotificationLevel::Error,
                                     );
                                 }
                             }
@@ -418,12 +433,20 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 // 编辑状态显示名
                 if !value.is_empty() {
                     if let Some(project) = app.get_focused_project() {
-                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        let column = app
+                            .selected_column
+                            .get(&app.focused_pane)
+                            .copied()
+                            .unwrap_or(0);
                         if let Some(status) = project.statuses.get(column) {
                             let status_name = status.name.clone();
                             let project_path = project.path.clone();
 
-                            match crate::fs::status::update_status_display(&project_path, &status_name, &value) {
+                            match crate::fs::status::update_status_display(
+                                &project_path,
+                                &status_name,
+                                &value,
+                            ) {
                                 Ok(_) => {
                                     // 重新加载项目
                                     if let Err(e) = app.reload_current_project() {
@@ -431,13 +454,13 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                     }
                                     app.show_notification(
                                         format!("已更新显示名为「{}」", value),
-                                        crate::app::NotificationLevel::Success
+                                        crate::app::NotificationLevel::Success,
                                     );
                                 }
                                 Err(e) => {
                                     app.show_notification(
                                         format!("更新失败: {}", e),
-                                        crate::app::NotificationLevel::Error
+                                        crate::app::NotificationLevel::Error,
                                     );
                                 }
                             }
@@ -447,7 +470,10 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
             }
         }
         DialogType::Select { title, .. } => {
-            if title.contains("选择项目") || title.contains("打开项目") || title.contains("切换项目") {
+            if title.contains("选择项目")
+                || title.contains("打开项目")
+                || title.contains("切换项目")
+            {
                 // 从格式化的字符串中提取项目名
                 // 格式: "[G/L] 项目名\n    路径"
                 let project_name = value
@@ -470,7 +496,8 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                         let project_name = project.name.clone();
 
                         // 添加到隐藏列表
-                        if let Err(e) = crate::config::hide_project(&mut app.config, &project_name) {
+                        if let Err(e) = crate::config::hide_project(&mut app.config, &project_name)
+                        {
                             log_debug(format!("隐藏项目失败: {}", e));
                         } else {
                             log_debug(format!("成功隐藏项目: {}", project_name));
@@ -494,8 +521,10 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                         let project_name = project.name.clone();
                         let project_path = project.path.clone();
 
-                        log_debug(format!("准备删除项目: 名称='{}', 路径={:?}",
-                            project_name, project_path));
+                        log_debug(format!(
+                            "准备删除项目: 名称='{}', 路径={:?}",
+                            project_name, project_path
+                        ));
 
                         // 使用项目路径直接删除
                         match crate::fs::delete_project_by_path(&project_path) {
@@ -503,7 +532,7 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                 log_debug(format!("删除项目失败: {}", e));
                                 app.show_notification(
                                     format!("删除项目失败: {}", e),
-                                    crate::app::NotificationLevel::Error
+                                    crate::app::NotificationLevel::Error,
                                 );
                             }
                             Ok(_) => {
@@ -511,7 +540,10 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
 
                                 // 从项目列表中移除
                                 app.projects.retain(|p| p.name != project_name);
-                                log_debug(format!("已从项目列表移除，剩余项目数: {}", app.projects.len()));
+                                log_debug(format!(
+                                    "已从项目列表移除，剩余项目数: {}",
+                                    app.projects.len()
+                                ));
 
                                 // 清除所有面板中对该项目的引用
                                 app.split_tree.clear_project_from_all_panes(&project_name);
@@ -520,7 +552,7 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                 // 显示删除成功通知
                                 app.show_notification(
                                     format!("已删除项目: {}", project_name),
-                                    crate::app::NotificationLevel::Success
+                                    crate::app::NotificationLevel::Success,
                                 );
                             }
                         }
@@ -543,7 +575,8 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                             }
 
                             // 调整选中的任务索引
-                            let task_idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
+                            let task_idx =
+                                app.selected_task_index.entry(app.focused_pane).or_insert(0);
                             if *task_idx > 0 {
                                 *task_idx -= 1;
                             }
@@ -553,13 +586,21 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 crate::ui::dialogs::ConfirmAction::DeleteStatus => {
                     // 删除状态
                     if let Some(project) = app.get_focused_project() {
-                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        let column = app
+                            .selected_column
+                            .get(&app.focused_pane)
+                            .copied()
+                            .unwrap_or(0);
                         if let Some(status) = project.statuses.get(column) {
                             let status_name = status.name.clone();
                             let status_display = status.display.clone();
                             let project_path = project.path.clone();
 
-                            match crate::fs::status::delete_status(&project_path, &status_name, None) {
+                            match crate::fs::status::delete_status(
+                                &project_path,
+                                &status_name,
+                                None,
+                            ) {
                                 Ok(_) => {
                                     log_debug(format!("成功删除状态: {}", status_name));
 
@@ -573,14 +614,14 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
 
                                     app.show_notification(
                                         format!("已删除状态「{}」", status_display),
-                                        crate::app::NotificationLevel::Success
+                                        crate::app::NotificationLevel::Success,
                                     );
                                 }
                                 Err(e) => {
                                     log_debug(format!("删除状态失败: {}", e));
                                     app.show_notification(
                                         format!("删除失败: {}", e),
-                                        crate::app::NotificationLevel::Error
+                                        crate::app::NotificationLevel::Error,
                                     );
                                 }
                             }
@@ -609,17 +650,17 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('K'), KeyModifiers::SHIFT) => Some(Command::MoveTaskUp),
         // ([], KeyCode::Char(':'), KeyModifiers::NONE) => Some(Command::EnterCommandMode), // 已注释
         ([], KeyCode::Esc, _) => Some(Command::EnterNormalMode),
-        ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask),  // 删除任务
-        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject),  // 硬删除项目
+        ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask), // 删除任务
+        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject), // 硬删除项目
         ([], KeyCode::Char('a'), KeyModifiers::NONE) => Some(Command::NewTask),
-        ([], KeyCode::Char('A'), KeyModifiers::SHIFT) => Some(Command::NewTaskInEditor),  // 外部编辑器创建任务
+        ([], KeyCode::Char('A'), KeyModifiers::SHIFT) => Some(Command::NewTaskInEditor), // 外部编辑器创建任务
         ([], KeyCode::Char('n'), KeyModifiers::NONE) => Some(Command::NewLocalProject),
         ([], KeyCode::Char('N'), KeyModifiers::SHIFT) => Some(Command::NewGlobalProject),
         ([], KeyCode::Char('e'), KeyModifiers::NONE) => Some(Command::EditTask),
         ([], KeyCode::Char('E'), KeyModifiers::SHIFT) => Some(Command::EditTaskInEditor),
         ([], KeyCode::Char('v'), KeyModifiers::NONE) => Some(Command::ViewTask),
         ([], KeyCode::Char('V'), KeyModifiers::SHIFT) => Some(Command::ViewTaskExternal),
-        ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask),  // 复制任务到剪贴板
+        ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask), // 复制任务到剪贴板
         ([], KeyCode::Char('t'), KeyModifiers::NONE) => Some(Command::EditTags),  // 编辑标签
 
         // 列宽调整
@@ -644,14 +685,20 @@ fn execute_command(app: &mut App, cmd: Command) {
     match cmd {
         Command::SplitHorizontal => {
             // 水平分割线 = 上下分屏
-            log_debug(format!("执行 SplitHorizontal, 当前焦点: {}", app.focused_pane));
+            log_debug(format!(
+                "执行 SplitHorizontal, 当前焦点: {}",
+                app.focused_pane
+            ));
             if let Some(pane) = app.split_tree.find_pane_mut(app.focused_pane) {
                 let new_pane_id = app.next_pane_id;
-                pane.split_vertical(new_pane_id);  // split_vertical 创建上下分屏
+                pane.split_vertical(new_pane_id); // split_vertical 创建上下分屏
                 app.next_pane_id += 1;
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
-                log_debug(format!("创建新面板 {}, 新焦点: {}", new_pane_id, app.focused_pane));
+                log_debug(format!(
+                    "创建新面板 {}, 新焦点: {}",
+                    new_pane_id, app.focused_pane
+                ));
 
                 // 保存状态
                 let state = crate::state::extract_state(app);
@@ -662,14 +709,20 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::SplitVertical => {
             // 垂直分割线 = 左右分屏
-            log_debug(format!("执行 SplitVertical, 当前焦点: {}", app.focused_pane));
+            log_debug(format!(
+                "执行 SplitVertical, 当前焦点: {}",
+                app.focused_pane
+            ));
             if let Some(pane) = app.split_tree.find_pane_mut(app.focused_pane) {
                 let new_pane_id = app.next_pane_id;
-                pane.split_horizontal(new_pane_id);  // split_horizontal 创建左右分屏
+                pane.split_horizontal(new_pane_id); // split_horizontal 创建左右分屏
                 app.next_pane_id += 1;
                 // 自动对焦新创建的窗口
                 app.focused_pane = new_pane_id;
-                log_debug(format!("创建新面板 {}, 新焦点: {}", new_pane_id, app.focused_pane));
+                log_debug(format!(
+                    "创建新面板 {}, 新焦点: {}",
+                    new_pane_id, app.focused_pane
+                ));
 
                 // 保存状态
                 let state = crate::state::extract_state(app);
@@ -681,7 +734,11 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::TaskDown => {
             // 获取当前列的任务数量并限制索引
             if let Some(project) = app.get_focused_project() {
-                let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                let column = app
+                    .selected_column
+                    .get(&app.focused_pane)
+                    .copied()
+                    .unwrap_or(0);
 
                 // 动态获取状态名称
                 let status = if let Some(status_name) = app.get_status_name_by_column(column) {
@@ -690,9 +747,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                     return;
                 };
 
-                let task_count = project.tasks.iter()
-                    .filter(|t| t.status == status)
-                    .count();
+                let task_count = project.tasks.iter().filter(|t| t.status == status).count();
 
                 if task_count > 0 {
                     let idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
@@ -732,7 +787,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新项目".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
             });
         }
         Command::NewLocalProject => {
@@ -741,7 +796,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新本地项目 [L]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
             });
         }
         Command::NewGlobalProject => {
@@ -750,28 +805,32 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新全局项目 [G]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
             });
         }
         Command::OpenProject => {
             app.mode = Mode::Dialog;
             // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
             // 生成格式化的项目列表：[G/L] 项目名\n    路径
-            let project_items: Vec<String> = app.projects.iter().map(|p| {
-                let type_marker = match p.project_type {
-                    crate::models::ProjectType::Global => "[G]",
-                    crate::models::ProjectType::Local => "[L]",
-                };
-                let path = match &p.project_type {
-                    crate::models::ProjectType::Global => {
-                        format!("~/.kanban/projects/{}", p.name)
-                    }
-                    crate::models::ProjectType::Local => {
-                        format!(".kanban/{}", p.name)
-                    }
-                };
-                format!("{} {}\n    {}", type_marker, p.name, path)
-            }).collect();
+            let project_items: Vec<String> = app
+                .projects
+                .iter()
+                .map(|p| {
+                    let type_marker = match p.project_type {
+                        crate::models::ProjectType::Global => "[G]",
+                        crate::models::ProjectType::Local => "[L]",
+                    };
+                    let path = match &p.project_type {
+                        crate::models::ProjectType::Global => {
+                            format!("~/.kanban/projects/{}", p.name)
+                        }
+                        crate::models::ProjectType::Local => {
+                            format!(".kanban/{}", p.name)
+                        }
+                    };
+                    format!("{} {}\n    {}", type_marker, p.name, path)
+                })
+                .collect();
 
             app.dialog = Some(DialogType::Select {
                 title: "快速切换项目...".to_string(),
@@ -789,7 +848,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "重命名项目".to_string(),
                     prompt: "请输入新的项目名称:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false),  // 默认 Insert 模式
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false), // 默认 Insert 模式
                 });
             }
         }
@@ -805,7 +864,9 @@ fn execute_command(app: &mut App, cmd: Command) {
                     let current_local_dir = crate::fs::get_local_kanban_dir();
                     // 如果项目路径是当前目录的 .kanban，则不支持软删除
                     if project_path.starts_with(&current_local_dir) {
-                        log_debug("当前目录的本地项目不支持软删除，请使用 D 键删除项目文件".to_string());
+                        log_debug(
+                            "当前目录的本地项目不支持软删除，请使用 D 键删除项目文件".to_string(),
+                        );
                         return;
                     }
                 }
@@ -815,7 +876,10 @@ fn execute_command(app: &mut App, cmd: Command) {
                 // app.ime_state.enter_dialog();  // 已禁用输入法自动切换
                 app.dialog = Some(DialogType::Confirm {
                     title: "隐藏项目".to_string(),
-                    message: format!("确定要隐藏项目 \"{}\" 吗？\n项目文件不会被删除，下次从该目录启动时会重新加载。", project_name),
+                    message: format!(
+                        "确定要隐藏项目 \"{}\" 吗？\n项目文件不会被删除，下次从该目录启动时会重新加载。",
+                        project_name
+                    ),
                     yes_selected: true,
                     action: crate::ui::dialogs::ConfirmAction::HideProject,
                 });
@@ -831,8 +895,11 @@ fn execute_command(app: &mut App, cmd: Command) {
                 // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
                 app.dialog = Some(DialogType::Confirm {
                     title: "删除项目文件".to_string(),
-                    message: format!("确定要彻底删除项目 \"{}\" 吗？\n这将永久删除项目的所有文件和任务！此操作不可恢复！", project_name),
-                    yes_selected: false,  // 默认选择"否"，更安全
+                    message: format!(
+                        "确定要彻底删除项目 \"{}\" 吗？\n这将永久删除项目的所有文件和任务！此操作不可恢复！",
+                        project_name
+                    ),
+                    yes_selected: false, // 默认选择"否"，更安全
                     action: crate::ui::dialogs::ConfirmAction::DeleteProject,
                 });
             }
@@ -843,7 +910,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
                 prompt: "任务标题和内容:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, true),  // 默认 Normal 模式
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, true), // 默认 Normal 模式
             });
         }
         Command::NewTaskInEditor => {
@@ -852,14 +919,17 @@ fn execute_command(app: &mut App, cmd: Command) {
             use std::io::Write;
 
             let temp_dir = std::env::temp_dir();
-            let temp_file = temp_dir.join(format!("kanban_new_task_{}.md",
+            let temp_file = temp_dir.join(format!(
+                "kanban_new_task_{}.md",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
-                    .as_secs()));
+                    .as_secs()
+            ));
 
             // 写入模板内容
-            let template = "# 任务标题\n\n任务描述内容...\n\n## 子任务\n\n- [ ] 子任务 1\n- [ ] 子任务 2\n";
+            let template =
+                "# 任务标题\n\n任务描述内容...\n\n## 子任务\n\n- [ ] 子任务 1\n- [ ] 子任务 2\n";
             if let Ok(mut file) = std::fs::File::create(&temp_file) {
                 let _ = file.write_all(template.as_bytes());
             }
@@ -877,7 +947,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
                     prompt: "任务标题和内容:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(title, true, true),  // 默认 Normal 模式
+                    textarea: crate::ui::text_input::HelixTextArea::new(title, true, true), // 默认 Normal 模式
                 });
             }
         }
@@ -896,7 +966,10 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::FocusNextPane => {
             // 获取所有窗格 ID 并找到下一个
             let all_panes = app.split_tree.collect_pane_ids();
-            log_debug(format!("FocusNextPane, 当前焦点: {}, 所有面板: {:?}", app.focused_pane, all_panes));
+            log_debug(format!(
+                "FocusNextPane, 当前焦点: {}, 所有面板: {:?}",
+                app.focused_pane, all_panes
+            ));
             if all_panes.len() > 1 {
                 if let Some(current_idx) = all_panes.iter().position(|&id| id == app.focused_pane) {
                     let next_idx = (current_idx + 1) % all_panes.len();
@@ -909,10 +982,10 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::FocusLeft => {
             log_debug(format!("FocusLeft, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
-                app.focused_pane,
-                crate::ui::layout::Direction::Left,
-            ) {
+            if let Some(new_pane_id) = app
+                .split_tree
+                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Left)
+            {
                 app.focused_pane = new_pane_id;
                 log_debug(format!("移动到左侧面板: {}", new_pane_id));
             } else {
@@ -921,10 +994,10 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::FocusRight => {
             log_debug(format!("FocusRight, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
-                app.focused_pane,
-                crate::ui::layout::Direction::Right,
-            ) {
+            if let Some(new_pane_id) = app
+                .split_tree
+                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Right)
+            {
                 app.focused_pane = new_pane_id;
                 log_debug(format!("移动到右侧面板: {}", new_pane_id));
             } else {
@@ -933,10 +1006,10 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::FocusUp => {
             log_debug(format!("FocusUp, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
-                app.focused_pane,
-                crate::ui::layout::Direction::Up,
-            ) {
+            if let Some(new_pane_id) = app
+                .split_tree
+                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Up)
+            {
                 app.focused_pane = new_pane_id;
                 log_debug(format!("移动到上方面板: {}", new_pane_id));
             } else {
@@ -945,10 +1018,10 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::FocusDown => {
             log_debug(format!("FocusDown, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app.split_tree.find_adjacent_pane(
-                app.focused_pane,
-                crate::ui::layout::Direction::Down,
-            ) {
+            if let Some(new_pane_id) = app
+                .split_tree
+                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Down)
+            {
                 app.focused_pane = new_pane_id;
                 log_debug(format!("移动到下方面板: {}", new_pane_id));
             } else {
@@ -1075,26 +1148,26 @@ fn execute_command(app: &mut App, cmd: Command) {
                                 if let Err(e) = clipboard.set_text(content) {
                                     app.show_notification(
                                         format!("复制失败: {}", e),
-                                        crate::app::NotificationLevel::Error
+                                        crate::app::NotificationLevel::Error,
                                     );
                                 } else {
                                     app.show_notification(
                                         format!("已复制任务「{}」到剪贴板", task.title),
-                                        crate::app::NotificationLevel::Success
+                                        crate::app::NotificationLevel::Success,
                                     );
                                 }
                             }
                             Err(e) => {
                                 app.show_notification(
                                     format!("无法访问剪贴板: {}", e),
-                                    crate::app::NotificationLevel::Error
+                                    crate::app::NotificationLevel::Error,
                                 );
                             }
                         }
                     } else {
                         app.show_notification(
                             "读取任务文件失败".to_string(),
-                            crate::app::NotificationLevel::Error
+                            crate::app::NotificationLevel::Error,
                         );
                     }
                 }
@@ -1103,7 +1176,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             {
                 app.show_notification(
                     "剪贴板功能未启用".to_string(),
-                    crate::app::NotificationLevel::Warning
+                    crate::app::NotificationLevel::Warning,
                 );
             }
         }
@@ -1202,7 +1275,10 @@ fn execute_command(app: &mut App, cmd: Command) {
             match crate::fs::load_all_projects() {
                 Ok(projects) => {
                     app.projects = projects;
-                    log_debug(format!("重新加载所有项目成功，共 {} 个", app.projects.len()));
+                    log_debug(format!(
+                        "重新加载所有项目成功，共 {} 个",
+                        app.projects.len()
+                    ));
                 }
                 Err(e) => {
                     log_debug(format!("重新加载所有项目失败: {}", e));
@@ -1243,19 +1319,19 @@ fn execute_command(app: &mut App, cmd: Command) {
                             if let Err(e) = clipboard.set_text(project_info) {
                                 app.show_notification(
                                     format!("复制失败: {}", e),
-                                    crate::app::NotificationLevel::Error
+                                    crate::app::NotificationLevel::Error,
                                 );
                             } else {
                                 app.show_notification(
                                     format!("已复制项目「{}」信息到剪贴板", project.name),
-                                    crate::app::NotificationLevel::Success
+                                    crate::app::NotificationLevel::Success,
                                 );
                             }
                         }
                         Err(e) => {
                             app.show_notification(
                                 format!("无法访问剪贴板: {}", e),
-                                crate::app::NotificationLevel::Error
+                                crate::app::NotificationLevel::Error,
                             );
                         }
                     }
@@ -1265,7 +1341,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             {
                 app.show_notification(
                     "剪贴板功能未启用".to_string(),
-                    crate::app::NotificationLevel::Warning
+                    crate::app::NotificationLevel::Warning,
                 );
             }
         }
@@ -1276,7 +1352,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新状态".to_string(),
                 prompt: "请输入状态内部名称（英文、数字、下划线）:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false),  // 默认 Insert 模式
+                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
             });
         }
         Command::RenameStatus => {
@@ -1284,8 +1360,15 @@ fn execute_command(app: &mut App, cmd: Command) {
             let status_info = {
                 let project = app.get_focused_project();
                 if let Some(project) = project {
-                    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone()))
+                    let column = app
+                        .selected_column
+                        .get(&app.focused_pane)
+                        .copied()
+                        .unwrap_or(0);
+                    project
+                        .statuses
+                        .get(column)
+                        .map(|s| (s.name.clone(), s.display.clone()))
                 } else {
                     None
                 }
@@ -1297,7 +1380,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: format!("重命名状态: {}", current_display),
                     prompt: "请输入新的状态名称（英文、数字、下划线）:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false),  // 默认 Insert 模式
+                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false), // 默认 Insert 模式
                 });
             }
         }
@@ -1306,8 +1389,15 @@ fn execute_command(app: &mut App, cmd: Command) {
             let status_info = {
                 let project = app.get_focused_project();
                 if let Some(project) = project {
-                    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone()))
+                    let column = app
+                        .selected_column
+                        .get(&app.focused_pane)
+                        .copied()
+                        .unwrap_or(0);
+                    project
+                        .statuses
+                        .get(column)
+                        .map(|s| (s.name.clone(), s.display.clone()))
                 } else {
                     None
                 }
@@ -1319,7 +1409,11 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: format!("编辑显示名: {}", status_name),
                     prompt: "请输入新的显示名称:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_display, true, false),
+                    textarea: crate::ui::text_input::HelixTextArea::new(
+                        current_display,
+                        true,
+                        false,
+                    ),
                 });
             }
         }
@@ -1330,7 +1424,14 @@ fn execute_command(app: &mut App, cmd: Command) {
                 let project = app.get_focused_project();
                 if let Some(project) = project {
                     let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
-                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column))
+                    project.statuses.get(column).map(|s| {
+                        (
+                            s.name.clone(),
+                            s.display.clone(),
+                            project.path.clone(),
+                            column,
+                        )
+                    })
                 } else {
                     None
                 }
@@ -1349,13 +1450,13 @@ fn execute_command(app: &mut App, cmd: Command) {
                         }
                         app.show_notification(
                             format!("状态「{}」已左移", status_display),
-                            crate::app::NotificationLevel::Success
+                            crate::app::NotificationLevel::Success,
                         );
                     }
                     Err(e) => {
                         app.show_notification(
                             format!("移动失败: {}", e),
-                            crate::app::NotificationLevel::Error
+                            crate::app::NotificationLevel::Error,
                         );
                     }
                 }
@@ -1369,13 +1470,23 @@ fn execute_command(app: &mut App, cmd: Command) {
                 if let Some(project) = project {
                     let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
                     let statuses_len = project.statuses.len();
-                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column, statuses_len))
+                    project.statuses.get(column).map(|s| {
+                        (
+                            s.name.clone(),
+                            s.display.clone(),
+                            project.path.clone(),
+                            column,
+                            statuses_len,
+                        )
+                    })
                 } else {
                     None
                 }
             };
 
-            if let Some((status_name, status_display, project_path, column, statuses_len)) = status_info {
+            if let Some((status_name, status_display, project_path, column, statuses_len)) =
+                status_info
+            {
                 match crate::fs::status::move_status_order(&project_path, &status_name, 1) {
                     Ok(_) => {
                         // 重新加载项目
@@ -1388,13 +1499,13 @@ fn execute_command(app: &mut App, cmd: Command) {
                         }
                         app.show_notification(
                             format!("状态「{}」已右移", status_display),
-                            crate::app::NotificationLevel::Success
+                            crate::app::NotificationLevel::Success,
                         );
                     }
                     Err(e) => {
                         app.show_notification(
                             format!("移动失败: {}", e),
-                            crate::app::NotificationLevel::Error
+                            crate::app::NotificationLevel::Error,
                         );
                     }
                 }
@@ -1407,7 +1518,14 @@ fn execute_command(app: &mut App, cmd: Command) {
                 let project = app.get_focused_project();
                 if let Some(project) = project {
                     let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
-                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column))
+                    project.statuses.get(column).map(|s| {
+                        (
+                            s.name.clone(),
+                            s.display.clone(),
+                            project.path.clone(),
+                            column,
+                        )
+                    })
                 } else {
                     None
                 }
@@ -1417,14 +1535,15 @@ fn execute_command(app: &mut App, cmd: Command) {
                 if column == 0 {
                     app.show_notification(
                         "状态已在最左侧".to_string(),
-                        crate::app::NotificationLevel::Info
+                        crate::app::NotificationLevel::Info,
                     );
                     return;
                 }
 
                 // 移动到最左侧（索引 0）
                 let move_count = -(column as i32);
-                match crate::fs::status::move_status_order(&project_path, &status_name, move_count) {
+                match crate::fs::status::move_status_order(&project_path, &status_name, move_count)
+                {
                     Ok(_) => {
                         // 重新加载项目
                         if let Err(e) = app.reload_current_project() {
@@ -1434,13 +1553,13 @@ fn execute_command(app: &mut App, cmd: Command) {
                         app.selected_column.insert(focused_pane, 0);
                         app.show_notification(
                             format!("状态「{}」已移至最左侧", status_display),
-                            crate::app::NotificationLevel::Success
+                            crate::app::NotificationLevel::Success,
                         );
                     }
                     Err(e) => {
                         app.show_notification(
                             format!("移动失败: {}", e),
-                            crate::app::NotificationLevel::Error
+                            crate::app::NotificationLevel::Error,
                         );
                     }
                 }
@@ -1454,24 +1573,35 @@ fn execute_command(app: &mut App, cmd: Command) {
                 if let Some(project) = project {
                     let column = app.selected_column.get(&focused_pane).copied().unwrap_or(0);
                     let statuses_len = project.statuses.len();
-                    project.statuses.get(column).map(|s| (s.name.clone(), s.display.clone(), project.path.clone(), column, statuses_len))
+                    project.statuses.get(column).map(|s| {
+                        (
+                            s.name.clone(),
+                            s.display.clone(),
+                            project.path.clone(),
+                            column,
+                            statuses_len,
+                        )
+                    })
                 } else {
                     None
                 }
             };
 
-            if let Some((status_name, status_display, project_path, column, statuses_len)) = status_info {
+            if let Some((status_name, status_display, project_path, column, statuses_len)) =
+                status_info
+            {
                 if column == statuses_len - 1 {
                     app.show_notification(
                         "状态已在最右侧".to_string(),
-                        crate::app::NotificationLevel::Info
+                        crate::app::NotificationLevel::Info,
                     );
                     return;
                 }
 
                 // 移动到最右侧
                 let move_count = (statuses_len - 1 - column) as i32;
-                match crate::fs::status::move_status_order(&project_path, &status_name, move_count) {
+                match crate::fs::status::move_status_order(&project_path, &status_name, move_count)
+                {
                     Ok(_) => {
                         // 重新加载项目
                         if let Err(e) = app.reload_current_project() {
@@ -1481,13 +1611,13 @@ fn execute_command(app: &mut App, cmd: Command) {
                         app.selected_column.insert(focused_pane, statuses_len - 1);
                         app.show_notification(
                             format!("状态「{}」已移至最右侧", status_display),
-                            crate::app::NotificationLevel::Success
+                            crate::app::NotificationLevel::Success,
                         );
                     }
                     Err(e) => {
                         app.show_notification(
                             format!("移动失败: {}", e),
-                            crate::app::NotificationLevel::Error
+                            crate::app::NotificationLevel::Error,
                         );
                     }
                 }
@@ -1496,17 +1626,27 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::DeleteStatus => {
             // 删除状态
             if let Some(project) = app.get_focused_project() {
-                let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                let column = app
+                    .selected_column
+                    .get(&app.focused_pane)
+                    .copied()
+                    .unwrap_or(0);
                 if let Some(status) = project.statuses.get(column) {
                     let status_name = status.name.clone();
                     let status_display = status.display.clone();
 
                     // 检查任务数量
-                    let task_count = project.tasks.iter().filter(|t| t.status == status_name).count();
+                    let task_count = project
+                        .tasks
+                        .iter()
+                        .filter(|t| t.status == status_name)
+                        .count();
 
                     let message = if task_count > 0 {
-                        format!("确定要删除状态「{}」吗？\n该状态下有 {} 个任务，删除后任务将无法访问。",
-                            status_display, task_count)
+                        format!(
+                            "确定要删除状态「{}」吗？\n该状态下有 {} 个任务，删除后任务将无法访问。",
+                            status_display, task_count
+                        )
                     } else {
                         format!("确定要删除状态「{}」吗？", status_display)
                     };
@@ -1516,7 +1656,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                     app.dialog = Some(DialogType::Confirm {
                         title: "删除状态".to_string(),
                         message,
-                        yes_selected: false,  // 默认选择"否"，更安全
+                        yes_selected: false, // 默认选择"否"，更安全
                         action: crate::ui::dialogs::ConfirmAction::DeleteStatus,
                     });
                 }
@@ -1556,7 +1696,9 @@ fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
             "task-view-external" => execute_command(app, Command::ViewTaskExternal),
             "task-edit-external" => execute_command(app, Command::EditTaskInEditor),
             "priority-high" => execute_command(app, Command::SetTaskPriority("high".to_string())),
-            "priority-medium" => execute_command(app, Command::SetTaskPriority("medium".to_string())),
+            "priority-medium" => {
+                execute_command(app, Command::SetTaskPriority("medium".to_string()))
+            }
             "priority-low" => execute_command(app, Command::SetTaskPriority("low".to_string())),
             "priority-none" => execute_command(app, Command::SetTaskPriority("none".to_string())),
             "split-horizontal" => execute_command(app, Command::SplitHorizontal),
@@ -1586,30 +1728,58 @@ fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
 /// 获取当前选中的任务
 fn get_selected_task(app: &App) -> Option<&crate::models::Task> {
     let project = app.get_focused_project()?;
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-    let task_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
+    let task_idx = app
+        .selected_task_index
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
 
     let status = app.get_status_name_by_column(column)?;
 
-    let tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == status).collect();
+    let tasks: Vec<_> = project
+        .tasks
+        .iter()
+        .filter(|t| t.status == status)
+        .collect();
     tasks.get(task_idx).copied()
 }
 
 /// 获取当前选中的任务（可变）- 返回任务 ID
 fn get_selected_task_id(app: &App) -> Option<u32> {
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-    let task_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
+    let task_idx = app
+        .selected_task_index
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
 
     let status = app.get_status_name_by_column(column)?;
 
     let project = app.get_focused_project()?;
-    let tasks: Vec<_> = project.tasks.iter().filter(|t| t.status == status).collect();
+    let tasks: Vec<_> = project
+        .tasks
+        .iter()
+        .filter(|t| t.status == status)
+        .collect();
     tasks.get(task_idx).map(|t| t.id)
 }
 
 /// 移动任务到相邻状态
 fn move_task_to_status(app: &mut App, direction: i32) {
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
     let status_count = app.get_status_count();
     let new_column = (column as i32 + direction).clamp(0, status_count as i32 - 1) as usize;
 
@@ -1626,7 +1796,8 @@ fn move_task_to_status(app: &mut App, direction: i32) {
 
     // 获取项目名称和路径
     let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
+        app.split_tree.find_pane(app.focused_pane)
+    {
         if let Some(name) = project_id {
             name.clone()
         } else {
@@ -1671,8 +1842,16 @@ fn move_task_to_status(app: &mut App, direction: i32) {
 
 /// 在列内上下移动任务
 fn move_task_in_column(app: &mut App, direction: i32) {
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-    let task_idx = app.selected_task_index.get(&app.focused_pane).copied().unwrap_or(0);
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
+    let task_idx = app
+        .selected_task_index
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
 
     let status = if let Some(s) = app.get_status_name_by_column(column) {
         s
@@ -1681,24 +1860,28 @@ fn move_task_in_column(app: &mut App, direction: i32) {
     };
 
     // 获取项目名称和路径
-    let (project_name, project_path) = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
-        if let Some(name) = project_id {
-            if let Some(project) = app.projects.iter().find(|p| &p.name == name) {
-                (name.clone(), project.path.clone())
+    let (project_name, project_path) =
+        if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+            app.split_tree.find_pane(app.focused_pane)
+        {
+            if let Some(name) = project_id {
+                if let Some(project) = app.projects.iter().find(|p| &p.name == name) {
+                    (name.clone(), project.path.clone())
+                } else {
+                    return;
+                }
             } else {
                 return;
             }
         } else {
             return;
-        }
-    } else {
-        return;
-    };
+        };
 
     // 获取当前列的所有任务（已按order排序）
     if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
-        let mut tasks: Vec<&mut crate::models::Task> = project.tasks.iter_mut()
+        let mut tasks: Vec<&mut crate::models::Task> = project
+            .tasks
+            .iter_mut()
             .filter(|t| t.status == status)
             .collect();
 
@@ -1729,10 +1912,22 @@ fn move_task_in_column(app: &mut App, direction: i32) {
             // 移到中间：计算上下任务的中间值
             let (order_above, order_below) = if direction > 0 {
                 // 向下移动
-                (tasks[new_idx].order, tasks.get(new_idx + 1).map(|t| t.order).unwrap_or(tasks[new_idx].order + 1000))
+                (
+                    tasks[new_idx].order,
+                    tasks
+                        .get(new_idx + 1)
+                        .map(|t| t.order)
+                        .unwrap_or(tasks[new_idx].order + 1000),
+                )
             } else {
                 // 向上移动
-                (tasks.get(new_idx.saturating_sub(1)).map(|t| t.order).unwrap_or(tasks[new_idx].order - 1000), tasks[new_idx].order)
+                (
+                    tasks
+                        .get(new_idx.saturating_sub(1))
+                        .map(|t| t.order)
+                        .unwrap_or(tasks[new_idx].order - 1000),
+                    tasks[new_idx].order,
+                )
             };
 
             // 检查间隙是否足够
@@ -1743,10 +1938,16 @@ fn move_task_in_column(app: &mut App, direction: i32) {
 
                 // 重新计算new_order
                 if direction > 0 {
-                    let below_order = tasks.get(new_idx + 1).map(|t| t.order).unwrap_or(tasks[new_idx].order + 1000);
+                    let below_order = tasks
+                        .get(new_idx + 1)
+                        .map(|t| t.order)
+                        .unwrap_or(tasks[new_idx].order + 1000);
                     (tasks[new_idx].order + below_order) / 2
                 } else {
-                    let above_order = tasks.get(new_idx.saturating_sub(1)).map(|t| t.order).unwrap_or(tasks[new_idx].order - 1000);
+                    let above_order = tasks
+                        .get(new_idx.saturating_sub(1))
+                        .map(|t| t.order)
+                        .unwrap_or(tasks[new_idx].order - 1000);
                     (above_order + tasks[new_idx].order) / 2
                 }
             } else {
@@ -1755,7 +1956,9 @@ fn move_task_in_column(app: &mut App, direction: i32) {
         };
 
         // 更新当前任务的order
-        let need_rebalance = tasks.iter().any(|t| t.order % 1000 == 0 && t.id != current_task_id);
+        let need_rebalance = tasks
+            .iter()
+            .any(|t| t.order % 1000 == 0 && t.id != current_task_id);
 
         if let Some(task) = project.tasks.iter_mut().find(|t| t.id == current_task_id) {
             task.order = new_order;
@@ -1771,7 +1974,9 @@ fn move_task_in_column(app: &mut App, direction: i32) {
 
         // 如果进行了重平衡，保存所有任务
         if need_rebalance {
-            let tasks_to_save: Vec<crate::models::Task> = project.tasks.iter()
+            let tasks_to_save: Vec<crate::models::Task> = project
+                .tasks
+                .iter()
                 .filter(|t| t.status == status)
                 .cloned()
                 .collect();
@@ -1797,7 +2002,8 @@ fn create_new_task(app: &mut App, title: String) {
 
     // 获取当前项目
     let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
+        app.split_tree.find_pane(app.focused_pane)
+    {
         if let Some(name) = project_id {
             log_debug(format!("调试: 当前项目 '{}'", name));
             name.clone()
@@ -1811,7 +2017,8 @@ fn create_new_task(app: &mut App, title: String) {
     };
 
     // 获取项目路径（支持本地和全局项目）
-    let project_path = if let Some(project) = app.projects.iter().find(|p| &p.name == &project_name) {
+    let project_path = if let Some(project) = app.projects.iter().find(|p| &p.name == &project_name)
+    {
         project.path.clone()
     } else {
         log_debug("调试: 在项目列表中找不到项目".to_string());
@@ -1820,22 +2027,26 @@ fn create_new_task(app: &mut App, title: String) {
 
     // 获取下一个任务 ID
     if let Ok(next_id) = crate::fs::get_next_task_id(&project_path) {
-            log_debug(format!("调试: 下一个任务ID {}", next_id));
-            // 获取当前选中的列作为初始状态
-            let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
-            let status = app.get_status_name_by_column(column)
-                .unwrap_or_else(|| "todo".to_string());
-            log_debug(format!("调试: 状态 '{}'", status));
+        log_debug(format!("调试: 下一个任务ID {}", next_id));
+        // 获取当前选中的列作为初始状态
+        let column = app
+            .selected_column
+            .get(&app.focused_pane)
+            .copied()
+            .unwrap_or(0);
+        let status = app
+            .get_status_name_by_column(column)
+            .unwrap_or_else(|| "todo".to_string());
+        log_debug(format!("调试: 状态 '{}'", status));
 
-            // 获取当前列的最大order值
-            let max_order = crate::fs::get_max_order_in_status(&project_path, &status)
-                .unwrap_or(-1000);
-            let new_order = max_order + 1000;
-            log_debug(format!("调试: 新任务order值 {}", new_order));
+        // 获取当前列的最大order值
+        let max_order = crate::fs::get_max_order_in_status(&project_path, &status).unwrap_or(-1000);
+        let new_order = max_order + 1000;
+        log_debug(format!("调试: 新任务order值 {}", new_order));
 
-            // 创建任务并设置order
-            let mut task = Task::new(next_id, title.clone(), status.clone());
-            task.order = new_order;
+        // 创建任务并设置order
+        let mut task = Task::new(next_id, title.clone(), status.clone());
+        task.order = new_order;
 
         // 保存到文件
         match crate::fs::save_task(&project_path, &task) {
@@ -1851,21 +2062,30 @@ fn create_new_task(app: &mut App, title: String) {
         // 重新加载项目以确保任务列表是最新的
         match crate::fs::load_project(&project_path) {
             Ok(updated_project) => {
-                log_debug(format!("调试: 重新加载项目，共 {} 个任务", updated_project.tasks.len()));
+                log_debug(format!(
+                    "调试: 重新加载项目，共 {} 个任务",
+                    updated_project.tasks.len()
+                ));
                 if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) {
                     *project = updated_project;
 
                     // 找到新任务在当前列的索引（应该是最后一个）
-                    let new_task_idx = project.tasks.iter()
+                    let new_task_idx = project
+                        .tasks
+                        .iter()
                         .filter(|t| t.status == status)
                         .count()
                         .saturating_sub(1);
 
                     // 自动选中新创建的任务
-                    app.selected_task_index.insert(app.focused_pane, new_task_idx);
+                    app.selected_task_index
+                        .insert(app.focused_pane, new_task_idx);
                     log_debug(format!("调试: 选中任务索引 {}", new_task_idx));
                 } else {
-                    log_debug(format!("调试: 在 app.projects 中找不到项目 '{}'", project_name));
+                    log_debug(format!(
+                        "调试: 在 app.projects 中找不到项目 '{}'",
+                        project_name
+                    ));
                 }
             }
             Err(e) => {
@@ -1881,7 +2101,8 @@ fn create_new_task(app: &mut App, title: String) {
 fn rename_current_project(app: &mut App, new_name: String) {
     // 获取当前项目名
     let old_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
+        app.split_tree.find_pane(app.focused_pane)
+    {
         if let Some(name) = project_id {
             name.clone()
         } else {
@@ -1942,7 +2163,8 @@ fn update_task_title(app: &mut App, new_title: String) {
 
     // 获取项目名称
     let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
+        app.split_tree.find_pane(app.focused_pane)
+    {
         if let Some(name) = project_id {
             name.clone()
         } else {
@@ -1979,7 +2201,8 @@ fn update_task_tags(app: &mut App, tags_string: String) {
 
     // 获取项目名称
     let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
-        app.split_tree.find_pane(app.focused_pane) {
+        app.split_tree.find_pane(app.focused_pane)
+    {
         if let Some(name) = project_id {
             name.clone()
         } else {
@@ -2017,13 +2240,13 @@ fn update_task_tags(app: &mut App, tags_string: String) {
         Ok(_) => {
             app.show_notification(
                 "标签已更新".to_string(),
-                crate::app::NotificationLevel::Success
+                crate::app::NotificationLevel::Success,
             );
         }
         Err(e) => {
             app.show_notification(
                 format!("保存标签失败: {}", e),
-                crate::app::NotificationLevel::Error
+                crate::app::NotificationLevel::Error,
             );
         }
     }
@@ -2127,8 +2350,8 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'o' => Some(Command::OpenProject),
                         'n' => Some(Command::NewLocalProject),
                         'N' => Some(Command::NewGlobalProject),
-                        'd' => Some(Command::HideProject),     // 小写d = 软删除（隐藏）
-                        'D' => Some(Command::DeleteProject),   // 大写D = 硬删除
+                        'd' => Some(Command::HideProject), // 小写d = 软删除（隐藏）
+                        'D' => Some(Command::DeleteProject), // 大写D = 硬删除
                         'r' => Some(Command::RenameProject),
                         'i' => Some(Command::CopyProjectInfo), // 复制项目信息
                         _ => None,
@@ -2165,14 +2388,14 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                 Some(MenuState::Task) => {
                     // 任务子菜单：立即执行命令并退出菜单
                     let cmd = match c {
-                        'a' => Some(Command::NewTask),  // 改为 a 键新建任务
+                        'a' => Some(Command::NewTask), // 改为 a 键新建任务
                         'e' => Some(Command::EditTask),
                         'E' => Some(Command::EditTaskInEditor),
                         'v' => Some(Command::ViewTask),
                         'V' => Some(Command::ViewTaskExternal),
-                        't' => Some(Command::EditTags),  // 编辑标签
+                        't' => Some(Command::EditTags), // 编辑标签
                         'd' => Some(Command::DeleteTask),
-                        'Y' => Some(Command::CopyTask),  // 大写 Y 复制任务
+                        'Y' => Some(Command::CopyTask), // 大写 Y 复制任务
                         'h' => Some(Command::SetTaskPriority("high".to_string())),
                         'm' => Some(Command::SetTaskPriority("medium".to_string())),
                         'l' => Some(Command::SetTaskPriority("low".to_string())),
@@ -2194,8 +2417,8 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                         'e' => Some(Command::EditStatusDisplay),
                         'h' => Some(Command::MoveStatusLeft),
                         'l' => Some(Command::MoveStatusRight),
-                        'H' => Some(Command::MoveStatusToFirst),  // 大写 H 移到最左侧
-                        'L' => Some(Command::MoveStatusToLast),   // 大写 L 移到最右侧
+                        'H' => Some(Command::MoveStatusToFirst), // 大写 H 移到最左侧
+                        'L' => Some(Command::MoveStatusToLast),  // 大写 L 移到最右侧
                         'd' => Some(Command::DeleteStatus),
                         _ => None,
                     };
@@ -2337,11 +2560,17 @@ fn adjust_column_width(app: &mut App, delta: i16) {
         None => return,
     };
 
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
     let num_columns = project.statuses.len();
 
     // 获取或初始化列宽配置
-    let widths = app.config.column_widths
+    let widths = app
+        .config
+        .column_widths
         .entry(project_name.clone())
         .or_insert_with(|| vec![100 / num_columns as u16; num_columns]);
 
@@ -2414,11 +2643,17 @@ fn toggle_maximize_column(app: &mut App) {
         }
     };
 
-    let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+    let column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
     log_debug(format!("当前列: {}, 项目: {}", column, project_name));
 
     // 获取当前最大化状态
-    let current_max = app.config.maximized_column
+    let current_max = app
+        .config
+        .maximized_column
         .get(&project_name)
         .and_then(|&opt| opt);
 
@@ -2428,11 +2663,15 @@ fn toggle_maximize_column(app: &mut App) {
     if current_max == Some(column) {
         // 已最大化当前列 -> 取消最大化
         log_debug("取消最大化".to_string());
-        app.config.maximized_column.insert(project_name.clone(), None);
+        app.config
+            .maximized_column
+            .insert(project_name.clone(), None);
     } else {
         // 最大化当前列
         log_debug(format!("最大化列 {}", column));
-        app.config.maximized_column.insert(project_name.clone(), Some(column));
+        app.config
+            .maximized_column
+            .insert(project_name.clone(), Some(column));
     }
 
     // 保存配置
@@ -2467,7 +2706,9 @@ fn normalize_widths(widths: &mut Vec<u16>) {
 
 /// 获取当前聚焦项目的名称
 fn get_focused_project_name(app: &App) -> Option<String> {
-    if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) = app.split_tree.find_pane(app.focused_pane) {
+    if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+        app.split_tree.find_pane(app.focused_pane)
+    {
         project_id.clone()
     } else {
         None
@@ -2542,61 +2783,59 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
 
     // 执行命令（复用现有的字符处理逻辑）
     match app.menu_state {
-        Some(MenuState::Main) => {
-            match c {
-                'p' => {
-                    app.menu_state = Some(MenuState::Project);
-                    app.menu_selected_index = Some(0);
-                }
-                'w' => {
-                    app.menu_state = Some(MenuState::Window);
-                    app.menu_selected_index = Some(0);
-                }
-                't' => {
-                    app.menu_state = Some(MenuState::Task);
-                    app.menu_selected_index = Some(0);
-                }
-                's' => {
-                    app.menu_state = Some(MenuState::Status);
-                    app.menu_selected_index = Some(0);
-                }
-                'f' => {
-                    app.mode = Mode::Normal;
-                    app.menu_state = None;
-                    app.menu_selected_index = None;
-                    app.key_buffer.clear();
-                    execute_command(app, Command::OpenProject);
-                }
-                'r' => {
-                    app.mode = Mode::Normal;
-                    app.menu_state = None;
-                    app.menu_selected_index = None;
-                    app.key_buffer.clear();
-                    execute_command(app, Command::ReloadCurrentProject);
-                }
-                'R' => {
-                    app.mode = Mode::Normal;
-                    app.menu_state = None;
-                    app.menu_selected_index = None;
-                    app.key_buffer.clear();
-                    execute_command(app, Command::ReloadAllProjects);
-                }
-                'q' => {
-                    app.mode = Mode::Normal;
-                    app.menu_state = None;
-                    app.menu_selected_index = None;
-                    app.key_buffer.clear();
-                    execute_command(app, Command::Quit);
-                }
-                '?' => {
-                    app.mode = Mode::Help;
-                    app.menu_state = None;
-                    app.menu_selected_index = None;
-                    app.key_buffer.clear();
-                }
-                _ => {}
+        Some(MenuState::Main) => match c {
+            'p' => {
+                app.menu_state = Some(MenuState::Project);
+                app.menu_selected_index = Some(0);
             }
-        }
+            'w' => {
+                app.menu_state = Some(MenuState::Window);
+                app.menu_selected_index = Some(0);
+            }
+            't' => {
+                app.menu_state = Some(MenuState::Task);
+                app.menu_selected_index = Some(0);
+            }
+            's' => {
+                app.menu_state = Some(MenuState::Status);
+                app.menu_selected_index = Some(0);
+            }
+            'f' => {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, Command::OpenProject);
+            }
+            'r' => {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, Command::ReloadCurrentProject);
+            }
+            'R' => {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, Command::ReloadAllProjects);
+            }
+            'q' => {
+                app.mode = Mode::Normal;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+                execute_command(app, Command::Quit);
+            }
+            '?' => {
+                app.mode = Mode::Help;
+                app.menu_state = None;
+                app.menu_selected_index = None;
+                app.key_buffer.clear();
+            }
+            _ => {}
+        },
         Some(MenuState::Project) => {
             let cmd = match c {
                 'o' => Some(Command::OpenProject),

@@ -11,8 +11,8 @@ pub mod text_input;
 pub mod welcome;
 
 use crate::app::App;
-use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Direction, Layout};
 
 /// 主渲染函数
 pub fn render(f: &mut Frame, app: &mut App) {
@@ -68,11 +68,15 @@ pub fn render(f: &mut Frame, app: &mut App) {
 }
 
 /// 渲染通知栏
-fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification: &crate::app::Notification) {
+fn render_notification(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    notification: &crate::app::Notification,
+) {
+    use crate::app::NotificationLevel;
     use ratatui::style::{Color, Modifier, Style};
     use ratatui::text::{Line, Span};
     use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-    use crate::app::NotificationLevel;
 
     // 通知栏占据底部 3 行
     let notification_height = 3;
@@ -101,13 +105,11 @@ fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification:
             Style::default()
                 .fg(fg_color)
                 .bg(bg_color)
-                .add_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             format!(" {} ", notification.message),
-            Style::default()
-                .fg(fg_color)
-                .bg(bg_color)
+            Style::default().fg(fg_color).bg(bg_color),
         ),
     ]);
 
@@ -124,7 +126,12 @@ fn render_notification(f: &mut Frame, area: ratatui::layout::Rect, notification:
 }
 
 /// 递归渲染分屏树
-fn render_split_tree(f: &mut Frame, area: ratatui::layout::Rect, node: &layout::SplitNode, app: &App) {
+fn render_split_tree(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    node: &layout::SplitNode,
+    app: &App,
+) {
     use layout::SplitNode;
 
     match node {

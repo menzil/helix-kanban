@@ -1,9 +1,9 @@
 use ratatui::{
+    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
-    Frame,
 };
 
 /// 渲染首次运行欢迎对话框
@@ -33,14 +33,12 @@ pub fn render(f: &mut Frame, area: Rect, config: &crate::config::Config) {
     // 构建欢迎信息内容
     let lines = vec![
         Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                "感谢您使用 Kanban！",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "感谢您使用 Kanban！",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from("已自动为您检测并配置以下工具："),
         Line::from(""),
@@ -64,12 +62,12 @@ pub fn render(f: &mut Frame, area: Rect, config: &crate::config::Config) {
         ]),
         Line::from(""),
         Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                "配置文件位置:",
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "配置文件位置:",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(vec![
             Span::raw("  "),
             Span::styled(
@@ -79,33 +77,42 @@ pub fn render(f: &mut Frame, area: Rect, config: &crate::config::Config) {
         ]),
         Line::from(""),
         Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                "如需修改配置，请使用以下命令:",
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "如需修改配置，请使用以下命令:",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  kanban config editor <命令>", Style::default().fg(Color::Green)),
+            Span::styled(
+                "  kanban config editor <命令>",
+                Style::default().fg(Color::Green),
+            ),
             Span::styled("       # 设置编辑器", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![
-            Span::styled("  kanban config viewer <命令>", Style::default().fg(Color::Green)),
+            Span::styled(
+                "  kanban config viewer <命令>",
+                Style::default().fg(Color::Green),
+            ),
             Span::styled("       # 设置预览器", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![
             Span::styled("  kanban config show", Style::default().fg(Color::Green)),
-            Span::styled("                # 查看当前配置", Style::default().fg(Color::DarkGray)),
-        ]),
-        Line::from(""),
-        Line::from(""),
-        Line::from(vec![
             Span::styled(
-                "快捷键提示:",
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                "                # 查看当前配置",
+                Style::default().fg(Color::DarkGray),
             ),
         ]),
+        Line::from(""),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "快捷键提示:",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
             Span::styled("  ?", Style::default().fg(Color::Yellow)),
@@ -121,14 +128,12 @@ pub fn render(f: &mut Frame, area: Rect, config: &crate::config::Config) {
         ]),
         Line::from(""),
         Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                "按任意键开始使用",
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]),
+        Line::from(vec![Span::styled(
+            "按任意键开始使用",
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        )]),
     ];
 
     let paragraph = Paragraph::new(lines)

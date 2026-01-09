@@ -59,7 +59,7 @@ pub enum Command {
     /// 复制任务到剪贴板
     CopyTask,
     /// 设置任务优先级
-    SetTaskPriority(String),  // "high", "medium", "low", "none"
+    SetTaskPriority(String), // "high", "medium", "low", "none"
     /// 编辑任务标签
     EditTags,
 

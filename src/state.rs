@@ -50,9 +50,13 @@ fn reload_all_pane_projects(app: &mut crate::app::App) {
                         let project_type = project.project_type;
 
                         // 重新加载项目以获取最新的任务数据
-                        if let Ok(reloaded_project) = crate::fs::load_project_with_type(&project_path, project_type) {
+                        if let Ok(reloaded_project) =
+                            crate::fs::load_project_with_type(&project_path, project_type)
+                        {
                             // 更新项目列表中的数据
-                            if let Some(idx) = app.projects.iter().position(|p| &p.name == project_name) {
+                            if let Some(idx) =
+                                app.projects.iter().position(|p| &p.name == project_name)
+                            {
                                 app.projects[idx] = reloaded_project;
                             }
                         }

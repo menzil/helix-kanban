@@ -1,15 +1,15 @@
 pub mod parser;
 pub mod project;
-pub mod task;
 pub mod status;
+pub mod task;
 
 pub use project::{
-    create_project, create_local_project, delete_project_by_path, get_data_dir, get_projects_dir, get_local_kanban_dir,
-    init_data_dir, list_local_project_dirs, list_project_dirs, load_project,
-    load_project_config, load_project_with_type, ensure_global_ai_config,
+    create_local_project, create_project, delete_project_by_path, ensure_global_ai_config,
+    get_data_dir, get_local_kanban_dir, get_projects_dir, init_data_dir, list_local_project_dirs,
+    list_project_dirs, load_project, load_project_config, load_project_with_type,
     save_project_config,
 };
-pub use task::{delete_task, get_next_task_id, get_max_order_in_status, move_task, save_task};
+pub use task::{delete_task, get_max_order_in_status, get_next_task_id, move_task, save_task};
 
 use crate::models::{Project, ProjectType};
 use anyhow::Result;
@@ -31,7 +31,7 @@ pub fn load_all_projects() -> Result<Vec<Project>> {
                 if !crate::config::is_project_hidden(&config, &project.name) {
                     projects.push(project);
                 }
-            },
+            }
             Err(e) => eprintln!("警告: 无法加载全局项目 {}: {}", dir_name.display(), e),
         }
     }
@@ -52,7 +52,7 @@ pub fn load_all_projects() -> Result<Vec<Project>> {
                 if is_current_dir || !crate::config::is_project_hidden(&config, &project.name) {
                     projects.push(project);
                 }
-            },
+            }
             Err(e) => eprintln!("警告: 无法加载本地项目 {}: {}", dir_name.display(), e),
         }
     }

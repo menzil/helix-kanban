@@ -32,9 +32,7 @@ fn load_local_projects_index() -> LocalProjectsIndex {
     }
 
     match fs::read_to_string(&index_path) {
-        Ok(content) => {
-            serde_json::from_str(&content).unwrap_or_default()
-        }
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
         Err(_) => LocalProjectsIndex::default(),
     }
 }
@@ -187,8 +185,8 @@ pub fn load_project_config(project_path: &Path) -> Result<ProjectConfig, String>
         return Err(format!("Config file not found: {:?}", config_path));
     }
 
-    let content = fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read config: {}", e))?;
+    let content =
+        fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config: {}", e))?;
 
     toml::from_str(&content).map_err(|e| format!("Failed to parse TOML: {}", e))
 }
@@ -199,7 +197,10 @@ pub fn load_project(project_path: &Path) -> Result<Project, String> {
 }
 
 /// Load a project with all its tasks, specifying project type
-pub fn load_project_with_type(project_path: &Path, project_type: ProjectType) -> Result<Project, String> {
+pub fn load_project_with_type(
+    project_path: &Path,
+    project_type: ProjectType,
+) -> Result<Project, String> {
     // 0. 自动迁移到新格式（如果需要）
     let _ = super::task::auto_migrate_project_to_new_format(project_path);
 
@@ -227,7 +228,11 @@ pub fn load_project_with_type(project_path: &Path, project_type: ProjectType) ->
         }
     }
 
-    let mut project = Project::new(config.name.clone(), project_path.to_path_buf(), project_type);
+    let mut project = Project::new(
+        config.name.clone(),
+        project_path.to_path_buf(),
+        project_type,
+    );
     project.statuses = statuses;
 
     // Load tasks from all status directories
@@ -335,11 +340,10 @@ fn capitalize_first(s: &str) -> String {
 pub fn save_project_config(project_path: &Path, config: &ProjectConfig) -> Result<(), String> {
     let config_path = project_path.join(".kanban.toml");
 
-    let content = toml::to_string_pretty(config)
-        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+    let content =
+        toml::to_string_pretty(config).map_err(|e| format!("Failed to serialize config: {}", e))?;
 
-    fs::write(&config_path, content)
-        .map_err(|e| format!("Failed to write config: {}", e))?;
+    fs::write(&config_path, content).map_err(|e| format!("Failed to write config: {}", e))?;
 
     Ok(())
 }
@@ -479,20 +483,19 @@ pub fn rename_project(old_name: &str, new_name: &str) -> Result<(), String> {
 
     // Update the name in .kanban.toml
     let config_path = new_path.join(".kanban.toml");
-    let content = fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read config: {}", e))?;
+    let content =
+        fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config: {}", e))?;
 
     // Parse and update the config
-    let mut config: ProjectConfig = toml::from_str(&content)
-        .map_err(|e| format!("Failed to parse TOML: {}", e))?;
+    let mut config: ProjectConfig =
+        toml::from_str(&content).map_err(|e| format!("Failed to parse TOML: {}", e))?;
 
     config.name = new_name.to_string();
 
-    let new_content = toml::to_string(&config)
-        .map_err(|e| format!("Failed to serialize TOML: {}", e))?;
+    let new_content =
+        toml::to_string(&config).map_err(|e| format!("Failed to serialize TOML: {}", e))?;
 
-    fs::write(config_path, new_content)
-        .map_err(|e| format!("Failed to write config: {}", e))?;
+    fs::write(config_path, new_content).map_err(|e| format!("Failed to write config: {}", e))?;
 
     Ok(())
 }
@@ -505,8 +508,7 @@ pub fn delete_project_by_path(project_path: &std::path::Path) -> Result<(), Stri
     }
 
     // 删除整个项目目录及其所有内容
-    std::fs::remove_dir_all(project_path)
-        .map_err(|e| format!("删除项目目录失败: {}", e))?;
+    std::fs::remove_dir_all(project_path).map_err(|e| format!("删除项目目录失败: {}", e))?;
 
     Ok(())
 }
@@ -524,8 +526,7 @@ pub fn delete_project(project_name: &str, project_type: &ProjectType) -> Result<
     }
 
     // 删除整个项目目录及其所有内容
-    std::fs::remove_dir_all(&project_dir)
-        .map_err(|e| format!("删除项目目录失败: {}", e))?;
+    std::fs::remove_dir_all(&project_dir).map_err(|e| format!("删除项目目录失败: {}", e))?;
 
     Ok(())
 }

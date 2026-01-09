@@ -202,19 +202,27 @@ impl SplitNode {
             // 3. 检查父节点类型是否匹配方向，并获取兄弟节点
             let sibling_node = match (parent_node, direction, step) {
                 // 水平容器 + 左右方向
-                (Some(SplitNode::Horizontal { left, right: _, .. }), Direction::Left, PathStep::Right) => {
-                    Some(left.as_ref())
-                }
-                (Some(SplitNode::Horizontal { left: _, right, .. }), Direction::Right, PathStep::Left) => {
-                    Some(right.as_ref())
-                }
+                (
+                    Some(SplitNode::Horizontal { left, right: _, .. }),
+                    Direction::Left,
+                    PathStep::Right,
+                ) => Some(left.as_ref()),
+                (
+                    Some(SplitNode::Horizontal { left: _, right, .. }),
+                    Direction::Right,
+                    PathStep::Left,
+                ) => Some(right.as_ref()),
                 // 垂直容器 + 上下方向
-                (Some(SplitNode::Vertical { top, bottom: _, .. }), Direction::Up, PathStep::Bottom) => {
-                    Some(top.as_ref())
-                }
-                (Some(SplitNode::Vertical { top: _, bottom, .. }), Direction::Down, PathStep::Top) => {
-                    Some(bottom.as_ref())
-                }
+                (
+                    Some(SplitNode::Vertical { top, bottom: _, .. }),
+                    Direction::Up,
+                    PathStep::Bottom,
+                ) => Some(top.as_ref()),
+                (
+                    Some(SplitNode::Vertical { top: _, bottom, .. }),
+                    Direction::Down,
+                    PathStep::Top,
+                ) => Some(bottom.as_ref()),
                 _ => None,
             };
 

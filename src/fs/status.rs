@@ -16,7 +16,10 @@ pub fn validate_status_name(name: &str, existing_statuses: &[Status]) -> Result<
     }
 
     // 3. 字符合法性检查（只允许 a-zA-Z0-9_-）
-    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
         return Err("状态名称只能包含字母、数字、下划线和连字符".to_string());
     }
 
@@ -65,8 +68,7 @@ pub fn create_status(
 ) -> Result<(), String> {
     // 1. 创建状态目录
     let status_dir = project_path.join(status_name);
-    fs::create_dir_all(&status_dir)
-        .map_err(|e| format!("创建目录失败: {}", e))?;
+    fs::create_dir_all(&status_dir).map_err(|e| format!("创建目录失败: {}", e))?;
 
     // 2. 加载并更新配置
     let mut config = super::load_project_config(project_path)?;
@@ -106,8 +108,7 @@ pub fn rename_status(
 
     // 3. 重命名目录（所有任务文件自动移动）
     if old_dir != new_dir {
-        fs::rename(&old_dir, &new_dir)
-            .map_err(|e| format!("重命名目录失败: {}", e))?;
+        fs::rename(&old_dir, &new_dir).map_err(|e| format!("重命名目录失败: {}", e))?;
     }
 
     // 4. 如果使用新格式（tasks.toml），更新所有任务的 status 字段
@@ -187,14 +188,12 @@ pub fn delete_status(
 
         // 确保目标目录存在
         if !target_dir.exists() {
-            fs::create_dir_all(&target_dir)
-                .map_err(|e| format!("创建目标目录失败: {}", e))?;
+            fs::create_dir_all(&target_dir).map_err(|e| format!("创建目标目录失败: {}", e))?;
         }
 
         // 移动所有任务文件
         if status_dir.exists() {
-            for entry in fs::read_dir(&status_dir)
-                .map_err(|e| format!("读取目录失败: {}", e))?
+            for entry in fs::read_dir(&status_dir).map_err(|e| format!("读取目录失败: {}", e))?
             {
                 let entry = entry.map_err(|e| format!("读取文件失败: {}", e))?;
                 let path = entry.path();
@@ -203,8 +202,7 @@ pub fn delete_status(
                     let filename = path.file_name().unwrap();
                     let target_path = target_dir.join(filename);
 
-                    fs::rename(&path, &target_path)
-                        .map_err(|e| format!("移动任务失败: {}", e))?;
+                    fs::rename(&path, &target_path).map_err(|e| format!("移动任务失败: {}", e))?;
                 }
             }
         }
@@ -212,8 +210,7 @@ pub fn delete_status(
 
     // 2. 删除状态目录（如果存在）
     if status_dir.exists() {
-        fs::remove_dir_all(&status_dir)
-            .map_err(|e| format!("删除目录失败: {}", e))?;
+        fs::remove_dir_all(&status_dir).map_err(|e| format!("删除目录失败: {}", e))?;
     }
 
     // 3. 更新配置文件
@@ -241,7 +238,9 @@ pub fn move_status_order(
     let mut config = super::load_project_config(project_path)?;
 
     // 2. 找到当前索引
-    let current_index = config.statuses.order
+    let current_index = config
+        .statuses
+        .order
         .iter()
         .position(|s| s == status_name)
         .ok_or_else(|| format!("找不到状态 '{}'", status_name))?;
@@ -334,9 +333,10 @@ display = "Done"
 
     #[test]
     fn test_validate_status_name_duplicate() {
-        let existing = vec![
-            Status { name: "todo".to_string(), display: "Todo".to_string() },
-        ];
+        let existing = vec![Status {
+            name: "todo".to_string(),
+            display: "Todo".to_string(),
+        }];
         assert!(validate_status_name("todo", &existing).is_err());
     }
 
@@ -391,7 +391,10 @@ display = "Done"
         let config = crate::fs::load_project_config(project_path).unwrap();
         assert!(config.statuses.order.contains(&"review".to_string()));
         assert!(config.statuses.statuses.contains_key("review"));
-        assert_eq!(config.statuses.statuses.get("review").unwrap().display, "Review");
+        assert_eq!(
+            config.statuses.statuses.get("review").unwrap().display,
+            "Review"
+        );
     }
 
     #[test]
@@ -430,7 +433,10 @@ display = "Done"
 
         // 验证配置已更新
         let config = crate::fs::load_project_config(project_path).unwrap();
-        assert_eq!(config.statuses.statuses.get("todo").unwrap().display, "待办事项");
+        assert_eq!(
+            config.statuses.statuses.get("todo").unwrap().display,
+            "待办事项"
+        );
     }
 
     #[test]

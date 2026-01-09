@@ -53,27 +53,30 @@ pub fn load_task(path: &Path, status: &str) -> Result<Task, String> {
         .and_then(|s| s.parse::<u32>().ok())
         .or_else(|| {
             // 如果没有ID，尝试从旧文件名格式解析（向后兼容）
-            path.file_stem()
-                .and_then(|s| s.to_str())
-                .and_then(|s| {
-                    // 尝试纯数字文件名（001.md）
-                    if let Ok(id) = s.parse::<u32>() {
-                        return Some(id);
-                    }
-                    // 尝试数字前缀（001-checkout-flow.md）
-                    s.split('-')
-                        .next()
-                        .and_then(|prefix| prefix.parse::<u32>().ok())
-                })
+            path.file_stem().and_then(|s| s.to_str()).and_then(|s| {
+                // 尝试纯数字文件名（001.md）
+                if let Ok(id) = s.parse::<u32>() {
+                    return Some(id);
+                }
+                // 尝试数字前缀（001-checkout-flow.md）
+                s.split('-')
+                    .next()
+                    .and_then(|prefix| prefix.parse::<u32>().ok())
+            })
         })
-        .ok_or_else(|| format!("Task file missing 'id' field and filename is not numeric: {:?}", path))?;
+        .ok_or_else(|| {
+            format!(
+                "Task file missing 'id' field and filename is not numeric: {:?}",
+                path
+            )
+        })?;
 
     // 从元数据读取order（可选，默认为id * 1000）
     let order = parsed
         .metadata
         .get("order")
         .and_then(|s| s.parse::<i32>().ok())
-        .unwrap_or_else(|| (id as i32) * 1000);  // 默认值：兼容旧任务
+        .unwrap_or_else(|| (id as i32) * 1000); // 默认值：兼容旧任务
 
     let created = parsed
         .metadata
@@ -155,17 +158,18 @@ fn save_task_legacy_format(project_path: &Path, task: &Task) -> Result<PathBuf, 
     let status_dir = project_path.join(&task.status);
 
     // 生成文件名：使用任务ID
-    let filename = if task.file_path.exists() && task.file_path.parent() == Some(status_dir.as_path()) {
-        // 任务已存在且在同一目录，保持原文件名（避免不必要的重命名）
-        task.file_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .ok_or_else(|| "Invalid file path".to_string())?
-            .to_string()
-    } else {
-        // 新任务或跨目录移动，使用任务ID作为文件名
-        format!("{}.md", task.id)
-    };
+    let filename =
+        if task.file_path.exists() && task.file_path.parent() == Some(status_dir.as_path()) {
+            // 任务已存在且在同一目录，保持原文件名（避免不必要的重命名）
+            task.file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .ok_or_else(|| "Invalid file path".to_string())?
+                .to_string()
+        } else {
+            // 新任务或跨目录移动，使用任务ID作为文件名
+            format!("{}.md", task.id)
+        };
 
     let file_path = status_dir.join(&filename);
 
@@ -221,11 +225,7 @@ fn save_task_metadata_format(project_path: &Path, task: &Task) -> Result<PathBuf
 }
 
 /// Move a task to a different status
-pub fn move_task(
-    project_path: &Path,
-    task: &Task,
-    new_status: &str,
-) -> Result<PathBuf, String> {
+pub fn move_task(project_path: &Path, task: &Task, new_status: &str) -> Result<PathBuf, String> {
     let old_path = &task.file_path;
     let new_dir = project_path.join(new_status);
 
@@ -272,7 +272,7 @@ fn slugify(title: &str) -> String {
             } else if c.is_whitespace() || c == '-' || c == '_' {
                 '-'
             } else {
-                '\0'  // 标记要删除的字符
+                '\0' // 标记要删除的字符
             }
         })
         .filter(|&c| c != '\0')
@@ -282,7 +282,7 @@ fn slugify(title: &str) -> String {
         .collect::<Vec<_>>()
         .join("-")
         .chars()
-        .take(50)  // 限制长度
+        .take(50) // 限制长度
         .collect()
 }
 
@@ -319,7 +319,7 @@ pub fn get_max_order_in_status(project_path: &Path, status: &str) -> Result<i32,
     let status_dir = project_path.join(status);
 
     if !status_dir.exists() {
-        return Ok(-1000);  // 返回一个小于0的值，便于第一个任务order=0
+        return Ok(-1000); // 返回一个小于0的值，便于第一个任务order=0
     }
 
     let tasks = load_tasks_from_dir(&status_dir, status)?;
@@ -328,23 +328,29 @@ pub fn get_max_order_in_status(project_path: &Path, status: &str) -> Result<i32,
 }
 
 /// 加载任务元数据文件（tasks.toml）
-pub fn load_tasks_metadata(project_path: &Path) -> Result<HashMap<String, crate::models::TaskMetadata>, String> {
+pub fn load_tasks_metadata(
+    project_path: &Path,
+) -> Result<HashMap<String, crate::models::TaskMetadata>, String> {
     let tasks_toml = project_path.join("tasks.toml");
 
     if !tasks_toml.exists() {
         return Ok(HashMap::new());
     }
 
-    let content = fs::read_to_string(&tasks_toml).map_err(|e| format!("Failed to read tasks.toml: {}", e))?;
+    let content =
+        fs::read_to_string(&tasks_toml).map_err(|e| format!("Failed to read tasks.toml: {}", e))?;
 
-    let config: crate::models::TasksConfig = toml::from_str(&content)
-        .map_err(|e| format!("Failed to parse tasks.toml: {}", e))?;
+    let config: crate::models::TasksConfig =
+        toml::from_str(&content).map_err(|e| format!("Failed to parse tasks.toml: {}", e))?;
 
     Ok(config.tasks)
 }
 
 /// 保存任务元数据到 tasks.toml
-pub fn save_tasks_metadata(project_path: &Path, metadata: &HashMap<String, crate::models::TaskMetadata>) -> Result<(), String> {
+pub fn save_tasks_metadata(
+    project_path: &Path,
+    metadata: &HashMap<String, crate::models::TaskMetadata>,
+) -> Result<(), String> {
     let tasks_toml = project_path.join("tasks.toml");
 
     let config = crate::models::TasksConfig {
@@ -354,8 +360,7 @@ pub fn save_tasks_metadata(project_path: &Path, metadata: &HashMap<String, crate
     let content = toml::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize tasks.toml: {}", e))?;
 
-    fs::write(&tasks_toml, content)
-        .map_err(|e| format!("Failed to write tasks.toml: {}", e))?;
+    fs::write(&tasks_toml, content).map_err(|e| format!("Failed to write tasks.toml: {}", e))?;
 
     Ok(())
 }
@@ -415,11 +420,11 @@ pub fn auto_migrate_project_to_new_format(project_path: &Path) -> Result<bool, S
         return Err("Project config not found".to_string());
     }
 
-    let config_content = fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read config: {}", e))?;
+    let config_content =
+        fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config: {}", e))?;
 
-    let project_config: crate::models::ProjectConfig = toml::from_str(&config_content)
-        .map_err(|e| format!("Failed to parse config: {}", e))?;
+    let project_config: crate::models::ProjectConfig =
+        toml::from_str(&config_content).map_err(|e| format!("Failed to parse config: {}", e))?;
 
     // 收集所有任务
     let mut all_tasks = Vec::new();
@@ -465,7 +470,9 @@ pub fn auto_migrate_project_to_new_format(project_path: &Path) -> Result<bool, S
 
     // 更新所有任务文件：移除元数据，只保留内容
     for task in &all_tasks {
-        let new_path = project_path.join(&task.status).join(format!("{}.md", task.id));
+        let new_path = project_path
+            .join(&task.status)
+            .join(format!("{}.md", task.id));
 
         // 只保存纯内容
         fs::write(&new_path, &task.content)

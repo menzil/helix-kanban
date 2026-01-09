@@ -5,10 +5,10 @@ use tui_textarea::{CursorMove, TextArea};
 // 导入用于渲染的类型
 // 注意：tui-textarea 使用自己的 ratatui 版本，我们需要使用兼容的方式
 use ratatui::{
-    layout::{Alignment, Rect},
-    widgets::Paragraph,
     Frame,
+    layout::{Alignment, Rect},
     style::{Color as RatatuiColor, Style as RatatuiStyle},
+    widgets::Paragraph,
 };
 
 /// 编辑模式
@@ -66,37 +66,40 @@ impl HelixTextArea {
         };
 
         // 配置 Nord 主题样式 - tui-textarea 使用 ratatui 的 Style
-        textarea.set_style(RatatuiStyle::default()
-            .fg(RatatuiColor::Rgb(236, 239, 244))  // Nord snow storm
-            .bg(RatatuiColor::Rgb(46, 52, 64)));    // Nord polar night
+        textarea.set_style(
+            RatatuiStyle::default()
+                .fg(RatatuiColor::Rgb(236, 239, 244)) // Nord snow storm
+                .bg(RatatuiColor::Rgb(46, 52, 64)),
+        ); // Nord polar night
 
         // 光标样式 - 块状光标
-        textarea.set_cursor_style(RatatuiStyle::default()
-            .bg(RatatuiColor::Rgb(136, 192, 208))   // Nord frost (cyan)
-            .fg(RatatuiColor::Rgb(46, 52, 64)));
+        textarea.set_cursor_style(
+            RatatuiStyle::default()
+                .bg(RatatuiColor::Rgb(136, 192, 208)) // Nord frost (cyan)
+                .fg(RatatuiColor::Rgb(46, 52, 64)),
+        );
 
         // 行号样式
         if show_line_numbers {
-            textarea.set_line_number_style(RatatuiStyle::default()
-                .fg(RatatuiColor::Rgb(76, 86, 106)));  // Nord polar night (lighter)
+            textarea
+                .set_line_number_style(RatatuiStyle::default().fg(RatatuiColor::Rgb(76, 86, 106))); // Nord polar night (lighter)
         }
 
         // 当前行高亮
-        textarea.set_cursor_line_style(RatatuiStyle::default()
-            .bg(RatatuiColor::Rgb(59, 66, 82)));  // Nord polar night (slightly lighter)
+        textarea.set_cursor_line_style(RatatuiStyle::default().bg(RatatuiColor::Rgb(59, 66, 82))); // Nord polar night (slightly lighter)
 
         Self {
             textarea,
             mode: if start_in_normal_mode {
-                EditMode::Normal  // 从 Normal 模式开始
+                EditMode::Normal // 从 Normal 模式开始
             } else {
-                EditMode::Insert  // 从 Insert 模式开始
+                EditMode::Insert // 从 Insert 模式开始
             },
             command_buffer: String::new(),
             key_sequence: Vec::new(),
             last_key_time: Instant::now(),
             show_line_numbers,
-            is_maximized: false,  // 默认不最大化
+            is_maximized: false, // 默认不最大化
         }
     }
 
@@ -428,8 +431,8 @@ impl HelixTextArea {
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
         // 如果显示行号，启用行号
         if self.show_line_numbers {
-            self.textarea.set_line_number_style(RatatuiStyle::default()
-                .fg(RatatuiColor::Rgb(76, 86, 106)));
+            self.textarea
+                .set_line_number_style(RatatuiStyle::default().fg(RatatuiColor::Rgb(76, 86, 106)));
         }
 
         // 渲染 TextArea - 直接传递引用
@@ -441,17 +444,17 @@ impl HelixTextArea {
         let (mode_text, style) = match self.mode {
             EditMode::Insert => (
                 "-- INSERT --".to_string(),
-                RatatuiStyle::default().fg(RatatuiColor::Rgb(163, 190, 140)),  // Nord green
+                RatatuiStyle::default().fg(RatatuiColor::Rgb(163, 190, 140)), // Nord green
             ),
             EditMode::Normal => (
                 "-- NORMAL --".to_string(),
-                RatatuiStyle::default().fg(RatatuiColor::Rgb(136, 192, 208)),  // Nord cyan
+                RatatuiStyle::default().fg(RatatuiColor::Rgb(136, 192, 208)), // Nord cyan
             ),
             EditMode::Command => {
                 let text = format!(":{}█", self.command_buffer);
                 (
                     text,
-                    RatatuiStyle::default().fg(RatatuiColor::Rgb(235, 203, 139)),  // Nord yellow
+                    RatatuiStyle::default().fg(RatatuiColor::Rgb(235, 203, 139)), // Nord yellow
                 )
             }
         };
@@ -469,7 +472,7 @@ impl HelixTextArea {
         if !self.key_sequence.is_empty() && self.mode == EditMode::Normal {
             let text = self.key_sequence.iter().collect::<String>();
             let paragraph = Paragraph::new(text)
-                .style(RatatuiStyle::default().fg(RatatuiColor::Rgb(235, 203, 139)))  // Nord yellow
+                .style(RatatuiStyle::default().fg(RatatuiColor::Rgb(235, 203, 139))) // Nord yellow
                 .alignment(Alignment::Right);
             f.render_widget(paragraph, area);
         }

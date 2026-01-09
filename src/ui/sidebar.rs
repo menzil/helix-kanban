@@ -1,11 +1,11 @@
 use crate::app::App;
 use crate::models::ProjectType;
 use crate::ui::layout::SplitNode;
+use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem};
-use ratatui::Frame;
 
 /// 渲染左侧项目侧边栏
 #[allow(dead_code)]
@@ -70,9 +70,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                     Span::raw(" "),
                     Span::styled(
                         type_tag,
-                        Style::default()
-                            .fg(tag_color)
-                            .add_modifier(Modifier::BOLD),
+                        Style::default().fg(tag_color).add_modifier(Modifier::BOLD),
                     ),
                     Span::raw(" "),
                     Span::styled(&project.name, Style::default().fg(Color::Gray)),
