@@ -340,6 +340,12 @@ pub fn load_tasks_metadata(
     let content =
         fs::read_to_string(&tasks_toml).map_err(|e| format!("Failed to read tasks.toml: {}", e))?;
 
+    // 处理空文件或只有 [tasks] 的旧格式
+    let trimmed = content.trim();
+    if trimmed.is_empty() || trimmed == "[tasks]" {
+        return Ok(HashMap::new());
+    }
+
     let config: crate::models::TasksConfig =
         toml::from_str(&content).map_err(|e| format!("Failed to parse tasks.toml: {}", e))?;
 
