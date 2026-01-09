@@ -238,8 +238,9 @@ pub fn move_status_order(
         return Ok(());
     }
 
-    // 5. 交换位置
-    config.statuses.order.swap(current_index, new_index);
+    // 5. 移动元素（先移除，再插入到目标位置）
+    let status = config.statuses.order.remove(current_index);
+    config.statuses.order.insert(new_index, status);
 
     // 6. 保存配置
     super::save_project_config(project_path, &config)?;
