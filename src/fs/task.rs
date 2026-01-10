@@ -114,19 +114,41 @@ pub fn load_task(path: &Path, status: &str) -> Result<Task, String> {
 pub fn get_next_task_id(project_path: &Path) -> Result<u32, String> {
     let mut max_id = 0;
 
-    // Scan all status directories for tasks
-    for entry in fs::read_dir(project_path).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
+    // 检查是否使用新格式（tasks.toml）
+    let tasks_toml = project_path.join("tasks.toml");
+    if tasks_toml.exists() {
+        // 新格式：直接从 tasks.toml 读取所有任务的 ID
+        let metadata_map = load_tasks_metadata(project_path)?;
+        for (id_str, _) in metadata_map {
+            if let Ok(id) = id_str.parse::<u32>() {
+                if id > max_id {
+                    max_id = id;
+                }
+            }
+        }
+    } else {
+        // 旧格式：扫描所有状态目录
+        for entry in fs::read_dir(project_path).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
 
-        if path.is_dir() && !path.file_name().unwrap().to_str().unwrap().starts_with('.')
-            && let Ok(tasks) = load_tasks_from_dir(&path, "") {
-                for task in tasks {
-                    if task.id > max_id {
-                        max_id = task.id;
+            if path.is_dir() && !path.file_name().unwrap().to_str().unwrap().starts_with('.') {
+                // 获取目录名作为 status
+                let status = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                if let Ok(tasks) = load_tasks_from_dir(&path, &status) {
+                    for task in tasks {
+                        if task.id > max_id {
+                            max_id = task.id;
+                        }
                     }
                 }
             }
+        }
     }
 
     Ok(max_id + 1)
