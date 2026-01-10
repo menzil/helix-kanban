@@ -109,7 +109,7 @@ fn render_command_list(
 
     // 计算列数（每列最多20个字符）
     let column_width = 20;
-    let columns = (area.width as usize / column_width).max(1).min(5);
+    let columns = (area.width as usize / column_width).clamp(1, 5);
 
     // 限制显示的命令数量（最多显示能放下的）
     let max_rows = (area.height.saturating_sub(0)) as usize;

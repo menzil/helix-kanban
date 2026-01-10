@@ -23,7 +23,7 @@ pub enum DialogType {
     Input {
         title: String,
         prompt: String,
-        textarea: HelixTextArea,
+        textarea: Box<HelixTextArea>,
     },
     /// 选择对话框（用于选择项目等）
     Select {

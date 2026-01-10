@@ -787,7 +787,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新项目".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
+                textarea: Box::new(crate::ui::text_input::HelixTextArea::new(String::new(), true, false)), // 默认 Insert 模式
             });
         }
         Command::NewLocalProject => {
@@ -796,7 +796,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新本地项目 [L]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
+                textarea: Box::new(crate::ui::text_input::HelixTextArea::new(String::new(), true, false)), // 默认 Insert 模式
             });
         }
         Command::NewGlobalProject => {
@@ -805,7 +805,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新全局项目 [G]".to_string(),
                 prompt: "请输入项目名称:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
+                textarea: Box::new(crate::ui::text_input::HelixTextArea::new(String::new(), true, false)), // 默认 Insert 模式
             });
         }
         Command::OpenProject => {
@@ -848,7 +848,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "重命名项目".to_string(),
                     prompt: "请输入新的项目名称:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false), // 默认 Insert 模式
+                    textarea: Box::new(crate::ui::text_input::HelixTextArea::new(current_name, true, false)), // 默认 Insert 模式
                 });
             }
         }
@@ -910,7 +910,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新任务".to_string(),
                 prompt: "任务标题和内容:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, true), // 默认 Normal 模式
+                textarea: Box::new(crate::ui::text_input::HelixTextArea::new(String::new(), true, true)), // 默认 Normal 模式
             });
         }
         Command::NewTaskInEditor => {
@@ -947,7 +947,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "编辑任务".to_string(),
                     prompt: "任务标题和内容:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(title, true, true), // 默认 Normal 模式
+                    textarea: Box::new(crate::ui::text_input::HelixTextArea::new(title, true, true)), // 默认 Normal 模式
                 });
             }
         }
@@ -1267,7 +1267,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: "编辑标签".to_string(),
                     prompt: "标签（逗号分隔）:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_tags, true, false),
+                    textarea: Box::new(crate::ui::text_input::HelixTextArea::new(current_tags, true, false)),
                 });
             }
         }
@@ -1373,7 +1373,7 @@ fn execute_command(app: &mut App, cmd: Command) {
             app.dialog = Some(DialogType::Input {
                 title: "创建新状态".to_string(),
                 prompt: "请输入状态内部名称（英文、数字、下划线）:".to_string(),
-                textarea: crate::ui::text_input::HelixTextArea::new(String::new(), true, false), // 默认 Insert 模式
+                textarea: Box::new(crate::ui::text_input::HelixTextArea::new(String::new(), true, false)), // 默认 Insert 模式
             });
         }
         Command::RenameStatus => {
@@ -1401,7 +1401,7 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: format!("重命名状态: {}", current_display),
                     prompt: "请输入新的状态名称（英文、数字、下划线）:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(current_name, true, false), // 默认 Insert 模式
+                    textarea: Box::new(crate::ui::text_input::HelixTextArea::new(current_name, true, false)), // 默认 Insert 模式
                 });
             }
         }
@@ -1430,11 +1430,11 @@ fn execute_command(app: &mut App, cmd: Command) {
                 app.dialog = Some(DialogType::Input {
                     title: format!("编辑显示名: {}", status_name),
                     prompt: "请输入新的显示名称:".to_string(),
-                    textarea: crate::ui::text_input::HelixTextArea::new(
+                    textarea: Box::new(crate::ui::text_input::HelixTextArea::new(
                         current_display,
                         true,
                         false,
-                    ),
+                    )),
                 });
             }
         }
@@ -1816,14 +1816,10 @@ fn move_task_to_status(app: &mut App, direction: i32) {
     };
 
     // 获取项目名称和路径
-    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id: Some(name), .. }) =
         app.split_tree.find_pane(app.focused_pane)
     {
-        if let Some(name) = project_id {
-            name.clone()
-        } else {
-            return;
-        }
+        name.clone()
     } else {
         return;
     };
@@ -1881,15 +1877,11 @@ fn move_task_in_column(app: &mut App, direction: i32) {
 
     // 获取项目名称和路径
     let (project_name, project_path) =
-        if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+        if let Some(crate::ui::layout::SplitNode::Leaf { project_id: Some(name), .. }) =
             app.split_tree.find_pane(app.focused_pane)
         {
-            if let Some(name) = project_id {
-                if let Some(project) = app.projects.iter().find(|p| &p.name == name) {
-                    (name.clone(), project.path.clone())
-                } else {
-                    return;
-                }
+            if let Some(project) = app.projects.iter().find(|p| &p.name == name) {
+                (name.clone(), project.path.clone())
             } else {
                 return;
             }
@@ -2138,14 +2130,10 @@ fn create_new_task(app: &mut App, input: String) {
 /// 重命名当前项目
 fn rename_current_project(app: &mut App, new_name: String) {
     // 获取当前项目名
-    let old_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+    let old_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id: Some(name), .. }) =
         app.split_tree.find_pane(app.focused_pane)
     {
-        if let Some(name) = project_id {
-            name.clone()
-        } else {
-            return;
-        }
+        name.clone()
     } else {
         return;
     };
@@ -2200,14 +2188,10 @@ fn update_task_title(app: &mut App, new_title: String) {
     };
 
     // 获取项目名称
-    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id: Some(name), .. }) =
         app.split_tree.find_pane(app.focused_pane)
     {
-        if let Some(name) = project_id {
-            name.clone()
-        } else {
-            return;
-        }
+        name.clone()
     } else {
         return;
     };
@@ -2237,14 +2221,10 @@ fn update_task_tags(app: &mut App, tags_string: String) {
     };
 
     // 获取项目名称
-    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id: Some(name), .. }) =
         app.split_tree.find_pane(app.focused_pane)
     {
-        if let Some(name) = project_id {
-            name.clone()
-        } else {
-            return;
-        }
+        name.clone()
     } else {
         return;
     };
@@ -2720,7 +2700,7 @@ fn toggle_maximize_column(app: &mut App) {
 }
 
 /// 归一化列宽，确保总和为 100%
-fn normalize_widths(widths: &mut Vec<u16>) {
+fn normalize_widths(widths: &mut [u16]) {
     let total: u16 = widths.iter().sum();
     if total == 100 {
         return;
