@@ -6,6 +6,7 @@ use crossterm::{
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
+use std::path::Path;
 
 mod app;
 mod cli;
@@ -215,12 +216,96 @@ where
                 // 删除临时文件
                 let _ = std::fs::remove_file(&file_path);
             } else {
-                // 重新加载项目以获取最新的任务数据（编辑现有任务）
-                if let Err(e) = app.reload_current_project() {
-                    app.show_notification(
-                        format!("重新加载项目失败: {}", e),
-                        app::NotificationLevel::Error,
-                    );
+                // 检查是否是临时文件（用于编辑现有任务）
+                let temp_dir = std::env::temp_dir();
+                let is_temp_file = file_path.starts_with(&temp_dir.to_string_lossy().to_string());
+
+                if is_temp_file {
+                    // 临时文件，需要将内容写回到原始任务文件
+                    if let Ok(updated_content) = std::fs::read_to_string(&file_path) {
+                        // 获取当前选中的任务并更新其内容
+                        if let Some(task) = app.get_focused_project()
+                            .and_then(|p| {
+                                let pane_id = app.focused_pane;
+                                let task_idx = *app.selected_task_index.get(&pane_id)?;
+                                p.tasks.get(task_idx)
+                            })
+                        {
+                            let original_file_path = task.file_path.clone();
+                            let project_path = original_file_path.parent()
+                                .and_then(|p| p.parent())
+                                .unwrap_or_else(|| Path::new("."));
+
+                            // 解析编辑后的内容，提取标题和正文
+                            // 编辑后的内容是完整的 frontmatter 格式，需要解析出各部分
+                            let (new_title, new_content, new_priority, new_tags) =
+                                if let Ok(parsed) = crate::fs::parser::parse_toml_frontmatter(&updated_content) {
+                                    (
+                                        parsed.title,
+                                        parsed.content,
+                                        parsed.frontmatter.priority,
+                                        parsed.frontmatter.tags,
+                                    )
+                                } else {
+                                    // 如果解析失败，尝试用旧格式解析
+                                    if let Ok(parsed) = crate::fs::parser::parse_task_md(&updated_content) {
+                                        (
+                                            parsed.title,
+                                            parsed.content,
+                                            parsed.metadata.get("priority").cloned(),
+                                            parsed.metadata.get("tags")
+                                                .map(|s| s.split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect())
+                                                .unwrap_or_default(),
+                                        )
+                                    } else {
+                                        // 都解析失败，使用原始任务的内容，避免将 frontmatter 嵌套
+                                        // 不应该将完整文件内容（包括 frontmatter）当作 content
+                                        (task.title.clone(), task.content.clone(), task.priority.clone(), task.tags.clone())
+                                    }
+                                };
+
+                            // 更新任务
+                            let updated_task = crate::models::Task::from_metadata(
+                                crate::models::TaskMetadata {
+                                    id: task.id,
+                                    title: new_title,
+                                    status: task.status.clone(),
+                                    created: task.created.clone(),
+                                    priority: new_priority,
+                                    tags: new_tags,
+                                    order: task.order,
+                                },
+                                new_content,
+                                original_file_path.clone(),
+                            );
+
+                            // 保存更新的任务
+                            if let Err(e) = crate::fs::save_task(project_path, &updated_task) {
+                                app.show_notification(
+                                    format!("保存任务失败: {}", e),
+                                    app::NotificationLevel::Error,
+                                );
+                            } else {
+                                // 重新加载项目
+                                if let Err(e) = app.reload_current_project() {
+                                    app.show_notification(
+                                        format!("重新加载项目失败: {}", e),
+                                        app::NotificationLevel::Error,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    // 删除临时文件
+                    let _ = std::fs::remove_file(&file_path);
+                } else {
+                    // 直接编辑原始文件，重新加载项目
+                    if let Err(e) = app.reload_current_project() {
+                        app.show_notification(
+                            format!("重新加载项目失败: {}", e),
+                            app::NotificationLevel::Error,
+                        );
+                    }
                 }
             }
         }
