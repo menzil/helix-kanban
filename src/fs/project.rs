@@ -195,9 +195,6 @@ pub fn load_project_with_type(
     project_path: &Path,
     project_type: ProjectType,
 ) -> Result<Project, String> {
-    // 0. 自动迁移到新格式（如果需要）
-    let _ = super::task::auto_migrate_project_to_new_format(project_path);
-
     // 1. 扫描实际存在的目录
     let actual_dirs = scan_status_directories(project_path)?;
 
