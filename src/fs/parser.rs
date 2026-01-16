@@ -300,8 +300,12 @@ pub fn parse_toml_frontmatter_with_recovery(
     file_path: &std::path::Path,
 ) -> Result<ParsedFrontmatterTask, String> {
     // 先尝试正常解析
-    if let Ok(parsed) = parse_toml_frontmatter(content) {
-        return Ok(parsed);
+    match parse_toml_frontmatter(content) {
+        Ok(parsed) => return Ok(parsed),
+        Err(e) => {
+            // 记录解析错误到日志
+            log_parse_error(&format!("TOML parsing failed for {}: {}", file_path.display(), e), content);
+        }
     }
 
     // 容错恢复
