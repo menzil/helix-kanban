@@ -182,7 +182,35 @@ pub fn load_project_config(project_path: &Path) -> Result<ProjectConfig, String>
     let content =
         fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config: {}", e))?;
 
-    toml::from_str(&content).map_err(|e| format!("Failed to parse TOML: {}", e))
+    toml::from_str(&content).map_err(|e| {
+        let error_msg = format!("Failed to parse TOML: {}", e);
+        log_config_parse_error(&config_path, &error_msg, &content);
+        error_msg
+    })
+}
+
+fn log_config_parse_error(config_path: &Path, error_msg: &str, content: &str) {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/kanban_debug.log")
+    {
+        let _ = writeln!(
+            file,
+            "[{}] Config TOML Parse Error: {} ({})",
+            chrono::Local::now().format("%H:%M:%S"),
+            error_msg,
+            config_path.display()
+        );
+        let _ = writeln!(file, "Content:");
+        for line in content.lines() {
+            let _ = writeln!(file, "  {}", line);
+        }
+        let _ = writeln!(file, "---");
+    }
 }
 
 /// Load a project with all its tasks
