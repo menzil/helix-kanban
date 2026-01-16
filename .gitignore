@@ -1,6 +1,6 @@
 /target
 /rxtui
-/kanban_project_manager
+/web
 
 # 本地 kanban 项目数据（开发时使用）
 /.kanban/
