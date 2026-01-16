@@ -577,7 +577,10 @@ fn load_tasks_from_frontmatter(dir: &Path, status: &str) -> Result<Vec<Task>, St
         // 使用带容错的解析器
         let parsed = match parse_toml_frontmatter_with_recovery(&content, &path) {
             Ok(p) => p,
-            Err(_) => continue,
+            Err(e) => {
+                eprintln!("任务解析错误 {}: {}", path.display(), e);
+                continue;
+            }
         };
 
         tasks.push(Task {

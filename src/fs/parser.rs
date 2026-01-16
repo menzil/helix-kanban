@@ -2,6 +2,30 @@ use std::collections::HashMap;
 
 use crate::models::task::TaskFrontmatter;
 
+/// 记录解析错误到日志文件
+fn log_parse_error(error_msg: &str, frontmatter_content: &str) {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/kanban_debug.log")
+    {
+        let _ = writeln!(
+            file,
+            "[{}] TOML Parse Error: {}",
+            chrono::Local::now().format("%H:%M:%S"),
+            error_msg
+        );
+        let _ = writeln!(file, "Frontmatter content:");
+        for line in frontmatter_content.lines() {
+            let _ = writeln!(file, "  {}", line);
+        }
+        let _ = writeln!(file, "---");
+    }
+}
+
 /// TOML frontmatter 解析结果
 #[derive(Debug)]
 pub struct ParsedFrontmatterTask {
@@ -133,8 +157,12 @@ pub fn parse_toml_frontmatter(content: &str) -> Result<ParsedFrontmatterTask, St
     let frontmatter_str = after_first[..second_pos].trim();
 
     // 解析 TOML
-    let frontmatter: TaskFrontmatter =
-        toml::from_str(frontmatter_str).map_err(|e| format!("Failed to parse TOML frontmatter: {}", e))?;
+    let frontmatter: TaskFrontmatter = toml::from_str(frontmatter_str).map_err(|e| {
+        let error_msg = format!("Failed to parse TOML frontmatter: {}", e);
+        // 记录到日志文件
+        log_parse_error(&error_msg, frontmatter_str);
+        error_msg
+    })?;
 
     // 提取 +++ 之后的内容
     let after_frontmatter = &after_first[second_pos + 4..]; // +4 跳过 "\n+++"
