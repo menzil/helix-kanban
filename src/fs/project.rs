@@ -14,7 +14,7 @@ struct LocalProjectsIndex {
 
 /// 获取本地项目索引文件路径
 fn get_local_projects_index_path() -> PathBuf {
-    get_data_dir().join("local_projects.json")
+    get_data_dir().join("local_projects.toml")
 }
 
 /// 加载本地项目索引
@@ -26,7 +26,7 @@ fn load_local_projects_index() -> LocalProjectsIndex {
     }
 
     match fs::read_to_string(&index_path) {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Ok(content) => toml::from_str(&content).unwrap_or_default(),
         Err(_) => LocalProjectsIndex::default(),
     }
 }
@@ -40,7 +40,7 @@ fn save_local_projects_index(index: &LocalProjectsIndex) -> std::io::Result<()> 
         fs::create_dir_all(parent)?;
     }
 
-    let content = serde_json::to_string_pretty(index)
+    let content = toml::to_string_pretty(index)
         .map_err(std::io::Error::other)?;
 
     fs::write(&index_path, content)

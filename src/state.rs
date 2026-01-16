@@ -30,12 +30,12 @@ impl Default for AppState {
 }
 
 /// 获取状态文件路径
-/// All platforms: ~/.kanban/state.json
+/// All platforms: ~/.kanban/state.toml
 fn get_state_file_path() -> PathBuf {
     let home_dir = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .expect("Failed to get home directory");
-    PathBuf::from(home_dir).join(".kanban").join("state.json")
+    PathBuf::from(home_dir).join(".kanban").join("state.toml")
 }
 
 /// 递归重新加载所有面板中的项目
@@ -98,8 +98,9 @@ pub fn save_state(state: &AppState) -> Result<()> {
         std::fs::create_dir_all(parent)?;
     }
 
-    let json = serde_json::to_string_pretty(state)?;
-    std::fs::write(state_path, json)?;
+    let toml = toml::to_string_pretty(state)
+        .map_err(|e| anyhow::anyhow!("Failed to serialize state: {}", e))?;
+    std::fs::write(state_path, toml)?;
 
     Ok(())
 }
@@ -113,7 +114,8 @@ pub fn load_state() -> Result<AppState> {
     }
 
     let content = std::fs::read_to_string(state_path)?;
-    let state: AppState = serde_json::from_str(&content)?;
+    let state: AppState = toml::from_str(&content)
+        .map_err(|e| anyhow::anyhow!("Failed to parse state: {}", e))?;
 
     Ok(state)
 }
