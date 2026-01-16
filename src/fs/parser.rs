@@ -1,5 +1,15 @@
 use std::collections::HashMap;
 
+use crate::models::task::TaskFrontmatter;
+
+/// TOML frontmatter 解析结果
+#[derive(Debug)]
+pub struct ParsedFrontmatterTask {
+    pub frontmatter: TaskFrontmatter,
+    pub title: String,
+    pub content: String,
+}
+
 #[derive(Debug)]
 pub struct ParsedTask {
     pub title: String,
@@ -88,6 +98,278 @@ pub fn generate_task_md(title: &str, metadata: &HashMap<String, String>, content
     }
 
     output
+}
+
+/// 解析 TOML frontmatter 格式的任务文件
+///
+/// 格式：
+/// ```
+/// +++
+/// id = 1
+/// order = 1000
+/// priority = "high"
+/// tags = ["feature", "urgent"]
+/// +++
+///
+/// # 任务标题
+///
+/// 任务内容...
+/// ```
+pub fn parse_toml_frontmatter(content: &str) -> Result<ParsedFrontmatterTask, String> {
+    let trimmed = content.trim_start();
+
+    // 检查是否以 +++ 开头
+    if !trimmed.starts_with("+++") {
+        return Err("Not a TOML frontmatter format: missing opening +++".to_string());
+    }
+
+    // 找到第二个 +++
+    let after_first = &trimmed[3..];
+    let second_pos = after_first
+        .find("\n+++")
+        .ok_or("Not a TOML frontmatter format: missing closing +++")?;
+
+    // 提取 frontmatter 内容
+    let frontmatter_str = after_first[..second_pos].trim();
+
+    // 解析 TOML
+    let frontmatter: TaskFrontmatter =
+        toml::from_str(frontmatter_str).map_err(|e| format!("Failed to parse TOML frontmatter: {}", e))?;
+
+    // 提取 +++ 之后的内容
+    let after_frontmatter = &after_first[second_pos + 4..]; // +4 跳过 "\n+++"
+
+    // 从内容中提取标题和正文
+    let (title, body_content) = extract_title_and_content(after_frontmatter);
+
+    Ok(ParsedFrontmatterTask {
+        frontmatter,
+        title,
+        content: body_content,
+    })
+}
+
+/// 从内容中提取标题（第一个 # 开头的行）和剩余内容
+fn extract_title_and_content(content: &str) -> (String, String) {
+    let mut title = String::new();
+    let mut content_lines: Vec<&str> = Vec::new();
+    let mut found_title = false;
+
+    for line in content.lines() {
+        if !found_title {
+            let trimmed = line.trim();
+            if trimmed.starts_with("# ") {
+                let potential_title = trimmed[2..].trim();
+                // 跳过 "# +++" 这样的无效标题（frontmatter 标记）
+                if potential_title == "+++" || potential_title.is_empty() {
+                    continue;
+                }
+                title = potential_title.to_string();
+                found_title = true;
+                continue;
+            } else if trimmed.is_empty() || trimmed == "+++" {
+                continue; // 跳过标题前的空行和 frontmatter 标记
+            }
+        }
+        if found_title {
+            content_lines.push(line);
+        }
+    }
+
+    // 如果没找到标题，整个内容作为 content（也需要清理嵌入的 frontmatter）
+    if !found_title {
+        let cleaned = strip_embedded_frontmatter(content.trim());
+        return (String::new(), cleaned);
+    }
+
+    // 去掉开头的空行
+    let body = content_lines.join("\n");
+    let body = body.trim_start_matches('\n').to_string();
+
+    // 清理内容中可能嵌入的 frontmatter 块
+    let body = strip_embedded_frontmatter(&body);
+
+    (title, body)
+}
+
+/// 从内容中移除嵌入的 frontmatter 块
+/// 处理损坏文件中可能存在的重复 frontmatter
+fn strip_embedded_frontmatter(content: &str) -> String {
+    let mut result = String::new();
+    let mut in_frontmatter = false;
+    let mut skip_next_title = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // 检测 frontmatter 边界
+        if trimmed == "+++" {
+            in_frontmatter = !in_frontmatter;
+            if !in_frontmatter {
+                // 刚结束一个 frontmatter 块，跳过紧随其后的 "# +++" 或空标题
+                skip_next_title = true;
+            }
+            continue;
+        }
+
+        // 跳过 frontmatter 内容
+        if in_frontmatter {
+            continue;
+        }
+
+        // 跳过 "# +++" 这样的无效标题行
+        if skip_next_title {
+            if trimmed.is_empty() {
+                continue;
+            }
+            if trimmed == "# +++" || trimmed == "#" {
+                continue;
+            }
+            // 如果是另一个有效的标题行，也跳过（因为真正的标题已经提取了）
+            if trimmed.starts_with("# ") && trimmed.len() > 2 {
+                let title_text = trimmed[2..].trim();
+                if title_text != "+++" && !title_text.is_empty() {
+                    // 这可能是重复的标题，跳过
+                    skip_next_title = false;
+                    continue;
+                }
+            }
+            skip_next_title = false;
+        }
+
+        result.push_str(line);
+        result.push('\n');
+    }
+
+    result.trim().to_string()
+}
+
+/// 生成 TOML frontmatter 格式的任务文件内容
+pub fn generate_toml_frontmatter(frontmatter: &TaskFrontmatter, title: &str, content: &str) -> String {
+    let toml_str = toml::to_string_pretty(frontmatter).unwrap_or_default();
+
+    let mut output = String::new();
+    output.push_str("+++\n");
+    output.push_str(&toml_str);
+    output.push_str("+++\n\n");
+    output.push_str(&format!("# {}\n", title));
+
+    if !content.is_empty() {
+        output.push('\n');
+        output.push_str(content);
+        if !content.ends_with('\n') {
+            output.push('\n');
+        }
+    }
+
+    output
+}
+
+/// 带容错的 TOML frontmatter 解析
+/// 如果 frontmatter 损坏，尝试从文件名、目录名和内容恢复
+pub fn parse_toml_frontmatter_with_recovery(
+    content: &str,
+    file_path: &std::path::Path,
+) -> Result<ParsedFrontmatterTask, String> {
+    // 先尝试正常解析
+    if let Ok(parsed) = parse_toml_frontmatter(content) {
+        return Ok(parsed);
+    }
+
+    // 容错恢复
+    recover_from_corrupted_frontmatter(content, file_path)
+}
+
+/// 从损坏的 frontmatter 中恢复任务数据
+fn recover_from_corrupted_frontmatter(
+    content: &str,
+    file_path: &std::path::Path,
+) -> Result<ParsedFrontmatterTask, String> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    // 1. id: 从文件名恢复 (1.md → id=1)
+    let id = file_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .and_then(|s| s.parse::<u32>().ok())
+        .ok_or("Cannot recover id from filename")?;
+
+    // 2. order: 使用 id * 1000 保持可预测的排序
+    let order = id as i32 * 1000;
+
+    // 3. title: 从内容中提取
+    let title = extract_title_from_content_only(content).unwrap_or_else(|| format!("Task {}", id));
+
+    // 4. content: 跳过损坏的 frontmatter，提取剩余内容
+    let body_content = extract_content_after_corrupted_frontmatter(content);
+
+    // 5. created: 用当前时间
+    let created = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        .to_string();
+
+    Ok(ParsedFrontmatterTask {
+        frontmatter: TaskFrontmatter {
+            id,
+            order,
+            created,
+            priority: None,
+            tags: Vec::new(),
+        },
+        title,
+        content: body_content,
+    })
+}
+
+/// 仅从内容中提取标题（用于容错恢复）
+fn extract_title_from_content_only(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("# ") {
+            return Some(trimmed[2..].trim().to_string());
+        }
+    }
+    None
+}
+
+/// 从损坏的 frontmatter 后提取内容
+fn extract_content_after_corrupted_frontmatter(content: &str) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut in_frontmatter = false;
+    let mut found_title = false;
+    let mut content_lines = Vec::new();
+
+    for line in lines {
+        let trimmed = line.trim();
+
+        // 检测 frontmatter 边界
+        if trimmed == "+++" {
+            in_frontmatter = !in_frontmatter;
+            continue;
+        }
+
+        // 跳过 frontmatter 内容
+        if in_frontmatter {
+            continue;
+        }
+
+        // 跳过标题行
+        if !found_title && trimmed.starts_with("# ") {
+            found_title = true;
+            continue;
+        }
+
+        // 收集内容
+        if found_title || !trimmed.is_empty() {
+            if found_title {
+                content_lines.push(line);
+            }
+        }
+    }
+
+    content_lines.join("\n").trim().to_string()
 }
 
 #[cfg(test)]

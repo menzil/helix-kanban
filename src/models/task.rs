@@ -1,7 +1,34 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// 任务元数据（存储在 tasks.toml 中）
+/// TOML frontmatter 数据结构（用于 +++ 分隔的 frontmatter 格式）
+/// 注意：title 和 status 不存储在 frontmatter 中
+/// - title 从内容的 # 标题解析
+/// - status 从目录名推断
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskFrontmatter {
+    pub id: u32,
+    pub order: i32,
+    pub created: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+}
+
+impl From<&Task> for TaskFrontmatter {
+    fn from(task: &Task) -> Self {
+        Self {
+            id: task.id,
+            order: task.order,
+            created: task.created.clone(),
+            priority: task.priority.clone(),
+            tags: task.tags.clone(),
+        }
+    }
+}
+
+/// 任务元数据（存储在 tasks.toml 中）- 旧格式，保留用于迁移
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskMetadata {
     pub id: u32,

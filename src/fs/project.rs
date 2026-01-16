@@ -195,6 +195,12 @@ pub fn load_project_with_type(
     project_path: &Path,
     project_type: ProjectType,
 ) -> Result<Project, String> {
+    // 0. 如果存在 tasks.toml，先迁移到 frontmatter 格式
+    let tasks_toml = project_path.join("tasks.toml");
+    if tasks_toml.exists() {
+        super::task::migrate_metadata_to_frontmatter(project_path)?;
+    }
+
     // 1. 扫描实际存在的目录
     let actual_dirs = scan_status_directories(project_path)?;
 

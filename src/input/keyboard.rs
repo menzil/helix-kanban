@@ -915,28 +915,60 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::NewTaskInEditor => {
             // 用外部编辑器创建新任务
-            // 创建临时文件
+            // 直接在项目中创建任务文件
             use std::io::Write;
 
-            let temp_dir = std::env::temp_dir();
-            let temp_file = temp_dir.join(format!(
-                "kanban_new_task_{}.md",
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-            ));
+            // 获取当前项目
+            let (project_path, status) = if let Some(crate::ui::layout::SplitNode::Leaf { project_id, .. }) =
+                app.split_tree.find_pane(app.focused_pane)
+            {
+                if let Some(name) = project_id {
+                    if let Some(project) = app.projects.iter().find(|p| p.name == *name) {
+                        let column = app.selected_column.get(&app.focused_pane).copied().unwrap_or(0);
+                        let status = app.get_status_name_by_column(column).unwrap_or_else(|| "todo".to_string());
+                        (project.path.clone(), status)
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            };
 
-            // 写入模板内容
-            let template =
-                "# 任务标题\n\n任务描述内容...\n\n## 子任务\n\n- [ ] 子任务 1\n- [ ] 子任务 2\n";
-            if let Ok(mut file) = std::fs::File::create(&temp_file) {
-                let _ = file.write_all(template.as_bytes());
+            // 获取下一个任务 ID
+            if let Ok(next_id) = crate::fs::get_next_task_id(&project_path) {
+                let status_dir = project_path.join(&status);
+                if !status_dir.exists() {
+                    let _ = std::fs::create_dir_all(&status_dir);
+                }
+
+                let task_file = status_dir.join(format!("{}.md", next_id));
+
+                // 获取当前列的最大order值
+                let max_order = crate::fs::get_max_order_in_status(&project_path, &status).unwrap_or(-1000);
+                let new_order = max_order + 1000;
+
+                // 写入 frontmatter 格式的模板内容
+                let template = format!(
+                    "+++\nid = {}\norder = {}\ncreated = \"{}\"\n+++\n\n# 任务标题\n\n任务描述内容...\n\n## 子任务\n\n- [ ] 子任务 1\n- [ ] 子任务 2\n",
+                    next_id,
+                    new_order,
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                );
+
+                if let Ok(mut file) = std::fs::File::create(&task_file) {
+                    let _ = file.write_all(template.as_bytes());
+                }
+
+                // 直接打开项目文件
+                app.pending_editor_file = Some(task_file.to_string_lossy().to_string());
+                app.is_new_task_file = false; // 不是临时文件，是真实的项目文件
             }
-
-            // 设置待打开的文件路径和新任务标志（main.rs 会处理）
-            app.pending_editor_file = Some(temp_file.to_string_lossy().to_string());
-            app.is_new_task_file = true;
         }
         Command::EditTask => {
             // 获取当前选中的任务
@@ -1095,7 +1127,7 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::EditTaskInEditor => {
             // 用外部编辑器编辑当前选中的任务
             if let Some(task) = get_selected_task(app) {
-                // 设置待打开的文件路径
+                // 直接打开项目文件
                 app.pending_editor_file = Some(task.file_path.to_string_lossy().to_string());
             }
         }
@@ -1140,35 +1172,38 @@ fn execute_command(app: &mut App, cmd: Command) {
             #[cfg(feature = "clipboard")]
             {
                 if let Some(task) = get_selected_task(app) {
-                    // 读取任务文件内容
-                    if let Ok(content) = std::fs::read_to_string(&task.file_path) {
-                        // 复制到剪贴板
-                        match arboard::Clipboard::new() {
-                            Ok(mut clipboard) => {
-                                if let Err(e) = clipboard.set_text(content) {
+                    // 获取任务的完整内容（包含元数据）
+                    match crate::fs::task::get_task_full_content(&task) {
+                        Ok(content) => {
+                            // 复制到剪贴板
+                            match arboard::Clipboard::new() {
+                                Ok(mut clipboard) => {
+                                    if let Err(e) = clipboard.set_text(content) {
+                                        app.show_notification(
+                                            format!("复制失败: {}", e),
+                                            crate::app::NotificationLevel::Error,
+                                        );
+                                    } else {
+                                        app.show_notification(
+                                            format!("已复制任务「{}」到剪贴板", task.title),
+                                            crate::app::NotificationLevel::Success,
+                                        );
+                                    }
+                                }
+                                Err(e) => {
                                     app.show_notification(
-                                        format!("复制失败: {}", e),
+                                        format!("无法访问剪贴板: {}", e),
                                         crate::app::NotificationLevel::Error,
-                                    );
-                                } else {
-                                    app.show_notification(
-                                        format!("已复制任务「{}」到剪贴板", task.title),
-                                        crate::app::NotificationLevel::Success,
                                     );
                                 }
                             }
-                            Err(e) => {
-                                app.show_notification(
-                                    format!("无法访问剪贴板: {}", e),
-                                    crate::app::NotificationLevel::Error,
-                                );
-                            }
                         }
-                    } else {
-                        app.show_notification(
-                            "读取任务文件失败".to_string(),
-                            crate::app::NotificationLevel::Error,
-                        );
+                        Err(e) => {
+                            app.show_notification(
+                                format!("读取任务失败: {}", e),
+                                crate::app::NotificationLevel::Error,
+                            );
+                        }
                     }
                 }
             }
@@ -1182,79 +1217,51 @@ fn execute_command(app: &mut App, cmd: Command) {
         }
         Command::SetTaskPriority(priority) => {
             // 设置任务优先级
-            if let Some(task) = get_selected_task(app) {
-                // 读取任务文件
-                if let Ok(content) = std::fs::read_to_string(&task.file_path) {
-                    let lines: Vec<&str> = content.lines().collect();
-                    let mut new_lines = Vec::new();
-                    let mut found_priority = false;
+            let task_id = if let Some(id) = get_selected_task_id(app) {
+                id
+            } else {
+                return;
+            };
 
-                    for line in &lines {
-                        if line.starts_with("priority:") {
-                            // 替换现有优先级
-                            if priority != "none" {
-                                new_lines.push(format!("priority: {}", priority));
-                            }
-                            // 如果是 "none" 就跳过这行（删除优先级）
-                            found_priority = true;
-                        } else if line.starts_with("created:") && !found_priority {
-                            // 在 created 行后面插入 priority
-                            new_lines.push(line.to_string());
-                            if priority != "none" {
-                                new_lines.push(format!("priority: {}", priority));
-                                found_priority = true;
-                            }
-                        } else {
-                            new_lines.push(line.to_string());
-                        }
-                    }
+            let project_name = if let Some(crate::ui::layout::SplitNode::Leaf { project_id: Some(name), .. }) =
+                app.split_tree.find_pane(app.focused_pane)
+            {
+                name.clone()
+            } else {
+                return;
+            };
 
-                    // 如果还没找到 priority 位置，在标题后添加
-                    if !found_priority && priority != "none" {
-                        let mut final_lines = Vec::new();
-                        let mut after_title = false;
-                        for line in new_lines {
-                            final_lines.push(line.clone());
-                            if line.starts_with("# ") && !after_title {
-                                final_lines.push(String::new());
-                                final_lines.push(format!("priority: {}", priority));
-                                after_title = true;
-                            }
-                        }
-                        new_lines = final_lines;
-                    }
-
-                    let new_content = new_lines.join("\n");
-                    if let Err(e) = std::fs::write(&task.file_path, new_content) {
-                        log_debug(format!("保存任务失败: {}", e));
+            let mut result = Ok(());
+            if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
+                && let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id) {
+                    let old_priority = task.priority.clone();
+                    task.priority = if priority == "none" {
+                        None
                     } else {
-                        // 同步更新 tasks.toml 中的 priority 字段
-                        if let Some(project) = app.get_focused_project() {
-                            let project_path = project.path.clone();
-                            let tasks_toml = project_path.join("tasks.toml");
-                            if tasks_toml.exists()
-                                && let Ok(mut metadata_map) =
-                                    crate::fs::task::load_tasks_metadata(&project_path)
-                                    && let Some(metadata) =
-                                        metadata_map.get_mut(&task.id.to_string())
-                                    {
-                                        metadata.priority = if priority == "none" {
-                                            None
-                                        } else {
-                                            Some(priority.clone())
-                                        };
-                                        let _ = crate::fs::task::save_tasks_metadata(
-                                            &project_path,
-                                            &metadata_map,
-                                        );
-                                    }
-                        }
-                        log_debug(format!("已设置优先级为: {}", priority));
-                        // 重新加载项目
-                        let _ = app.reload_current_project();
+                        Some(priority.clone())
+                    };
+
+                    let project_path = project.path.clone();
+                    if let Err(e) = crate::fs::save_task(&project_path, task) {
+                        result = Err(e);
+                        task.priority = old_priority; // 回滚
                     }
-                } else {
-                    log_debug("读取任务文件失败".to_string());
+                }
+
+            match result {
+                Ok(_) => {
+                    app.show_notification(
+                        format!("优先级已设置为: {}", if priority == "none" { "无" } else { &priority }),
+                        crate::app::NotificationLevel::Success,
+                    );
+                    // 重新加载项目
+                    let _ = app.reload_current_project();
+                }
+                Err(e) => {
+                    app.show_notification(
+                        format!("保存优先级失败: {}", e),
+                        crate::app::NotificationLevel::Error,
+                    );
                 }
             }
         }
@@ -1323,15 +1330,10 @@ fn execute_command(app: &mut App, cmd: Command) {
 
                     // 格式化项目信息
                     let project_info = format!(
-                        "{} {}\n看板路径: {}\n文档: {}\n\n# 可用命令\n\n# 查看\nhxk list                                    # 列出所有项目\nhxk config show                           # 查看配置\n\n# 项目操作\nhxk create {}                         # 创建新项目\n\n# 任务操作\nhxk add \"任务标题\"                         # 快速添加任务\n\n# 结构化命令（推荐，但需要重新安装）\nhxk project list                          # 项目管理\nhxk task list {} --status todo           # 列出任务\nhxk task create {} --status todo --title \"标题\"  # 创建任务\nhxk status list {}                      # 状态管理\n\n详细文档: {}",
+                        "{} {}\n看板路径: {}\n文档: {}",
                         project_type_label,
                         project.name,
                         kanban_path,
-                        claude_md_str,
-                        project.name,
-                        project.name,
-                        project.name,
-                        project.name,
                         claude_md_str
                     );
 

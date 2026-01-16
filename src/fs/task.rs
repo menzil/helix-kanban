@@ -2,22 +2,48 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::fs::parser::{generate_task_md, parse_task_md};
+use crate::fs::parser::{
+    generate_task_md, generate_toml_frontmatter, parse_task_md, parse_toml_frontmatter_with_recovery,
+};
+use crate::models::task::TaskFrontmatter;
 use crate::models::Task;
 
-/// Load all tasks from a status directory (supports both legacy and metadata formats)
+/// 检测目录是否使用 frontmatter 格式
+fn detect_frontmatter_format(dir: &Path) -> bool {
+    if let Ok(entries) = fs::read_dir(dir) {
+        let mut has_files = false;
+        let mut all_frontmatter = true;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                has_files = true;
+                if let Ok(content) = fs::read_to_string(&path) {
+                    if !content.trim_start().starts_with("+++") {
+                        all_frontmatter = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 如果目录为空或没有 md 文件，返回 true（新项目使用 frontmatter）
+        // 如果有文件，只有当所有文件都是 frontmatter 格式时才返回 true
+        !has_files || all_frontmatter
+    } else {
+        false
+    }
+}
+
+/// Load all tasks from a status directory (supports legacy, metadata, and frontmatter formats)
 pub fn load_tasks_from_dir(dir: &Path, status: &str) -> Result<Vec<Task>, String> {
     if !dir.exists() {
         return Ok(Vec::new());
     }
 
-    // 获取项目根目录
-    let project_path = dir.parent().ok_or("Invalid directory path")?;
-
-    // 检查是否存在 tasks.toml（新格式）
-    if project_path.join("tasks.toml").exists() {
-        // 使用新的元数据格式加载
-        return load_tasks_from_metadata(project_path, status);
+    // 检测 frontmatter 格式
+    if detect_frontmatter_format(dir) {
+        return load_tasks_from_frontmatter(dir, status);
     }
 
     // 否则使用旧格式（从 markdown 文件直接解析）
@@ -154,7 +180,7 @@ pub fn get_next_task_id(project_path: &Path) -> Result<u32, String> {
     Ok(max_id + 1)
 }
 
-/// Save a task to a markdown file (supports both legacy and metadata formats)
+/// Save a task to a markdown file (supports legacy and frontmatter formats)
 pub fn save_task(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
     let status_dir = project_path.join(&task.status);
 
@@ -162,15 +188,52 @@ pub fn save_task(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
         fs::create_dir_all(&status_dir).map_err(|e| e.to_string())?;
     }
 
-    let tasks_toml = project_path.join("tasks.toml");
+    // 检查是否是新任务（文件不存在）
+    let task_file = status_dir.join(format!("{}.md", task.id));
+    let is_new_task = !task_file.exists();
 
-    if tasks_toml.exists() {
-        // 新格式：保存元数据到 tasks.toml，内容到 .md 文件
-        save_task_metadata_format(project_path, task)
+    if detect_frontmatter_format(&status_dir) || is_new_project(project_path) || is_new_task {
+        // frontmatter 格式：元数据和内容都在 .md 文件中
+        save_task_frontmatter_format(project_path, task)
     } else {
         // 旧格式：保存完整数据到 .md 文件
         save_task_legacy_format(project_path, task)
     }
+}
+
+/// 检查是否是新项目（没有任何任务文件）
+fn is_new_project(project_path: &Path) -> bool {
+    // 读取项目配置获取所有状态
+    let config_path = project_path.join(".kanban.toml");
+    if !config_path.exists() {
+        return true;
+    }
+
+    let config_content = match fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return true,
+    };
+
+    let project_config: crate::models::ProjectConfig = match toml::from_str(&config_content) {
+        Ok(c) => c,
+        Err(_) => return true,
+    };
+
+    // 检查所有状态目录是否都为空
+    for status in &project_config.statuses.order {
+        let status_dir = project_path.join(status);
+        if status_dir.exists() {
+            if let Ok(entries) = fs::read_dir(&status_dir) {
+                for entry in entries.flatten() {
+                    if entry.path().extension().and_then(|s| s.to_str()) == Some("md") {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    true
 }
 
 /// 保存任务（旧格式：元数据+内容都在 markdown 文件中）
@@ -218,30 +281,25 @@ fn save_task_legacy_format(project_path: &Path, task: &Task) -> Result<PathBuf, 
     Ok(file_path)
 }
 
-/// 保存任务（新格式：元数据在 tasks.toml，内容在 .md 文件）
-fn save_task_metadata_format(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
-    // 1. 加载现有元数据
-    let mut metadata_map = load_tasks_metadata(project_path)?;
-
-    // 2. 更新当前任务的元数据
-    let task_metadata = crate::models::TaskMetadata::from(task);
-    metadata_map.insert(task.id.to_string(), task_metadata);
-
-    // 3. 保存元数据到 tasks.toml
-    save_tasks_metadata(project_path, &metadata_map)?;
-
-    // 4. 保存内容到 {status}/{id}.md
+/// 保存任务（frontmatter 格式：元数据和内容都在 .md 文件中）
+fn save_task_frontmatter_format(project_path: &Path, task: &Task) -> Result<PathBuf, String> {
     let status_dir = project_path.join(&task.status);
-    let content_path = status_dir.join(format!("{}.md", task.id));
+    let file_path = status_dir.join(format!("{}.md", task.id));
+
+    // 构建 frontmatter
+    let frontmatter = TaskFrontmatter::from(task);
+
+    // 生成 frontmatter 格式内容
+    let content = generate_toml_frontmatter(&frontmatter, &task.title, &task.content);
 
     // 如果旧文件存在且路径不同，删除旧文件
-    if task.file_path.exists() && task.file_path != content_path {
+    if task.file_path.exists() && task.file_path != file_path {
         let _ = fs::remove_file(&task.file_path);
     }
 
-    fs::write(&content_path, &task.content).map_err(|e| e.to_string())?;
+    fs::write(&file_path, content).map_err(|e| e.to_string())?;
 
-    Ok(content_path)
+    Ok(file_path)
 }
 
 /// Move a task to a different status
@@ -261,7 +319,7 @@ pub fn move_task(project_path: &Path, task: &Task, new_status: &str) -> Result<P
     // 移动文件
     fs::rename(old_path, &new_path).map_err(|e| e.to_string())?;
 
-    // 如果使用新格式（tasks.toml），需要更新元数据中的 status
+    // 如果使用 metadata-separated 格式（tasks.toml），需要更新元数据中的 status
     let tasks_toml = project_path.join("tasks.toml");
     if tasks_toml.exists() {
         let mut metadata_map = load_tasks_metadata(project_path)?;
@@ -270,16 +328,18 @@ pub fn move_task(project_path: &Path, task: &Task, new_status: &str) -> Result<P
             save_tasks_metadata(project_path, &metadata_map)?;
         }
     }
+    // frontmatter 格式不需要额外操作，status 从目录名推断
 
     Ok(new_path)
 }
 
-/// Delete a task (removes file and metadata from tasks.toml)
+/// Delete a task (removes file and metadata if using metadata-separated format)
 pub fn delete_task(project_path: &Path, task: &Task) -> Result<(), String> {
     // 1. 删除文件
     fs::remove_file(&task.file_path).map_err(|e| e.to_string())?;
 
-    // 2. 如果使用新格式，同步删除 tasks.toml 中的元数据
+    // 2. 如果使用 metadata-separated 格式，同步删除 tasks.toml 中的元数据
+    // frontmatter 格式不需要额外操作
     let tasks_toml = project_path.join("tasks.toml");
     if tasks_toml.exists() {
         let mut metadata_map = load_tasks_metadata(project_path)?;
@@ -403,38 +463,11 @@ pub fn save_tasks_metadata(
     Ok(())
 }
 
-/// 从元数据格式加载任务（新格式）
-pub fn load_tasks_from_metadata(project_path: &Path, status: &str) -> Result<Vec<Task>, String> {
-    // 1. 加载元数据
-    let metadata_map = load_tasks_metadata(project_path)?;
-
-    // 2. 过滤出指定状态的任务
-    let mut tasks = Vec::new();
-
-    for (id, metadata) in metadata_map {
-        if metadata.status != status {
-            continue;
-        }
-
-        // 3. 加载对应的内容文件
-        let content_path = project_path.join(status).join(format!("{}.md", id));
-
-        if !content_path.exists() {
-            // 内容文件缺失，跳过此任务（可选：记录警告）
-            continue;
-        }
-
-        let content = fs::read_to_string(&content_path)
-            .map_err(|e| format!("Failed to read content file {:?}: {}", content_path, e))?;
-
-        // 4. 组装Task
-        tasks.push(Task::from_metadata(metadata, content, content_path));
-    }
-
-    // 5. 按order排序
-    tasks.sort_by_key(|t| t.order);
-
-    Ok(tasks)
+/// 获取任务的完整内容（用于外部编辑器和复制）
+/// 支持两种格式：frontmatter、legacy
+pub fn get_task_full_content(task: &Task) -> Result<String, String> {
+    // frontmatter 格式或旧格式：直接读取文件（文件已包含完整内容）
+    fs::read_to_string(&task.file_path).map_err(|e| e.to_string())
 }
 
 /// 自动迁移项目从旧格式到新格式
@@ -524,6 +557,102 @@ pub fn auto_migrate_project_to_new_format(project_path: &Path) -> Result<bool, S
     Ok(true)
 }
 
+/// 从 frontmatter 格式加载任务
+fn load_tasks_from_frontmatter(dir: &Path, status: &str) -> Result<Vec<Task>, String> {
+    let mut tasks = Vec::new();
+
+    for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+
+        if path.extension().and_then(|s| s.to_str()) != Some("md") {
+            continue;
+        }
+
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // 使用带容错的解析器
+        let parsed = match parse_toml_frontmatter_with_recovery(&content, &path) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        tasks.push(Task {
+            id: parsed.frontmatter.id,
+            order: parsed.frontmatter.order,
+            title: parsed.title,
+            content: parsed.content,
+            created: parsed.frontmatter.created,
+            priority: parsed.frontmatter.priority,
+            status: status.to_string(),
+            tags: parsed.frontmatter.tags,
+            file_path: path,
+        });
+    }
+
+    // 按 order 排序
+    tasks.sort_by_key(|t| t.order);
+
+    Ok(tasks)
+}
+
+/// 从 metadata-separated 格式迁移到 frontmatter 格式
+pub fn migrate_metadata_to_frontmatter(project_path: &Path) -> Result<(), String> {
+    let tasks_toml = project_path.join("tasks.toml");
+
+    if !tasks_toml.exists() {
+        return Ok(());
+    }
+
+    // 加载元数据
+    let metadata_map = load_tasks_metadata(project_path)?;
+
+    if metadata_map.is_empty() {
+        // 空的 tasks.toml，直接删除
+        let _ = fs::remove_file(&tasks_toml);
+        return Ok(());
+    }
+
+    // 遍历每个任务，将元数据合并到 .md 文件中
+    for (id_str, metadata) in &metadata_map {
+        let content_path = project_path
+            .join(&metadata.status)
+            .join(format!("{}.md", id_str));
+
+        if !content_path.exists() {
+            continue;
+        }
+
+        // 读取纯内容
+        let content = fs::read_to_string(&content_path)
+            .map_err(|e| format!("Failed to read content file: {}", e))?;
+
+        // 构建 frontmatter
+        let frontmatter = TaskFrontmatter {
+            id: metadata.id,
+            order: metadata.order,
+            created: metadata.created.clone(),
+            priority: metadata.priority.clone(),
+            tags: metadata.tags.clone(),
+        };
+
+        // 生成 frontmatter 格式内容
+        let new_content = generate_toml_frontmatter(&frontmatter, &metadata.title, &content);
+
+        // 写回文件
+        fs::write(&content_path, new_content)
+            .map_err(|e| format!("Failed to write frontmatter file: {}", e))?;
+    }
+
+    // 删除 tasks.toml
+    fs::remove_file(&tasks_toml).map_err(|e| format!("Failed to remove tasks.toml: {}", e))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -584,8 +713,9 @@ display = "Done"
 "#;
         fs::write(project_path.join(".kanban.toml"), config).unwrap();
 
-        // 创建空的 tasks.toml（新格式标志）
-        fs::write(project_path.join("tasks.toml"), "").unwrap();
+        // 创建有效的 tasks.toml（新格式标志）
+        // 注意：空的 tasks.toml 会被自动迁移删除，所以需要创建一个有效的结构
+        fs::write(project_path.join("tasks.toml"), "[tasks]\n").unwrap();
 
         // 创建状态目录
         fs::create_dir_all(project_path.join("todo")).unwrap();
@@ -724,6 +854,17 @@ Content.
         let temp_dir = setup_legacy_project();
         let project_path = temp_dir.path();
 
+        // 先创建一个旧格式的任务文件，使项目不被识别为"新项目"
+        let existing_task = r#"# Existing Task
+
+id: 99
+order: 99000
+created: 1234567890
+
+Existing content.
+"#;
+        fs::write(project_path.join("todo/99.md"), existing_task).unwrap();
+
         let task = Task {
             id: 1,
             order: 1000,
@@ -752,7 +893,7 @@ Content.
     }
 
     #[test]
-    fn test_save_task_metadata_format() {
+    fn test_save_task_metadata_format_migrates_to_frontmatter() {
         let temp_dir = setup_metadata_project();
         let project_path = temp_dir.path();
 
@@ -771,20 +912,19 @@ Content.
         let result = save_task(project_path, &task);
         assert!(result.is_ok());
 
-        // 验证内容文件只包含纯内容
+        // 验证 tasks.toml 已被删除（迁移到 frontmatter 格式）
+        assert!(!project_path.join("tasks.toml").exists());
+
+        // 验证内容文件使用 frontmatter 格式
         let content_path = project_path.join("todo/1.md");
         assert!(content_path.exists());
         let content = fs::read_to_string(&content_path).unwrap();
-        assert_eq!(content, "Task content here.");
-
-        // 验证元数据已保存到 tasks.toml
-        let metadata = load_tasks_metadata(project_path).unwrap();
-        assert!(metadata.contains_key("1"));
-        let task_meta = metadata.get("1").unwrap();
-        assert_eq!(task_meta.title, "New Task");
-        assert_eq!(task_meta.status, "todo");
-        assert_eq!(task_meta.priority, Some("high".to_string()));
-        assert_eq!(task_meta.tags, vec!["bug", "urgent"]);
+        assert!(content.starts_with("+++"));
+        assert!(content.contains("id = 1"));
+        assert!(content.contains("order = 1000"));
+        assert!(content.contains("priority = \"high\""));
+        assert!(content.contains("# New Task"));
+        assert!(content.contains("Task content here."));
     }
 
     #[test]
@@ -819,7 +959,7 @@ Content.
         let temp_dir = setup_metadata_project();
         let project_path = temp_dir.path();
 
-        // 创建任务（新格式）
+        // 创建任务（metadata-separated 格式）
         let task = Task {
             id: 1,
             order: 1000,
@@ -834,6 +974,7 @@ Content.
         save_task(project_path, &task).unwrap();
 
         // 重新加载任务以获取正确的 file_path
+        // 注意：load_tasks_from_dir 会触发自动迁移到 frontmatter 格式
         let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
         let task = &tasks[0];
 
@@ -845,10 +986,15 @@ Content.
         assert!(!project_path.join("todo/1.md").exists());
         assert!(project_path.join("done/1.md").exists());
 
-        // 验证 tasks.toml 中的 status 已更新
-        let metadata = load_tasks_metadata(project_path).unwrap();
-        let task_meta = metadata.get("1").unwrap();
-        assert_eq!(task_meta.status, "done");
+        // 自动迁移后，tasks.toml 应该已被删除
+        // 任务现在使用 frontmatter 格式存储
+        assert!(!project_path.join("tasks.toml").exists());
+
+        // 验证任务内容仍然正确（frontmatter 格式）
+        let content = fs::read_to_string(project_path.join("done/1.md")).unwrap();
+        assert!(content.starts_with("+++"));
+        assert!(content.contains("id = 1"));
+        assert!(content.contains("# Task to Move"));
     }
 
     #[test]
@@ -869,32 +1015,28 @@ Content.
     }
 
     #[test]
-    fn test_delete_task_removes_metadata() {
-        let temp_dir = setup_metadata_project();
+    fn test_delete_task_with_frontmatter() {
+        let temp_dir = setup_legacy_project();
         let project_path = temp_dir.path();
 
-        // 创建任务
+        // 创建 frontmatter 格式的任务
         let mut task = Task::new(1, "Test Task".to_string(), "todo".to_string());
         task.order = 1000;
         save_task(project_path, &task).unwrap();
 
         // 验证任务存在
-        let metadata = load_tasks_metadata(project_path).unwrap();
-        assert!(metadata.contains_key("1"));
         assert!(project_path.join("todo/1.md").exists());
 
         // 重新加载任务以获取正确的 file_path
-        let tasks = load_tasks_from_metadata(project_path, "todo").unwrap();
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
         let task = &tasks[0];
 
         // 删除任务
         let result = delete_task(project_path, task);
         assert!(result.is_ok());
 
-        // 验证文件和元数据都已删除
+        // 验证文件已删除
         assert!(!project_path.join("todo/1.md").exists());
-        let metadata = load_tasks_metadata(project_path).unwrap();
-        assert!(!metadata.contains_key("1"));
     }
 
     #[test]
@@ -917,11 +1059,11 @@ Content.
     }
 
     #[test]
-    fn test_load_tasks_from_metadata() {
-        let temp_dir = setup_metadata_project();
+    fn test_load_tasks_from_frontmatter_multiple() {
+        let temp_dir = setup_legacy_project();
         let project_path = temp_dir.path();
 
-        // 创建多个任务
+        // 创建多个任务（会自动使用 frontmatter 格式）
         let task1 = Task {
             id: 1,
             order: 2000,
@@ -961,14 +1103,14 @@ Content.
         save_task(project_path, &task3).unwrap();
 
         // 加载 todo 状态的任务
-        let todo_tasks = load_tasks_from_metadata(project_path, "todo").unwrap();
+        let todo_tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
         assert_eq!(todo_tasks.len(), 2);
         // 按 order 排序
         assert_eq!(todo_tasks[0].id, 2); // order=1000
         assert_eq!(todo_tasks[1].id, 1); // order=2000
 
         // 加载 done 状态的任务
-        let done_tasks = load_tasks_from_metadata(project_path, "done").unwrap();
+        let done_tasks = load_tasks_from_dir(&project_path.join("done"), "done").unwrap();
         assert_eq!(done_tasks.len(), 1);
         assert_eq!(done_tasks[0].id, 3);
     }
@@ -1107,7 +1249,7 @@ Another task.
     }
 
     #[test]
-    fn test_save_task_updates_tasks_toml() {
+    fn test_save_task_with_metadata_project_migrates() {
         let temp_dir = setup_metadata_project();
         let project_path = temp_dir.path();
 
@@ -1116,31 +1258,31 @@ Another task.
         task.order = 99000;
         task.priority = Some("high".to_string());
 
-        // 保存任务
+        // 保存任务（会触发迁移到 frontmatter 格式）
         save_task(project_path, &task).unwrap();
 
-        // 验证 tasks.toml 已更新
-        let metadata = load_tasks_metadata(project_path).unwrap();
-        assert!(metadata.contains_key("99"));
+        // 验证 tasks.toml 已被删除
+        assert!(!project_path.join("tasks.toml").exists());
 
-        let task_meta = metadata.get("99").unwrap();
-        assert_eq!(task_meta.title, "New Task");
-        assert_eq!(task_meta.status, "todo");
-        assert_eq!(task_meta.priority, Some("high".to_string()));
+        // 验证任务使用 frontmatter 格式
+        let content = fs::read_to_string(project_path.join("todo/99.md")).unwrap();
+        assert!(content.starts_with("+++"));
+        assert!(content.contains("id = 99"));
+        assert!(content.contains("priority = \"high\""));
     }
 
     #[test]
-    fn test_move_task_updates_status_in_tasks_toml() {
-        let temp_dir = setup_metadata_project();
+    fn test_move_task_with_frontmatter() {
+        let temp_dir = setup_legacy_project();
         let project_path = temp_dir.path();
 
-        // 先创建一个任务
+        // 先创建一个任务（frontmatter 格式）
         let mut task = Task::new(1, "Test Task".to_string(), "todo".to_string());
         task.order = 1000;
         save_task(project_path, &task).unwrap();
 
         // 重新加载任务
-        let tasks = load_tasks_from_metadata(project_path, "todo").unwrap();
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
         assert!(!tasks.is_empty());
         let task = &tasks[0];
         let original_id = task.id;
@@ -1148,13 +1290,112 @@ Another task.
         // 移动任务到 done 状态
         move_task(project_path, task, "done").unwrap();
 
-        // 验证 tasks.toml 中的 status 已更新
-        let metadata = load_tasks_metadata(project_path).unwrap();
-        let task_meta = metadata.get(&original_id.to_string()).unwrap();
-        assert_eq!(task_meta.status, "done");
-
         // 验证文件已移动
         assert!(project_path.join("done").join(format!("{}.md", original_id)).exists());
         assert!(!project_path.join("todo").join(format!("{}.md", original_id)).exists());
+
+        // 验证任务仍然是 frontmatter 格式
+        let content = fs::read_to_string(project_path.join("done/1.md")).unwrap();
+        assert!(content.starts_with("+++"));
+    }
+
+    #[test]
+    fn test_save_task_frontmatter_format() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 新项目（没有任何任务）应该使用 frontmatter 格式
+        let task = Task {
+            id: 1,
+            order: 1000,
+            title: "Frontmatter Task".to_string(),
+            content: "Task content here.".to_string(),
+            created: "1234567890".to_string(),
+            priority: Some("high".to_string()),
+            status: "todo".to_string(),
+            tags: vec!["feature".to_string(), "urgent".to_string()],
+            file_path: PathBuf::new(),
+        };
+
+        let result = save_task(project_path, &task);
+        assert!(result.is_ok());
+
+        let saved_path = result.unwrap();
+        assert!(saved_path.exists());
+        assert_eq!(saved_path, project_path.join("todo/1.md"));
+
+        // 验证 frontmatter 格式
+        let content = fs::read_to_string(&saved_path).unwrap();
+        assert!(content.starts_with("+++"));
+        assert!(content.contains("id = 1"));
+        assert!(content.contains("order = 1000"));
+        assert!(content.contains("created = \"1234567890\""));
+        assert!(content.contains("priority = \"high\""));
+        assert!(content.contains("tags = ["));
+        assert!(content.contains("# Frontmatter Task"));
+        assert!(content.contains("Task content here."));
+
+        // 不应该创建 tasks.toml
+        assert!(!project_path.join("tasks.toml").exists());
+    }
+
+    #[test]
+    fn test_load_tasks_from_frontmatter() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建 frontmatter 格式的任务文件
+        let task_content = r#"+++
+id = 1
+order = 1000
+created = "1234567890"
+priority = "high"
+tags = ["feature", "urgent"]
++++
+
+# Test Frontmatter Task
+
+This is the task content.
+"#;
+        fs::write(project_path.join("todo/1.md"), task_content).unwrap();
+
+        // 加载任务
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
+        assert_eq!(tasks.len(), 1);
+
+        let task = &tasks[0];
+        assert_eq!(task.id, 1);
+        assert_eq!(task.order, 1000);
+        assert_eq!(task.title, "Test Frontmatter Task");
+        assert_eq!(task.status, "todo");
+        assert_eq!(task.priority, Some("high".to_string()));
+        assert_eq!(task.tags, vec!["feature", "urgent"]);
+        assert!(task.content.contains("This is the task content."));
+    }
+
+    #[test]
+    fn test_frontmatter_recovery() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        // 创建损坏的 frontmatter 文件（缺少 id）
+        let corrupted_content = r#"+++
+order = 1000
+created = "1234567890"
++++
+
+# Recovered Task
+
+Content here.
+"#;
+        fs::write(project_path.join("todo/42.md"), corrupted_content).unwrap();
+
+        // 加载任务（应该从文件名恢复 id）
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
+        assert_eq!(tasks.len(), 1);
+
+        let task = &tasks[0];
+        assert_eq!(task.id, 42); // 从文件名恢复
+        assert_eq!(task.title, "Recovered Task");
     }
 }
