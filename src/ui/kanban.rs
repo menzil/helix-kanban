@@ -31,7 +31,7 @@ fn tag_color(tag: &str) -> Color {
 }
 
 /// 渲染看板视图
-pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, app: &App) {
+pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, app: &mut App) {
     let border_style = if is_focused {
         Style::default()
             .fg(Color::Cyan)
@@ -147,7 +147,7 @@ fn render_column(
     title: &str,
     tasks: &[&crate::models::Task],
     column_idx: usize,
-    app: &App,
+    app: &mut App,
     is_pane_focused: bool,
     project: &Project,
 ) {
@@ -258,15 +258,39 @@ fn render_column(
         format!(" {} ({}) ", title, tasks.len())
     };
 
-    let list = List::new(items).block(
-        Block::default()
-            .title(title_with_count)
-            .title_alignment(ratatui::layout::Alignment::Center)
-            .title_style(title_style)
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(border_color))
-            .border_type(ratatui::widgets::BorderType::Rounded),
-    );
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title(title_with_count)
+                .title_alignment(ratatui::layout::Alignment::Center)
+                .title_style(title_style)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border_color))
+                .border_type(ratatui::widgets::BorderType::Rounded),
+        )
+        .highlight_style(
+            Style::default()
+                .bg(Color::Rgb(41, 98, 218))
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        );
 
-    f.render_widget(list, area);
+    // 获取或创建当前面板的 ListState，并设置选中索引
+    let list_state = app.list_states.entry(app.focused_pane).or_insert_with(|| {
+        ratatui::widgets::ListState::default()
+    });
+
+    // 如果当前列被聚焦，更新 ListState 的选中索引
+    if is_column_focused {
+        let selected_idx = app
+            .selected_task_index
+            .get(&app.focused_pane)
+            .copied()
+            .unwrap_or(0);
+        list_state.select(Some(selected_idx));
+    } else {
+        list_state.select(None);
+    }
+
+    f.render_stateful_widget(list, area, list_state);
 }

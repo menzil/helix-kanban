@@ -139,6 +139,8 @@ pub struct App {
     pub notification: Option<Notification>,
     /// 最后一次列宽调整的时间（用于控制百分比显示）
     pub last_column_resize_time: Option<std::time::Instant>,
+    /// 每个面板的任务列表滚动状态（pane_id -> ListState）
+    pub list_states: HashMap<usize, ratatui::widgets::ListState>,
 }
 
 impl App {
@@ -183,6 +185,7 @@ impl App {
             saved_layout: None,
             notification: None,
             last_column_resize_time: None,
+            list_states: HashMap::new(),
         };
 
         // 调试：记录初始状态

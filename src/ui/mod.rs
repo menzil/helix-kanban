@@ -16,17 +16,11 @@ use ratatui::layout::{Constraint, Direction, Layout};
 
 /// 主渲染函数
 pub fn render(f: &mut Frame, app: &mut App) {
-    // 不显示状态栏，使用全屏布局
-    // let main_chunks = Layout::default()
-    //     .direction(Direction::Vertical)
-    //     .constraints([
-    //         Constraint::Min(0),      // 主内容区域
-    //         Constraint::Length(1),  // 状态栏
-    //     ])
-    //     .split(f.area());
+    // 克隆 split_tree 以避免借用冲突
+    let split_tree = app.split_tree.clone();
 
     // 渲染分屏内容（全屏）
-    render_split_tree(f, f.area(), &app.split_tree, app);
+    render_split_tree(f, f.area(), &split_tree, app);
 
     // 渲染状态栏（已注释）
     // statusbar::render(f, main_chunks[1], app);
@@ -130,7 +124,7 @@ fn render_split_tree(
     f: &mut Frame,
     area: ratatui::layout::Rect,
     node: &layout::SplitNode,
-    app: &App,
+    app: &mut App,
 ) {
     use layout::SplitNode;
 
@@ -138,8 +132,9 @@ fn render_split_tree(
         SplitNode::Leaf { project_id, id } => {
             let is_focused = *id == app.focused_pane;
             if let Some(pid) = project_id {
-                if let Some(project) = app.projects.iter().find(|p| &p.name == pid) {
-                    kanban::render(f, area, project, is_focused, app);
+                // 克隆项目以避免借用冲突
+                if let Some(project) = app.projects.iter().find(|p| &p.name == pid).cloned() {
+                    kanban::render(f, area, &project, is_focused, app);
                 } else {
                     render_empty_pane(f, area, "项目未找到", is_focused);
                 }
