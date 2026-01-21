@@ -651,7 +651,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         // ([], KeyCode::Char(':'), KeyModifiers::NONE) => Some(Command::EnterCommandMode), // 已注释
         ([], KeyCode::Esc, _) => Some(Command::EnterNormalMode),
         ([], KeyCode::Char('d'), KeyModifiers::NONE) => Some(Command::DeleteTask), // 删除任务
-        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteProject), // 硬删除项目
+        ([], KeyCode::Char('D'), KeyModifiers::SHIFT) => Some(Command::DeleteTask), // 删除任务
         ([], KeyCode::Char('a'), KeyModifiers::NONE) => Some(Command::NewTask),
         ([], KeyCode::Char('A'), KeyModifiers::SHIFT) => Some(Command::NewTaskInEditor), // 外部编辑器创建任务
         ([], KeyCode::Char('n'), KeyModifiers::NONE) => Some(Command::NewLocalProject),
