@@ -322,6 +322,12 @@ impl HelixTextArea {
                 InputAction::Continue
             }
 
+            // 删除选中的文本
+            KeyCode::Char('d') => {
+                self.textarea.cut();
+                InputAction::Continue
+            }
+
             // 切换最大化（类似 status 的 m 键）
             KeyCode::Char('m') => {
                 self.toggle_maximize();

@@ -112,10 +112,10 @@ fn handle_task_select_mode(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Esc => {
             app.mode = Mode::Normal;
         }
-        KeyCode::Char('j') | KeyCode::Down => {
+         KeyCode::Down => {
             execute_command(app, Command::TaskDown);
         }
-        KeyCode::Char('k') | KeyCode::Up => {
+         KeyCode::Up => {
             execute_command(app, Command::TaskUp);
         }
         _ => {}
@@ -2301,11 +2301,11 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
                 }
             }
         }
-        KeyCode::Up | KeyCode::Char('k') => {
+        KeyCode::Up => {
             // 向上导航菜单
             navigate_menu_up(app);
         }
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down => {
             // 向下导航菜单
             navigate_menu_down(app);
         }
@@ -2463,11 +2463,11 @@ fn handle_preview_mode(app: &mut App, key: KeyEvent) -> bool {
             app.preview_content.clear();
             app.preview_scroll = 0;
         }
-        KeyCode::Char('j') | KeyCode::Down => {
+         KeyCode::Down => {
             // 向下滚动
             app.preview_scroll = app.preview_scroll.saturating_add(1);
         }
-        KeyCode::Char('k') | KeyCode::Up => {
+         KeyCode::Up => {
             // 向上滚动
             app.preview_scroll = app.preview_scroll.saturating_sub(1);
         }
@@ -2881,6 +2881,8 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
                 'q' => Some(Command::ClosePane),
                 'h' => Some(Command::FocusLeft),
                 'l' => Some(Command::FocusRight),
+                'k' => Some(Command::FocusUp),
+                'j' => Some(Command::FocusDown),
                 'm' => Some(Command::MaximizePane),
                 _ => None,
             };
