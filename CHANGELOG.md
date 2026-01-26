@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.23] - 2026-01-26
+
 ### Added
+- **Task list scrolling**: Implemented scrolling functionality for task lists
+  - Automatically scrolls when navigating beyond visible area
+  - Smooth scrolling experience for long task lists
 - **Status column quick positioning**: New keyboard shortcuts for moving status columns to edges
   - Press `Space s H` (Shift+H) to move current status column to the leftmost position
   - Press `Space s L` (Shift+L) to move current status column to the rightmost position
@@ -19,17 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Visual feedback: Mode indicator shows current editing mode
   - New task creation and task editing now default to Normal mode
   - Other dialogs remain in Insert mode for quick input
+- **TOML parsing error logging**: Added debug logging for project configuration and task TOML parsing errors
 
 ### Changed
+- **Unified TOML format**: Replaced JSON with TOML format across the codebase for consistency
+- **D key remapping**: Changed `D` key from delete project to delete task for better workflow
 - **Removed automatic IME switching**: Simplified input handling by removing automatic input method switching
   - Removed `ime.rs` module and all IME-related code
   - Users now manually control their input method as needed
   - Reduces complexity and potential issues with input method management
 
 ### Fixed
+- Fixed `Space+w` menu execution issues and added text deletion functionality
 - Fixed compilation errors with `HelixTextArea::new()` missing third parameter
-- Cleaned up unused imports across the codebase
-- Added `#[allow(dead_code)]` attributes for utility functions reserved for future use
+- Fixed TOML parsing error logging issues
+- Cleaned up unused imports and dead code across the codebase
 
 ## [0.2.20] - 2026-01-08
 
