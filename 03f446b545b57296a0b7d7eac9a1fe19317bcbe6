@@ -1,0 +1,25 @@
+Cargo.toml
+  869a2fa2e1757768 3
+CHANGELOG.md
+  869a2fa2e1757768 10-11,13-15,27,30-31,38,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "03f446b545b57296a0b7d7eac9a1fe19317bcbe6",
+  "prompts": {
+    "869a2fa2e1757768": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21f78b2a-d888-4d6d-bf74-1fe869f09120",
+        "model": "claude-sonnet-4-5-20250929"
+      },
+      "human_author": "cargo <haji@subat.cn>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 3,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}
