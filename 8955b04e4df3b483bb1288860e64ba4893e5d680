@@ -1,0 +1,29 @@
+src/cli.rs
+  abab04fc5d16ab54 10-13
+src/main.rs
+  abab04fc5d16ab54 141
+src/fs/mod.rs
+  abab04fc5d16ab54 8
+src/fs/project.rs
+  abab04fc5d16ab54 559-633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "8955b04e4df3b483bb1288860e64ba4893e5d680",
+  "prompts": {
+    "abab04fc5d16ab54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99b551b7-f735-4d68-8d9e-fb0d7cbd42c9",
+        "model": "claude-sonnet-4-5-20250929"
+      },
+      "human_author": "cargo <haji@subat.cn>",
+      "messages": [],
+      "total_additions": 83,
+      "total_deletions": 3,
+      "accepted_lines": 81,
+      "overriden_lines": 0
+    }
+  }
+}
