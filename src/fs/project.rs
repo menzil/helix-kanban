@@ -556,6 +556,81 @@ pub fn delete_project(project_name: &str, project_type: &ProjectType) -> Result<
     Ok(())
 }
 
+/// 确保全局 CLAUDE.md 文件存在
+pub fn ensure_global_claude_md() -> Result<(), String> {
+    let claude_md_path = get_data_dir().join("CLAUDE.md");
+
+    if claude_md_path.exists() {
+        return Ok(());
+    }
+
+    let template = r##"# Helix Kanban AI 操作指南
+
+## 获取项目信息
+
+TUI 中按 `Space` → `p` → `i` 复制项目信息（类型、名称、看板路径、本文档路径）
+
+## 存储格式
+
+**tasks.toml**（元数据）：
+```toml
+[1]
+id = 1
+order = 1000
+title = "任务标题"
+status = "todo"
+created = "1234567890"
+priority = "high"  # high/medium/low/none
+tags = ["feature", "urgent"]
+```
+
+**{status}/{id}.md**（纯内容）：
+```markdown
+任务描述内容
+
+## 子任务
+- [ ] 子任务 1
+```
+
+## CLI 命令
+
+```bash
+# 列出项目
+hxk project list
+
+# 列出任务
+hxk task list <项目名> --status todo
+
+# 查看任务详情
+hxk task show <项目名> <task-id>
+
+# 创建任务
+hxk task create <项目名> --status todo --title "任务标题"
+
+# 更新任务
+hxk task update <项目名> <task-id> --priority high --tags "api,urgent"
+
+# 移动任务
+hxk task move <项目名> <task-id> --to doing
+
+# 删除任务
+hxk task delete <项目名> <task-id>
+```
+
+## 注意事项
+
+- UTF-8 编码
+- 任务 ID 为唯一数字
+- 时间戳为 Unix 时间戳（秒）
+- TUI 快捷键：`Space+p+i` 复制项目信息，`Y` 复制任务内容
+"##;
+
+    std::fs::write(&claude_md_path, template)
+        .map_err(|e| format!("创建 CLAUDE.md 失���: {}", e))?;
+
+    Ok(())
+}
+
 /// 确保全局 AI 配置文件存在
 /// 如果不存在则自动创建
 pub fn ensure_global_ai_config() -> Result<(), String> {

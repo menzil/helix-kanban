@@ -138,6 +138,7 @@ fn main() -> Result<()> {
 
     // 确保全局 AI 配置文件存在
     let _ = fs::ensure_global_ai_config();
+    let _ = fs::ensure_global_claude_md();
 
     // 创建应用
     let mut app = App::new()?;

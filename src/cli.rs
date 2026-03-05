@@ -7,6 +7,10 @@ use std::path::PathBuf;
 /// 处理 CLI 命令
 /// 返回 true 表示应该继续进入 TUI，false 表示已处理完毕应该退出
 pub fn handle_cli() -> Result<bool> {
+    // 确保全局配置文件存在
+    let _ = fs::ensure_global_ai_config();
+    let _ = fs::ensure_global_claude_md();
+
     let args: Vec<String> = env::args().collect();
 
     // 如果没有参数，进入 TUI 模式
