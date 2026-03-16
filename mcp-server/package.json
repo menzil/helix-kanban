@@ -1,0 +1,23 @@
+{
+  "name": "helix-kanban-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Helix Kanban - Terminal kanban board tool",
+  "type": "module",
+  "bin": {
+    "helix-kanban-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "mcp",
+    "kanban",
+    "task-management",
+    "helix-kanban"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  }
+}

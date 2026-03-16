@@ -14,6 +14,7 @@ mod config;
 mod core;
 mod fs;
 mod input;
+mod mcp;
 mod models;
 mod state;
 mod ui;

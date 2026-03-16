@@ -20,6 +20,14 @@ pub fn handle_cli() -> Result<bool> {
 
     // 处理 CLI 命令
     match args[1].as_str() {
+        // MCP server
+        "mcp" => {
+            if let Err(e) = crate::mcp::start_mcp_server() {
+                eprintln!("MCP server error: {}", e);
+                std::process::exit(1);
+            }
+            Ok(false)
+        }
         // 新的结构化命令
         "project" => {
             if let Err(e) = handle_project_command(&args[1..]) {
@@ -829,6 +837,9 @@ fn print_help() {
     println!("  hxk --help              显示此帮助信息");
     println!("  hxk --version           显示版本信息\n");
 
+    println!("MCP Server:");
+    println!("  hxk mcp                              启动 MCP server (用于 AI 集成)\n");
+
     println!("结构化命令（推荐）:");
     println!("  hxk project list                     列出项目");
     println!("  hxk task list <project>              列出任务");
@@ -861,6 +872,18 @@ fn print_help() {
     println!("  # 列出项目和配置");
     println!("  hxk list");
     println!("  hxk config show\n");
+
+    println!("  # MCP Server (AI 集成)");
+    println!("  hxk mcp");
+    println!("  配置到 ~/.claude/chaoshi.json:");
+    println!("  {{");
+    println!("    \"mcpServers\": {{");
+    println!("      \"helix-kanban\": {{");
+    println!("        \"command\": \"hxk\",");
+    println!("        \"args\": [\"mcp\"]");
+    println!("      }}");
+    println!("    }}");
+    println!("  }}\n");
 
     println!("  # AI 协作");
     println!("  在 TUI 中按 Space+p+i 复制项目信息到剪贴板");

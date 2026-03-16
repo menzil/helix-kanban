@@ -5,6 +5,10 @@
 # 本地 kanban 项目数据（开发时使用）
 /.kanban/
 
+# 独立 MCP server 版本（仅保留源码作为参考）
+/mcp-server/node_modules/
+/mcp-server-rs/target/
+
 # Shell 脚本
 *.sh
 

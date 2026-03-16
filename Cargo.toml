@@ -1,9 +1,9 @@
 [package]
 name = "helix-kanban"
-version = "0.2.23"
+version = "0.2.24"
 edition = "2024"
 authors = ["Ruzaji Yasin <menzil@live.cn>"]
-description = "A terminal-based kanban board with file-based storage, multi-project support, and Helix-style keybindings"
+description = "A terminal-based kanban board with file-based storage, multi-project support, Helix-style keybindings, and built-in MCP server for AI integration"
 readme = "README.md"
 homepage = "https://github.com/menzil/helix-kanban"
 repository = "https://github.com/menzil/helix-kanban"
@@ -14,10 +14,13 @@ exclude = [
     ".kanban/",
     "*.md",
     "!README.md",
+    "!CHANGELOG.md",
     "*.pdf",
     "*.sh",
     "*.bak",
     "src/ui/board.rs",
+    "mcp-server/",
+    "mcp-server-rs/",
 ]
 
 [[bin]]

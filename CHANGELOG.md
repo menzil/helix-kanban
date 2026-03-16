@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.24] - 2026-03-16
+
+### Added
+- **MCP Server Integration**: Built-in MCP (Model Context Protocol) server for AI integration
+  - New `hxk mcp` subcommand starts the MCP server
+  - Direct API calls instead of CLI subprocess overhead
+  - 10 MCP tools for AI to manage kanban boards
+  - Project list now includes index numbers for easier selection
+  - ~5ms startup time, ~2MB memory footprint
+  - Zero-configuration: works out of the box with Claude Code
+  - See `MCP-INTEGRATION.md` for setup guide
+
+### Changed
+- Updated `.gitignore` to exclude standalone MCP server build artifacts
+- Bumped version to 0.2.24
+
+### Documentation
+- Added `MCP-INTEGRATION.md` - Integration guide
+- Added `MCP-INTEGRATION-SUMMARY.md` - Complete summary
+- Added `CHANGELOG-MCP.md` - MCP-specific changelog
+- Added `MCP-SERVERS.md` - Version comparison
+- Added `test-mcp.sh` - Automated test script
+- Updated `README.md` with MCP integration section
+
 ## [0.2.23] - 2026-01-26
 
 ### Added
