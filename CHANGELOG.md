@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.25] - 2026-03-16
+
+### Changed
+- Exclude standalone MCP server directories from repository
+- Simplify README MCP section (use standard settings.json)
+- Remove example dialogue from documentation
+- Keep standalone versions locally for reference only
+
 ## [0.2.24] - 2026-03-16
 
 ### Added
