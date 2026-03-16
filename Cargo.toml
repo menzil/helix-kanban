@@ -19,8 +19,6 @@ exclude = [
     "*.sh",
     "*.bak",
     "src/ui/board.rs",
-    "mcp-server/",
-    "mcp-server-rs/",
 ]
 
 [[bin]]

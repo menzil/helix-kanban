@@ -1,7 +1,0 @@
-{
-  "hxkCommand": "hxk",
-  "cacheEnabled": true,
-  "cacheTTL": 5000,
-  "logLevel": "INFO",
-  "timeout": 30000
-}
