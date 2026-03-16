@@ -11,6 +11,7 @@
 ## 核心特性
 
 - 📁 **基于文件存储** - Markdown + TOML，易于版本控制，AI 可直接读取项目目录
+- 🤖 **内置 MCP Server** - 直接与 Claude Code 等 AI 工具集成，让 AI 帮你管理看板
 - 📋 **快速复制** - 一键复制任务到剪贴板 (`Y`)，方便分享给 AI
 - 🪟 **窗口管理** - 垂直/水平分屏、最大化，自动保存和恢复工作区布局
 - ⌨️  **Helix 风格键位** - 符合直觉的键盘快捷键，命令模式支持
@@ -102,6 +103,48 @@ hxk config editor "code --wait"
 hxk config viewer glow
 hxk config viewer "open -a Marked 2"
 ```
+
+## MCP Server 集成 (AI 协作)
+
+helix-kanban 内置了 MCP (Model Context Protocol) server，可以直接与 Claude Code 等 AI 工具集成。
+
+### 配置
+
+编辑 `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "helix-kanban": {
+      "command": "hxk",
+      "args": ["mcp"],
+      "type": "stdio"
+    }
+  }
+}
+```
+
+重启 Claude Code 后，AI 就可以直接操作你的看板了！
+
+### 可用功能
+
+AI 可以通过 MCP 协议：
+- 📋 列出所有项目（带序号）
+- 📝 查看和创建任务
+- ✏️ 更新任务属性（标题、优先级、标签）
+- 🔄 移动任务到不同状态
+- 🗑️ 删除任务
+- 📊 查看项目状态列
+- 🚀 批量创建任务
+
+### 性能优势
+
+集成版本直接调用内部 API，比独立 MCP server 更快：
+- ⚡ 启动速度：~5ms
+- 💾 内存占用：~2MB
+- 🔧 零配置：随 hxk 一起安装
+
+详细文档：[MCP-INTEGRATION.md](./MCP-INTEGRATION.md)
 
 ## 键位绑定
 
