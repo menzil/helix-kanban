@@ -9,6 +9,9 @@
 /mcp-server/node_modules/
 /mcp-server-rs/target/
 
+# 日志文件
+*.log
+
 # Shell 脚本
 *.sh
 
