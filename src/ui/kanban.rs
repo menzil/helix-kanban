@@ -199,19 +199,12 @@ fn render_column(
                 _ => Span::raw("  "),
             };
 
-            // 选中指示器
-            let selection_indicator = if is_selected {
-                Span::styled("▶ ", Style::default().fg(Color::White))
-            } else {
-                Span::raw("  ")
-            };
-
             // 构建任务项内容
             let mut spans = vec![
                 Span::raw(" "),
-                selection_indicator,
                 priority_indicator,
                 Span::raw(format!("[#{}] {}", task.id, task.title)),
+                Span::raw(" "),
             ];
 
             // 添加标签

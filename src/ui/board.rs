@@ -256,7 +256,7 @@ pub fn render_board(ctx: &Context, state: &AppState, project: &Project) -> Node 
             ],
 
             // Kanban columns
-            hstack(gap: 4, h_frac: 1.0, justify: center) [
+            hstack(gap: 2, h_frac: 1.0, justify: center) [
                 ...(columns)
             ]
         ]
