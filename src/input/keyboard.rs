@@ -669,6 +669,12 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('='), KeyModifiers::NONE) => Some(Command::ResetColumnWidths),
         ([], KeyCode::Char('m'), KeyModifiers::NONE) => Some(Command::ToggleMaximizeColumn),
 
+        // 状态列移动 (Ctrl+h/l/H/L)
+        ([], KeyCode::Char('h'), KeyModifiers::CONTROL) => Some(Command::MoveStatusLeft),
+        ([], KeyCode::Char('l'), KeyModifiers::CONTROL) => Some(Command::MoveStatusRight),
+        ([], KeyCode::Char('H'), KeyModifiers::CONTROL) => Some(Command::MoveStatusToFirst),
+        ([], KeyCode::Char('L'), KeyModifiers::CONTROL) => Some(Command::MoveStatusToLast),
+
         ([], KeyCode::Down, _) => Some(Command::TaskDown),
         ([], KeyCode::Up, _) => Some(Command::TaskUp),
         ([], KeyCode::Left, _) => Some(Command::ColumnLeft),

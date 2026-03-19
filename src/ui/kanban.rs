@@ -211,7 +211,7 @@ fn render_column(
                 Span::raw(" "),
                 selection_indicator,
                 priority_indicator,
-                Span::raw(&task.title),
+                Span::raw(format!("[#{}] {}", task.id, task.title)),
             ];
 
             // 添加标签

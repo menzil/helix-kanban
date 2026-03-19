@@ -60,7 +60,7 @@ struct TaskInfo {
 
 /// Start MCP server on stdio
 pub fn start_mcp_server() -> Result<(), String> {
-    eprintln!("Helix Kanban MCP server v1.0.0 (integrated) running on stdio");
+    eprintln!("hxk-mcp server v1.0.0 (integrated) running on stdio");
 
     let stdin = io::stdin();
     let mut stdout = io::stdout();
@@ -110,7 +110,7 @@ fn handle_request(request: JsonRpcRequest) -> JsonRpcResponse {
             result: Some(json!({
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {
-                    "name": "helix-kanban-mcp",
+                    "name": "hxk-mcp",
                     "version": "1.0.0"
                 },
                 "capabilities": {
@@ -177,7 +177,7 @@ fn handle_request(request: JsonRpcRequest) -> JsonRpcResponse {
 
 fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
     match name {
-        "kanban_list_projects" => {
+        "hxk_list_projects" => {
             let projects = fs::load_all_projects().map_err(|e| e.to_string())?;
             let numbered_projects: Vec<Project> = projects
                 .iter()
@@ -194,7 +194,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             Ok(serde_json::to_value(numbered_projects).unwrap())
         }
 
-        "kanban_list_tasks" => {
+        "hxk_list_tasks" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -232,7 +232,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             Ok(serde_json::to_value(task_infos).unwrap())
         }
 
-        "kanban_show_task" => {
+        "hxk_show_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -263,7 +263,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "kanban_create_task" => {
+        "hxk_create_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -297,7 +297,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "kanban_update_task" => {
+        "hxk_update_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -332,6 +332,10 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
                 task.tags = tags.split(',').map(|s| s.trim().to_string()).collect();
             }
 
+            if let Some(content) = arguments["content"].as_str() {
+                task.content = content.to_string();
+            }
+
             fs::save_task(&project_path, task)?;
 
             Ok(json!({
@@ -339,7 +343,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "kanban_move_task" => {
+        "hxk_move_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -372,7 +376,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "kanban_delete_task" => {
+        "hxk_delete_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -398,7 +402,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "kanban_create_project" => {
+        "hxk_create_project" => {
             let name = arguments["name"]
                 .as_str()
                 .ok_or("Missing name parameter")?;
@@ -417,7 +421,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "kanban_list_statuses" => {
+        "hxk_list_statuses" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -441,7 +445,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             Ok(json!(statuses))
         }
 
-        "kanban_batch_create_tasks" => {
+        "hxk_batch_create_tasks" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -476,6 +480,139 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
                 "failed": errors.len(),
                 "results": results,
                 "errors": errors
+            }))
+        }
+
+        "hxk_create_status" => {
+            let project_name = arguments["project"]
+                .as_str()
+                .ok_or("Missing project parameter")?;
+            let status_name = arguments["status"]
+                .as_str()
+                .ok_or("Missing status parameter")?;
+            let display_name = arguments["display"]
+                .as_str()
+                .ok_or("Missing display parameter")?;
+
+            let project_path = find_project_path(project_name)?;
+            let project = fs::load_project(&project_path)?;
+
+            // 验证状态名称
+            fs::status::validate_status_name(status_name, &project.statuses)?;
+            fs::status::validate_display_name(display_name)?;
+
+            // 创建状态
+            fs::status::create_status(&project_path, status_name, display_name)?;
+
+            Ok(json!({
+                "message": format!("Created status '{}' with display name '{}'", status_name, display_name)
+            }))
+        }
+
+        "hxk_rename_status" => {
+            let project_name = arguments["project"]
+                .as_str()
+                .ok_or("Missing project parameter")?;
+            let old_name = arguments["old_name"]
+                .as_str()
+                .ok_or("Missing old_name parameter")?;
+            let new_name = arguments["new_name"]
+                .as_str()
+                .ok_or("Missing new_name parameter")?;
+            let new_display = arguments["new_display"]
+                .as_str()
+                .ok_or("Missing new_display parameter")?;
+
+            let project_path = find_project_path(project_name)?;
+
+            // 验证新名称
+            if old_name != new_name {
+                let project = fs::load_project(&project_path)?;
+                fs::status::validate_status_name(new_name, &project.statuses)?;
+            }
+            fs::status::validate_display_name(new_display)?;
+
+            // 重命名状态
+            fs::status::rename_status(&project_path, old_name, new_name, new_display)?;
+
+            Ok(json!({
+                "message": format!("Renamed status '{}' to '{}' ({})", old_name, new_name, new_display)
+            }))
+        }
+
+        "hxk_update_status_display" => {
+            let project_name = arguments["project"]
+                .as_str()
+                .ok_or("Missing project parameter")?;
+            let status_name = arguments["status"]
+                .as_str()
+                .ok_or("Missing status parameter")?;
+            let new_display = arguments["display"]
+                .as_str()
+                .ok_or("Missing display parameter")?;
+
+            let project_path = find_project_path(project_name)?;
+
+            // 验证显示名称
+            fs::status::validate_display_name(new_display)?;
+
+            // 更新显示名称
+            fs::status::update_status_display(&project_path, status_name, new_display)?;
+
+            Ok(json!({
+                "message": format!("Updated display name of '{}' to '{}'", status_name, new_display)
+            }))
+        }
+
+        "hxk_delete_status" => {
+            let project_name = arguments["project"]
+                .as_str()
+                .ok_or("Missing project parameter")?;
+            let status_name = arguments["status"]
+                .as_str()
+                .ok_or("Missing status parameter")?;
+            let move_to = arguments["move_to"].as_str();
+
+            let project_path = find_project_path(project_name)?;
+
+            // 删除状态
+            fs::status::delete_status(&project_path, status_name, move_to)?;
+
+            let message = if let Some(target) = move_to {
+                format!("Deleted status '{}' and moved tasks to '{}'", status_name, target)
+            } else {
+                format!("Deleted status '{}'", status_name)
+            };
+
+            Ok(json!({
+                "message": message
+            }))
+        }
+
+        "hxk_move_status" => {
+            let project_name = arguments["project"]
+                .as_str()
+                .ok_or("Missing project parameter")?;
+            let status_name = arguments["status"]
+                .as_str()
+                .ok_or("Missing status parameter")?;
+            let direction = arguments["direction"]
+                .as_str()
+                .ok_or("Missing direction parameter")?;
+
+            let project_path = find_project_path(project_name)?;
+
+            let dir_value = match direction {
+                "left" => -1,
+                "right" => 1,
+                _ => return Err("Invalid direction, must be 'left' or 'right'".to_string()),
+            };
+
+            // 移动状态顺序
+            fs::status::move_status_order(&project_path, status_name, dir_value)?;
+
+            Ok(json!({
+                "message": format!("Moved status '{}' to the {}", status_name, direction)
             }))
         }
 
@@ -521,7 +658,7 @@ fn find_project_path(project_name: &str) -> Result<std::path::PathBuf, String> {
 fn get_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "kanban_list_projects".to_string(),
+            name: "hxk_list_projects".to_string(),
             description: "List all kanban projects (both global and local). Returns structured JSON with project names, types, and index numbers.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -529,7 +666,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_list_tasks".to_string(),
+            name: "hxk_list_tasks".to_string(),
             description: "List all tasks in a specific project. Returns structured JSON with task details (ID, title, status, priority, tags).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -547,7 +684,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_show_task".to_string(),
+            name: "hxk_show_task".to_string(),
             description: "Show detailed information about a specific task, including full description and metadata.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -565,7 +702,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_create_task".to_string(),
+            name: "hxk_create_task".to_string(),
             description: "Create a new task in a project. Returns the created task ID and file path.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -597,8 +734,8 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_update_task".to_string(),
-            description: "Update task properties like title, priority, tags, or status.".to_string(),
+            name: "hxk_update_task".to_string(),
+            description: "Update task properties like title, priority, tags, or content.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -622,13 +759,17 @@ fn get_tools() -> Vec<Tool> {
                     "tags": {
                         "type": "string",
                         "description": "New comma-separated tags"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "New task content/description (markdown)"
                     }
                 },
                 "required": ["project", "task_id"]
             }),
         },
         Tool {
-            name: "kanban_move_task".to_string(),
+            name: "hxk_move_task".to_string(),
             description: "Move a task to a different status column.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -650,7 +791,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_delete_task".to_string(),
+            name: "hxk_delete_task".to_string(),
             description: "Delete a task from a project.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -668,7 +809,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_create_project".to_string(),
+            name: "hxk_create_project".to_string(),
             description: "Create a new kanban project. Can be global (stored in ~/.kanban/projects/) or local (stored in current directory .kanban/).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -687,7 +828,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_list_statuses".to_string(),
+            name: "hxk_list_statuses".to_string(),
             description: "List all status columns in a project (e.g., todo, doing, done).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -701,7 +842,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "kanban_batch_create_tasks".to_string(),
+            name: "hxk_batch_create_tasks".to_string(),
             description: "Create multiple tasks at once from a list. Useful for bulk task creation.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -737,6 +878,121 @@ fn get_tools() -> Vec<Tool> {
                     }
                 },
                 "required": ["project", "tasks"]
+            }),
+        },
+        Tool {
+            name: "hxk_create_status".to_string(),
+            description: "Create a new status column in a project.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Internal status name (alphanumeric, underscore, hyphen only)"
+                    },
+                    "display": {
+                        "type": "string",
+                        "description": "Display name for the status"
+                    }
+                },
+                "required": ["project", "status", "display"]
+            }),
+        },
+        Tool {
+            name: "hxk_rename_status".to_string(),
+            description: "Rename a status column (both internal name and display name).".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "old_name": {
+                        "type": "string",
+                        "description": "Current internal status name"
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New internal status name"
+                    },
+                    "new_display": {
+                        "type": "string",
+                        "description": "New display name"
+                    }
+                },
+                "required": ["project", "old_name", "new_name", "new_display"]
+            }),
+        },
+        Tool {
+            name: "hxk_update_status_display".to_string(),
+            description: "Update the display name of a status without changing its internal name.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Internal status name"
+                    },
+                    "display": {
+                        "type": "string",
+                        "description": "New display name"
+                    }
+                },
+                "required": ["project", "status", "display"]
+            }),
+        },
+        Tool {
+            name: "hxk_delete_status".to_string(),
+            description: "Delete a status column. Optionally move tasks to another status before deletion.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Status name to delete"
+                    },
+                    "move_to": {
+                        "type": "string",
+                        "description": "Optional: Target status to move tasks to before deletion"
+                    }
+                },
+                "required": ["project", "status"]
+            }),
+        },
+        Tool {
+            name: "hxk_move_status".to_string(),
+            description: "Move a status column left or right in the board order.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Status name to move"
+                    },
+                    "direction": {
+                        "type": "string",
+                        "description": "Direction to move: 'left' or 'right'",
+                        "enum": ["left", "right"]
+                    }
+                },
+                "required": ["project", "status", "direction"]
             }),
         },
     ]

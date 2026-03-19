@@ -55,7 +55,7 @@ fn render_task_card(_ctx: &Context, task: &Task, is_selected: bool) -> Node {
             dir: vertical
         ) [
             // Task title
-            text(&task.title, color: (Color::hex(title_color)), bold),
+            text(&format!("[#{}] {}", task.id, task.title), color: (Color::hex(title_color)), bold),
 
             // Content preview (if available)
             (if !content_preview.is_empty() {
