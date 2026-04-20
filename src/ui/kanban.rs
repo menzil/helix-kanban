@@ -121,17 +121,19 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
 
     // 渲染每一列
     for (col_idx, status) in project.statuses.iter().enumerate() {
-        let tasks: Vec<_> = project
+        // 收集任务的全局索引和引用
+        let tasks_with_idx: Vec<(usize, &crate::models::Task)> = project
             .tasks
             .iter()
-            .filter(|t| t.status == status.name)
+            .enumerate()
+            .filter(|(_, t)| t.status == status.name)
             .collect();
 
         render_column(
             f,
             columns[col_idx],
             &status.display,
-            &tasks,
+            &tasks_with_idx,
             col_idx,
             app,
             is_focused,
@@ -145,7 +147,7 @@ fn render_column(
     f: &mut Frame,
     area: Rect,
     title: &str,
-    tasks: &[&crate::models::Task],
+    tasks: &[(usize, &crate::models::Task)],
     column_idx: usize,
     app: &mut App,
     is_pane_focused: bool,
@@ -170,10 +172,21 @@ fn render_column(
         (Color::DarkGray, Style::default().fg(Color::Gray))
     };
 
+    // 检查是否有搜索匹配 - 使用任务ID匹配
+    let search_match_ids: Vec<u32> = app
+        .search_state
+        .as_ref()
+        .map(|s| {
+            s.matches.iter().map(|(idx, _)| {
+                project.tasks.get(*idx).map(|t| t.id).unwrap_or(0)
+            }).collect()
+        })
+        .unwrap_or_default();
+
     let items: Vec<ListItem> = tasks
         .iter()
         .enumerate()
-        .map(|(i, task)| {
+        .map(|(i, (global_idx, task))| {
             let selected_idx = app
                 .selected_task_index
                 .get(&app.focused_pane)
@@ -181,12 +194,20 @@ fn render_column(
                 .unwrap_or(0);
             let is_selected = is_column_focused && i == selected_idx;
 
-            // 只有选中的任务高亮，其他使用默认样式
+            // 检查是否是搜索匹配项（用任务ID匹配）
+            let is_search_match = search_match_ids.contains(&task.id);
+
+            // 样式：选中 > 搜索匹配 > 默认
             let style = if is_selected {
                 Style::default()
                     .bg(Color::Rgb(41, 98, 218))
                     .fg(Color::White)
                     .add_modifier(Modifier::BOLD)
+            } else if is_search_match {
+                // 搜索匹配：浅蓝色背景
+                Style::default()
+                    .bg(Color::Rgb(60, 80, 100))
+                    .fg(Color::White)
             } else {
                 Style::default()
             };

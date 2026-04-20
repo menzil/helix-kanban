@@ -68,6 +68,8 @@ pub enum Mode {
     SpaceMenu,
     /// 预览模式 - 显示任务内容
     Preview,
+    /// 搜索模式 - 搜索任务
+    Search,
 }
 
 /// 空格菜单状态
@@ -141,6 +143,21 @@ pub struct App {
     pub last_column_resize_time: Option<std::time::Instant>,
     /// 每个面板的任务列表滚动状态（pane_id -> ListState）
     pub list_states: HashMap<usize, ratatui::widgets::ListState>,
+    /// 搜索状态
+    pub search_state: Option<SearchState>,
+}
+
+/// 搜索状态
+#[derive(Debug, Clone)]
+pub struct SearchState {
+    /// 当前搜索词
+    pub query: String,
+    /// 匹配的任务列表 (task_index, status)
+    pub matches: Vec<(usize, String)>,
+    /// 当前选中的匹配项索引
+    pub selected: usize,
+    /// 是否在选择模式（true=选择模式，false=输入模式）
+    pub selecting: bool,
 }
 
 impl App {
@@ -186,6 +203,7 @@ impl App {
             notification: None,
             last_column_resize_time: None,
             list_states: HashMap::new(),
+            search_state: None,
         };
 
         // 调试：记录初始状态

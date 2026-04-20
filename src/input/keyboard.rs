@@ -1,4 +1,4 @@
-use crate::app::{App, Mode};
+use crate::app::{App, Mode, SearchState};
 use crate::input::Command;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
@@ -19,6 +19,7 @@ pub fn handle_key_input(app: &mut App, key: KeyEvent) -> bool {
         Mode::Help => handle_help_mode(app, key),
         Mode::SpaceMenu => handle_space_menu_mode(app, key),
         Mode::Preview => handle_preview_mode(app, key),
+        Mode::Search => handle_search_mode(app, key),
     }
 }
 
@@ -662,6 +663,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('V'), KeyModifiers::SHIFT) => Some(Command::ViewTaskExternal),
         ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask), // 复制任务到剪贴板
         ([], KeyCode::Char('t'), KeyModifiers::NONE) => Some(Command::EditTags),  // 编辑标签
+        ([], KeyCode::Char('f'), KeyModifiers::NONE) => Some(Command::EnterSearch),  // 搜索任务
 
         // 列宽调整
         ([], KeyCode::Char('+'), KeyModifiers::NONE) => Some(Command::IncreaseColumnWidth),
@@ -1284,6 +1286,42 @@ fn execute_command(app: &mut App, cmd: Command) {
                 });
             }
         }
+        Command::EnterSearch => {
+            // 进入搜索模式
+            app.mode = Mode::Search;
+            app.search_state = Some(crate::app::SearchState {
+                query: String::new(),
+                matches: Vec::new(),
+                selected: 0,
+                selecting: false,
+            });
+        }
+        Command::SearchNext => {
+            // 搜索模式：下一个匹配
+            if let Some(ref mut state) = app.search_state {
+                if !state.matches.is_empty() {
+                    state.selected = (state.selected + 1) % state.matches.len();
+                    // 跳转到选中的匹配项
+                    let (task_index, status) = state.matches[state.selected].clone();
+                    jump_to_task(app, &status, task_index);
+                }
+            }
+        }
+        Command::SearchPrev => {
+            // 搜索模式：上一个匹配
+            if let Some(ref mut state) = app.search_state {
+                if !state.matches.is_empty() {
+                    state.selected = if state.selected == 0 {
+                        state.matches.len() - 1
+                    } else {
+                        state.selected - 1
+                    };
+                    // 跳转到选中的匹配项
+                    let (task_index, status) = state.matches[state.selected].clone();
+                    jump_to_task(app, &status, task_index);
+                }
+            }
+        }
         Command::IncreaseColumnWidth => {
             adjust_column_width(app, 5);
         }
@@ -1752,6 +1790,32 @@ fn execute_text_command(app: &mut App, cmd_str: &str) -> bool {
     }
 
     true // 继续运行
+}
+
+/// 跳转到搜索匹配项
+fn jump_to_search_match(app: &mut App, state: &crate::app::SearchState) {
+    if state.matches.is_empty() {
+        return;
+    }
+
+    let (task_index, status) = &state.matches[state.selected];
+
+    // 找到对应的列
+    let project = match app.get_focused_project() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let column = match project.statuses.iter().position(|s| &s.name == status) {
+        Some(c) => c,
+        None => return,
+    };
+
+    // 设置选中的列
+    app.selected_column.insert(app.focused_pane, column);
+
+    // 设置选中的任务
+    app.selected_task_index.insert(app.focused_pane, *task_index);
 }
 
 /// 获取当前选中的任务
@@ -2459,6 +2523,276 @@ fn handle_space_menu_mode(app: &mut App, key: KeyEvent) -> bool {
         _ => {}
     }
     true
+}
+
+/// 处理搜索模式的按键
+fn handle_search_mode(app: &mut App, key: KeyEvent) -> bool {
+    // 根据是否在选择模式处理不同的按键
+    if app.search_state.as_ref().map(|s| s.selecting).unwrap_or(false) {
+        // ===== 选择模式 =====
+        match key.code {
+            KeyCode::Esc => {
+                // 退出选择模式，回到输入模式
+                if let Some(ref mut state) = app.search_state {
+                    state.selecting = false;
+                }
+            }
+            KeyCode::Enter => {
+                // 确认跳转
+                if let Some(ref state) = app.search_state {
+                    if !state.matches.is_empty() {
+                        let (task_index, status) = state.matches[state.selected].clone();
+                        jump_to_task(app, &status, task_index);
+                    }
+                }
+                app.mode = Mode::Normal;
+                app.search_state = None;
+            }
+            KeyCode::Char('j') | KeyCode::Right | KeyCode::Down => {
+                // 下一个匹配
+                if let Some(ref mut state) = app.search_state {
+                    if !state.matches.is_empty() {
+                        state.selected = (state.selected + 1) % state.matches.len();
+                        let (task_index, status) = state.matches[state.selected].clone();
+                        jump_to_task(app, &status, task_index);
+                    }
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Left | KeyCode::Up => {
+                // 上一个匹配
+                if let Some(ref mut state) = app.search_state {
+                    if !state.matches.is_empty() {
+                        state.selected = if state.selected == 0 {
+                            state.matches.len() - 1
+                        } else {
+                            state.selected - 1
+                        };
+                        let (task_index, status) = state.matches[state.selected].clone();
+                        jump_to_task(app, &status, task_index);
+                    }
+                }
+            }
+            KeyCode::Char('h') => {
+                // 往左（上一列）
+                move_to_prev_column(app);
+            }
+            KeyCode::Char('l') => {
+                // 往右（下一列）
+                move_to_next_column(app);
+            }
+            _ => {}
+        }
+    } else {
+        // ===== 输入模式 =====
+        match key.code {
+            KeyCode::Esc => {
+                // 退出搜索模式
+                app.mode = Mode::Normal;
+                app.search_state = None;
+            }
+            KeyCode::Enter => {
+                // 进入选择模式（如果有匹配）
+                if let Some(ref mut state) = app.search_state {
+                    if !state.matches.is_empty() {
+                        state.selecting = true;
+                        let (task_index, status) = state.matches[state.selected].clone();
+                        jump_to_task(app, &status, task_index);
+                    }
+                }
+            }
+            KeyCode::Backspace => {
+                // 删除搜索词最后一个字符
+                if let Some(ref mut state) = app.search_state {
+                    state.query.pop();
+                }
+                run_search(app);
+            }
+            KeyCode::Char(c) => {
+                // 添加搜索字符
+                if let Some(ref mut state) = app.search_state {
+                    state.query.push(c);
+                }
+                run_search(app);
+            }
+            _ => {}
+        }
+    }
+    true
+}
+
+/// 移动到上一列的第一个匹配
+fn move_to_prev_column(app: &mut App) {
+    // 先从 search_state 中取出需要的信息
+    let current_col_name = match &app.search_state {
+        Some(s) if !s.matches.is_empty() => s.matches[s.selected].1.clone(),
+        _ => return,
+    };
+
+    // 获取项目
+    let project = match app.get_focused_project() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let current_col = match project.statuses.iter().position(|s| s.name == current_col_name) {
+        Some(c) => c,
+        None => return,
+    };
+
+    let prev_col = if current_col == 0 {
+        project.statuses.len() - 1
+    } else {
+        current_col - 1
+    };
+
+    let prev_col_name = project.statuses[prev_col].name.clone();
+    drop(project);
+
+    // 更新搜索状态
+    if let Some(ref mut state) = app.search_state {
+        if let Some(pos) = state.matches.iter().position(|m| m.1 == prev_col_name) {
+            state.selected = pos;
+            let (task_index, status) = state.matches[pos].clone();
+            jump_to_task(app, &status, task_index);
+        }
+    }
+}
+
+/// 移动到下一列的第一个匹配
+fn move_to_next_column(app: &mut App) {
+    // 先从 search_state 中取出需要的信息
+    let current_col_name = match &app.search_state {
+        Some(s) if !s.matches.is_empty() => s.matches[s.selected].1.clone(),
+        _ => return,
+    };
+
+    let project = match app.get_focused_project() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let current_col = match project.statuses.iter().position(|s| s.name == current_col_name) {
+        Some(c) => c,
+        None => return,
+    };
+
+    let next_col = (current_col + 1) % project.statuses.len();
+    let next_col_name = project.statuses[next_col].name.clone();
+    drop(project);
+
+    if let Some(ref mut state) = app.search_state {
+        if let Some(pos) = state.matches.iter().position(|m| m.1 == next_col_name) {
+            state.selected = pos;
+            let (task_index, status) = state.matches[pos].clone();
+            jump_to_task(app, &status, task_index);
+        }
+    }
+}
+
+/// 跳转到指定任务
+fn jump_to_task(app: &mut App, status: &str, task_index: usize) {
+    // 找到对应的列
+    let project = match app.get_focused_project() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let column = match project.statuses.iter().position(|s| &s.name == status) {
+        Some(c) => c,
+        None => return,
+    };
+
+    // 设置选中的列
+    app.selected_column.insert(app.focused_pane, column);
+
+    // 设置选中的任务
+    app.selected_task_index.insert(app.focused_pane, task_index);
+}
+
+/// 执行搜索并更新搜索状态
+fn run_search(app: &mut App) {
+    let query = {
+        let state = match &mut app.search_state {
+            Some(s) => s,
+            None => return,
+        };
+        state.matches.clear();
+        state.selected = 0;
+        state.query.clone()
+    };
+
+    if query.is_empty() {
+        return;
+    }
+
+    let query_lower = query.to_lowercase();
+
+    // 获取当前聚焦的项目
+    let project = match app.get_focused_project() {
+        Some(p) => p,
+        None => return,
+    };
+
+    // 获取列顺序映射：status -> column_index
+    let status_to_column: std::collections::HashMap<&str, usize> = project
+        .statuses
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (s.name.as_str(), i))
+        .collect();
+
+    // 先按 status 收集任务在该列中的位置，然后按视觉顺序排序
+    // 结构: (column_index, task_in_column_index, task_global_index, status)
+    let mut raw_matches: Vec<(usize, usize, usize, String)> = Vec::new();
+
+    // 按列收集任务
+    for (idx, task) in project.tasks.iter().enumerate() {
+        let task_text = format!("{} {}", task.id, task.title).to_lowercase();
+        let task_id_str = task.id.to_string();
+
+        // 匹配 ID 或标题
+        if task_text.contains(&query_lower) || task_id_str == query_lower {
+            let column_idx = status_to_column.get(task.status.as_str()).copied().unwrap_or(0);
+
+            // 计算该任务在该列中的位置（按原始索引排序）
+            let task_pos_in_column = project
+                .tasks
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.status == task.status)
+                .position(|(i, _)| i == idx)
+                .unwrap_or(0);
+
+            raw_matches.push((column_idx, task_pos_in_column, idx, task.status.clone()));
+        }
+    }
+
+    // 按视觉顺序排序：从左到右，从上到下
+    raw_matches.sort_by(|a, b| {
+        let col_cmp = a.0.cmp(&b.0);
+        if col_cmp != std::cmp::Ordering::Equal {
+            col_cmp
+        } else {
+            a.1.cmp(&b.1)
+        }
+    });
+
+    // 转换为 (task_index, status)
+    let matches: Vec<(usize, String)> = raw_matches
+        .iter()
+        .map(|(_, _, idx, status)| (*idx, status.clone()))
+        .collect();
+
+    // 更新搜索状态
+    if let Some(ref mut state) = app.search_state {
+        state.matches = matches;
+        // 如果有匹配项，跳转到第一个
+        if !state.matches.is_empty() {
+            state.selected = 0;
+            let (task_index, status) = state.matches[0].clone();
+            jump_to_task(app, &status, task_index);
+        }
+    }
 }
 
 /// 处理预览模式的按键

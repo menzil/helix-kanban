@@ -18,6 +18,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         Mode::Help => ("HELP", Color::Blue),
         Mode::SpaceMenu => ("MENU", Color::Cyan),
         Mode::Preview => ("PREVIEW", Color::Blue),
+        Mode::Search => ("SEARCH", Color::Yellow),
     };
 
     // 显示键序列

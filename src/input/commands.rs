@@ -112,6 +112,12 @@ pub enum Command {
     MoveStatusToLast,
     /// 编辑状态显示名
     EditStatusDisplay,
+    /// 进入搜索模式
+    EnterSearch,
+    /// 搜索模式：下一个匹配
+    SearchNext,
+    /// 搜索模式：上一个匹配
+    SearchPrev,
 
     // ===== 模式切换 =====
     // /// 进入命令模式 - 已注释

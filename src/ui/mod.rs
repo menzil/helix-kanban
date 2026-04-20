@@ -40,6 +40,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
         preview::render(f, f.area(), app);
     }
 
+    // 渲染搜索条（如果处于搜索模式）
+    if app.mode == crate::app::Mode::Search {
+        render_search_bar(f, f.area(), app);
+    }
+
     // 渲染命令菜单（如果处于空格菜单模式）
     if app.mode == crate::app::Mode::SpaceMenu {
         command_menu::render(f, f.area(), app);
@@ -117,6 +122,90 @@ fn render_notification(
         .style(Style::default().bg(bg_color));
 
     f.render_widget(paragraph, notification_area);
+}
+
+/// 渲染搜索条
+fn render_search_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
+    use ratatui::layout::Rect;
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::{Block, Borders, Clear, Paragraph};
+
+    let search_height = 3;
+    let search_area = Rect {
+        x: 0,
+        y: area.height - search_height,
+        width: area.width,
+        height: search_height,
+    };
+
+    // 先清除搜索区域背景
+    f.render_widget(Clear, search_area);
+
+    // 实心背景
+    let bg_color = Color::Rgb(46, 52, 64);
+    let fg_color = Color::Rgb(236, 239, 244);
+    let accent_color = Color::Rgb(136, 192, 208);
+
+    let state = match &app.search_state {
+        Some(s) => s,
+        None => return,
+    };
+
+    // 构建搜索条内容
+    let match_count = state.matches.len();
+    let selected = state.selected;
+
+    let status_text = if match_count == 0 {
+        if state.query.is_empty() {
+            "Type to search...".to_string()
+        } else {
+            "No matches".to_string()
+        }
+    } else {
+        format!("{}/{}", selected + 1, match_count)
+    };
+
+    // 根据模式显示不同的提示
+    let (tip1, tip2, tip3) = if state.selecting {
+        ("j/k/h/l:nav", "enter:go", "esc:back")
+    } else {
+        ("enter:select", "esc:quit", "")
+    };
+
+    let mut spans = vec![
+        Span::styled(" Search: ", Style::default().fg(accent_color).bg(bg_color)),
+        Span::styled(
+            &state.query,
+            Style::default().fg(fg_color).bg(bg_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(" ", Style::default().bg(bg_color)),
+        Span::styled(&status_text, Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color)),
+        Span::styled(" matches  ", Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color)),
+        Span::styled(tip1, Style::default().fg(accent_color).bg(bg_color)),
+    ];
+
+    if !tip2.is_empty() {
+        spans.push(Span::styled("  ", Style::default().bg(bg_color)));
+        spans.push(Span::styled(tip2, Style::default().fg(accent_color).bg(bg_color)));
+    }
+    if !tip3.is_empty() {
+        spans.push(Span::styled("  ", Style::default().bg(bg_color)));
+        spans.push(Span::styled(tip3, Style::default().fg(accent_color).bg(bg_color)));
+    }
+
+    let content = Line::from(spans);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(accent_color).bg(bg_color))
+        .style(Style::default().bg(bg_color));
+
+    let paragraph = Paragraph::new(content)
+        .block(block)
+        .style(Style::default().bg(bg_color));
+
+    f.render_widget(paragraph, search_area);
 }
 
 /// 递归渲染分屏树
