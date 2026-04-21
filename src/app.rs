@@ -70,6 +70,8 @@ pub enum Mode {
     Preview,
     /// 搜索模式 - 搜索任务
     Search,
+    /// 状态选择模式 - z 快捷
+    StatusSelect,
 }
 
 /// 空格菜单状态
@@ -145,6 +147,8 @@ pub struct App {
     pub list_states: HashMap<usize, ratatui::widgets::ListState>,
     /// 搜索状态
     pub search_state: Option<SearchState>,
+    /// 状态选择状态 (z 快捷)
+    pub status_select_state: Option<StatusSelectState>,
 }
 
 /// 搜索状态
@@ -158,6 +162,17 @@ pub struct SearchState {
     pub selected: usize,
     /// 是否在选择模式（true=选择模式，false=输入模式）
     pub selecting: bool,
+}
+
+/// 状态选择状态 (z 快捷)
+#[derive(Debug, Clone)]
+pub struct StatusSelectState {
+    /// 输入的字符（用于匹配状态名）
+    pub input: String,
+    /// 匹配的状态列表 (status_name, display_name)
+    pub matches: Vec<(String, String)>,
+    /// 当前选中的索引
+    pub selected: usize,
 }
 
 impl App {
@@ -204,6 +219,7 @@ impl App {
             last_column_resize_time: None,
             list_states: HashMap::new(),
             search_state: None,
+            status_select_state: None,
         };
 
         // 调试：记录初始状态

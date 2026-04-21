@@ -192,6 +192,11 @@ impl HelixTextArea {
 
     /// 处理普通模式按键
     fn handle_normal_mode(&mut self, key: KeyEvent) -> InputAction {
+        // Esc 取消对话框（直接关闭，不切换到 Insert 模式）
+        if key.code == KeyCode::Esc {
+            return InputAction::Cancel;
+        }
+
         // Ctrl+C 取消对话框
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             return InputAction::Cancel;

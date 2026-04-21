@@ -118,6 +118,8 @@ pub enum Command {
     SearchNext,
     /// 搜索模式：上一个匹配
     SearchPrev,
+    /// 进入状态选择模式 (z 快捷)
+    EnterStatusSelect,
 
     // ===== 模式切换 =====
     // /// 进入命令模式 - 已注释

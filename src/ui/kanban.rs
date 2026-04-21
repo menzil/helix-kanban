@@ -186,7 +186,7 @@ fn render_column(
     let items: Vec<ListItem> = tasks
         .iter()
         .enumerate()
-        .map(|(i, (global_idx, task))| {
+        .map(|(i, (_, task))| {
             let selected_idx = app
                 .selected_task_index
                 .get(&app.focused_pane)

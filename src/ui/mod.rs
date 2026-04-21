@@ -45,6 +45,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
         render_search_bar(f, f.area(), app);
     }
 
+    // 渲染状态选择条（如果处于状态选择模式）
+    if app.mode == crate::app::Mode::StatusSelect {
+        render_status_select_bar(f, f.area(), app);
+    }
+
     // 渲染命令菜单（如果处于空格菜单模式）
     if app.mode == crate::app::Mode::SpaceMenu {
         command_menu::render(f, f.area(), app);
@@ -206,6 +211,90 @@ fn render_search_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) 
         .style(Style::default().bg(bg_color));
 
     f.render_widget(paragraph, search_area);
+}
+
+/// 渲染状态选择条
+fn render_status_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
+    use ratatui::layout::Rect;
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::{Block, Borders, Clear, Paragraph};
+
+    let bar_height = 3;
+    let bar_area = Rect {
+        x: 0,
+        y: area.height - bar_height,
+        width: area.width,
+        height: bar_height,
+    };
+
+    f.render_widget(Clear, bar_area);
+
+    let bg_color = Color::Rgb(46, 52, 64);
+    let accent_color = Color::Rgb(136, 192, 208);
+    let fg_color = Color::Rgb(236, 239, 244);
+
+    let state = match &app.status_select_state {
+        Some(s) => s,
+        None => return,
+    };
+
+    // 构建状态列表
+    let status_text = if state.matches.is_empty() {
+        "无状态".to_string()
+    } else {
+        format!("{}/{}", state.selected + 1, state.matches.len())
+    };
+
+    let mut spans = vec![
+        Span::styled(" Move: ", Style::default().fg(accent_color).bg(bg_color)),
+        Span::styled("s", Style::default().fg(fg_color).bg(bg_color).add_modifier(Modifier::BOLD)),
+        Span::styled("  ", Style::default().bg(bg_color)),
+    ];
+
+    // 添加匹配的状态列表
+    for (i, (_, display)) in state.matches.iter().enumerate() {
+        if i < 5 {
+            // 最多显示 5 个
+            let is_selected = i == state.selected;
+            spans.push(Span::styled(
+                format!(" [{}] {} ", i + 1, display),
+                if is_selected {
+                    Style::default().fg(Color::Black).bg(accent_color)
+                } else {
+                    Style::default().fg(Color::Rgb(129, 161, 193)).bg(bg_color)
+                },
+            ));
+        }
+    }
+
+    if state.matches.len() > 5 {
+        spans.push(Span::styled(
+            format!(" +{} more", state.matches.len() - 5),
+            Style::default().fg(Color::Gray).bg(bg_color),
+        ));
+    }
+
+    spans.push(Span::styled(
+        format!("  {}", status_text),
+        Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color),
+    ));
+
+    spans.push(Span::styled(
+        "  h/l:nav enter:go esc:quit",
+        Style::default().fg(accent_color).bg(bg_color),
+    ));
+
+    let content = Line::from(spans);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(accent_color).bg(bg_color))
+        .style(Style::default().bg(bg_color));
+
+    let paragraph = Paragraph::new(content).block(block).style(Style::default().bg(bg_color));
+
+    f.render_widget(paragraph, bar_area);
 }
 
 /// 递归渲染分屏树
