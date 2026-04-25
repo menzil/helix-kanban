@@ -73,10 +73,11 @@ pub fn start_mcp_server() -> Result<(), String> {
 
         match serde_json::from_str::<JsonRpcRequest>(&line) {
             Ok(request) => {
-                let response = handle_request(request);
-                let response_json = serde_json::to_string(&response).map_err(|e| e.to_string())?;
-                writeln!(stdout, "{}", response_json).map_err(|e| e.to_string())?;
-                stdout.flush().map_err(|e| e.to_string())?;
+                if let Some(response) = handle_request(request) {
+                    let response_json = serde_json::to_string(&response).map_err(|e| e.to_string())?;
+                    writeln!(stdout, "{}", response_json).map_err(|e| e.to_string())?;
+                    stdout.flush().map_err(|e| e.to_string())?;
+                }
             }
             Err(e) => {
                 eprintln!("Failed to parse request: {}", e);
@@ -100,17 +101,22 @@ pub fn start_mcp_server() -> Result<(), String> {
     Ok(())
 }
 
-fn handle_request(request: JsonRpcRequest) -> JsonRpcResponse {
+fn handle_request(request: JsonRpcRequest) -> Option<JsonRpcResponse> {
     let id = request.id.clone();
 
-    match request.method.as_str() {
+    // Notifications have no id — do not send a response
+    if id.is_none() {
+        return None;
+    }
+
+    Some(match request.method.as_str() {
         "initialize" => JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             id,
             result: Some(json!({
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {
-                    "name": "hxk-mcp",
+                    "name": "helix-kanban",
                     "version": "1.0.0"
                 },
                 "capabilities": {
@@ -172,12 +178,12 @@ fn handle_request(request: JsonRpcRequest) -> JsonRpcResponse {
                 data: None,
             }),
         },
-    }
+    })
 }
 
 fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
     match name {
-        "hxk_list_projects" => {
+        "helix-kanban_list_projects" => {
             let projects = fs::load_all_projects().map_err(|e| e.to_string())?;
             let numbered_projects: Vec<Project> = projects
                 .iter()
@@ -194,7 +200,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             Ok(serde_json::to_value(numbered_projects).unwrap())
         }
 
-        "hxk_list_tasks" => {
+        "helix-kanban_list_tasks" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -232,7 +238,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             Ok(serde_json::to_value(task_infos).unwrap())
         }
 
-        "hxk_show_task" => {
+        "helix-kanban_show_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -263,7 +269,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_create_task" => {
+        "helix-kanban_create_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -297,7 +303,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_update_task" => {
+        "helix-kanban_update_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -343,7 +349,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_move_task" => {
+        "helix-kanban_move_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -376,7 +382,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_delete_task" => {
+        "helix-kanban_delete_task" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -402,7 +408,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_create_project" => {
+        "helix-kanban_create_project" => {
             let name = arguments["name"]
                 .as_str()
                 .ok_or("Missing name parameter")?;
@@ -421,7 +427,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_list_statuses" => {
+        "helix-kanban_list_statuses" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -445,7 +451,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             Ok(json!(statuses))
         }
 
-        "hxk_batch_create_tasks" => {
+        "helix-kanban_batch_create_tasks" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -483,7 +489,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_create_status" => {
+        "helix-kanban_create_status" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -509,7 +515,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_rename_status" => {
+        "helix-kanban_rename_status" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -540,7 +546,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_update_status_display" => {
+        "helix-kanban_update_status_display" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -564,7 +570,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_delete_status" => {
+        "helix-kanban_delete_status" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -589,7 +595,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             }))
         }
 
-        "hxk_move_status" => {
+        "helix-kanban_move_status" => {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
@@ -658,7 +664,7 @@ fn find_project_path(project_name: &str) -> Result<std::path::PathBuf, String> {
 fn get_tools() -> Vec<Tool> {
     vec![
         Tool {
-            name: "hxk_list_projects".to_string(),
+            name: "helix-kanban_list_projects".to_string(),
             description: "List all kanban projects (both global and local). Returns structured JSON with project names, types, and index numbers.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -666,7 +672,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_list_tasks".to_string(),
+            name: "helix-kanban_list_tasks".to_string(),
             description: "List all tasks in a specific project. Returns structured JSON with task details (ID, title, status, priority, tags).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -684,7 +690,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_show_task".to_string(),
+            name: "helix-kanban_show_task".to_string(),
             description: "Show detailed information about a specific task, including full description and metadata.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -702,7 +708,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_create_task".to_string(),
+            name: "helix-kanban_create_task".to_string(),
             description: "Create a new task in a project. Returns the created task ID and file path.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -734,7 +740,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_update_task".to_string(),
+            name: "helix-kanban_update_task".to_string(),
             description: "Update task properties like title, priority, tags, or content.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -769,7 +775,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_move_task".to_string(),
+            name: "helix-kanban_move_task".to_string(),
             description: "Move a task to a different status column.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -791,7 +797,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_delete_task".to_string(),
+            name: "helix-kanban_delete_task".to_string(),
             description: "Delete a task from a project.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -809,7 +815,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_create_project".to_string(),
+            name: "helix-kanban_create_project".to_string(),
             description: "Create a new kanban project. Can be global (stored in ~/.kanban/projects/) or local (stored in current directory .kanban/).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -828,7 +834,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_list_statuses".to_string(),
+            name: "helix-kanban_list_statuses".to_string(),
             description: "List all status columns in a project (e.g., todo, doing, done).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -842,7 +848,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_batch_create_tasks".to_string(),
+            name: "helix-kanban_batch_create_tasks".to_string(),
             description: "Create multiple tasks at once from a list. Useful for bulk task creation.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -881,7 +887,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_create_status".to_string(),
+            name: "helix-kanban_create_status".to_string(),
             description: "Create a new status column in a project.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -903,7 +909,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_rename_status".to_string(),
+            name: "helix-kanban_rename_status".to_string(),
             description: "Rename a status column (both internal name and display name).".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -929,7 +935,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_update_status_display".to_string(),
+            name: "helix-kanban_update_status_display".to_string(),
             description: "Update the display name of a status without changing its internal name.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -951,7 +957,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_delete_status".to_string(),
+            name: "helix-kanban_delete_status".to_string(),
             description: "Delete a status column. Optionally move tasks to another status before deletion.".to_string(),
             input_schema: json!({
                 "type": "object",
@@ -973,7 +979,7 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
         Tool {
-            name: "hxk_move_status".to_string(),
+            name: "helix-kanban_move_status".to_string(),
             description: "Move a status column left or right in the board order.".to_string(),
             input_schema: json!({
                 "type": "object",
