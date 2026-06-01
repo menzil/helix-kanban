@@ -1006,66 +1006,49 @@ fn execute_command(app: &mut App, cmd: Command) {
             move_task_in_column(app, 1);
         }
         Command::FocusNextPane => {
-            // 获取所有窗格 ID 并找到下一个
-            let all_panes = app.split_tree.collect_pane_ids();
+            let all_panes = app
+                .saved_layout
+                .as_ref()
+                .unwrap_or(&app.split_tree)
+                .collect_pane_ids();
             log_debug(format!(
                 "FocusNextPane, 当前焦点: {}, 所有面板: {:?}",
                 app.focused_pane, all_panes
             ));
-            if all_panes.len() > 1 {
-                if let Some(current_idx) = all_panes.iter().position(|&id| id == app.focused_pane) {
-                    let next_idx = (current_idx + 1) % all_panes.len();
-                    app.focused_pane = all_panes[next_idx];
-                    log_debug(format!("切换到面板: {}", app.focused_pane));
-                }
+            if app.focus_next_pane() {
+                log_debug(format!("切换到面板: {}", app.focused_pane));
             } else {
                 log_debug("只有一个面板，无需切换".to_string());
             }
         }
         Command::FocusLeft => {
             log_debug(format!("FocusLeft, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app
-                .split_tree
-                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Left)
-            {
-                app.focused_pane = new_pane_id;
-                log_debug(format!("移动到左侧面板: {}", new_pane_id));
+            if app.focus_adjacent_pane(crate::ui::layout::Direction::Left) {
+                log_debug(format!("移动到左侧面板: {}", app.focused_pane));
             } else {
                 log_debug("左侧没有面板".to_string());
             }
         }
         Command::FocusRight => {
             log_debug(format!("FocusRight, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app
-                .split_tree
-                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Right)
-            {
-                app.focused_pane = new_pane_id;
-                log_debug(format!("移动到右侧面板: {}", new_pane_id));
+            if app.focus_adjacent_pane(crate::ui::layout::Direction::Right) {
+                log_debug(format!("移动到右侧面板: {}", app.focused_pane));
             } else {
                 log_debug("右侧没有面板".to_string());
             }
         }
         Command::FocusUp => {
             log_debug(format!("FocusUp, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app
-                .split_tree
-                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Up)
-            {
-                app.focused_pane = new_pane_id;
-                log_debug(format!("移动到上方面板: {}", new_pane_id));
+            if app.focus_adjacent_pane(crate::ui::layout::Direction::Up) {
+                log_debug(format!("移动到上方面板: {}", app.focused_pane));
             } else {
                 log_debug("上方没有面板".to_string());
             }
         }
         Command::FocusDown => {
             log_debug(format!("FocusDown, 当前焦点: {}", app.focused_pane));
-            if let Some(new_pane_id) = app
-                .split_tree
-                .find_adjacent_pane(app.focused_pane, crate::ui::layout::Direction::Down)
-            {
-                app.focused_pane = new_pane_id;
-                log_debug(format!("移动到下方面板: {}", new_pane_id));
+            if app.focus_adjacent_pane(crate::ui::layout::Direction::Down) {
+                log_debug(format!("移动到下方面板: {}", app.focused_pane));
             } else {
                 log_debug("下方没有面板".to_string());
             }

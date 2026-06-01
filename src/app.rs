@@ -1,7 +1,7 @@
 use crate::input::CommandRegistry;
 use crate::models::Project;
 use crate::ui::dialogs::DialogType;
-use crate::ui::layout::SplitNode;
+use crate::ui::layout::{Direction, SplitNode};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -291,7 +291,8 @@ impl App {
         if let Some(SplitNode::Leaf { project_id, .. }) =
             self.split_tree.find_pane_mut(self.focused_pane)
         {
-            *project_id = Some(project_name);
+            *project_id = Some(project_name.clone());
+            self.sync_focused_project_to_saved_layout(Some(project_name));
             // 重置选中索引到 0
             self.selected_task_index.insert(self.focused_pane, 0);
             self.selected_column.insert(self.focused_pane, 0);
@@ -359,6 +360,87 @@ impl App {
         }
     }
 
+    /// 最大化状态下切换到原布局中的指定面板，保持全屏显示。
+    pub fn focus_pane_while_maximized(&mut self, pane_id: usize) -> bool {
+        let project_id = self
+            .saved_layout
+            .as_ref()
+            .and_then(|layout| layout.find_pane(pane_id))
+            .and_then(|pane| match pane {
+                SplitNode::Leaf { project_id, .. } => Some(project_id.clone()),
+                _ => None,
+            });
+
+        if let Some(project_id) = project_id {
+            self.split_tree = SplitNode::Leaf {
+                project_id,
+                id: pane_id,
+            };
+            self.focused_pane = pane_id;
+            return true;
+        }
+
+        false
+    }
+
+    /// 聚焦下一个面板。最大化时在保存的原布局中切换，保持全屏。
+    pub fn focus_next_pane(&mut self) -> bool {
+        let pane_ids = self
+            .saved_layout
+            .as_ref()
+            .unwrap_or(&self.split_tree)
+            .collect_pane_ids();
+
+        if pane_ids.len() <= 1 {
+            return false;
+        }
+
+        if let Some(current_idx) = pane_ids.iter().position(|&id| id == self.focused_pane) {
+            let next_idx = (current_idx + 1) % pane_ids.len();
+            let next_pane = pane_ids[next_idx];
+            if self.saved_layout.is_some() {
+                self.focus_pane_while_maximized(next_pane)
+            } else {
+                self.focused_pane = next_pane;
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    /// 按方向聚焦相邻面板。最大化时使用保存的原布局查找相邻面板。
+    pub fn focus_adjacent_pane(&mut self, direction: Direction) -> bool {
+        let target = self
+            .saved_layout
+            .as_ref()
+            .unwrap_or(&self.split_tree)
+            .find_adjacent_pane(self.focused_pane, direction);
+
+        if let Some(pane_id) = target {
+            if self.saved_layout.is_some() {
+                self.focus_pane_while_maximized(pane_id)
+            } else {
+                self.focused_pane = pane_id;
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    fn sync_focused_project_to_saved_layout(&mut self, project_name: Option<String>) {
+        self.set_saved_layout_project(self.focused_pane, project_name);
+    }
+
+    fn set_saved_layout_project(&mut self, pane_id: usize, project_name: Option<String>) {
+        if let Some(saved_layout) = &mut self.saved_layout
+            && let Some(SplitNode::Leaf { project_id, .. }) = saved_layout.find_pane_mut(pane_id)
+        {
+            *project_id = project_name;
+        }
+    }
+
     /// 显示通知消息
     pub fn show_notification(&mut self, message: String, level: NotificationLevel) {
         self.notification = Some(Notification {
@@ -389,5 +471,154 @@ impl App {
         self.get_focused_project()
             .map(|p| p.statuses.len())
             .unwrap_or(3)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use crate::models::{Project, ProjectType};
+    use crate::ui::layout::SplitNode;
+    use std::path::PathBuf;
+
+    fn test_project(name: &str) -> Project {
+        Project::new(name.to_string(), PathBuf::from("/tmp").join(name), ProjectType::Global)
+    }
+
+    fn test_app() -> App {
+        App {
+            projects: vec![
+                test_project("alpha"),
+                test_project("beta"),
+                test_project("gamma"),
+            ],
+            split_tree: SplitNode::Leaf {
+                id: 0,
+                project_id: Some("alpha".to_string()),
+            },
+            focused_pane: 0,
+            mode: Mode::Normal,
+            key_buffer: Vec::new(),
+            selected_task_index: HashMap::new(),
+            selected_column: HashMap::new(),
+            command_input: String::new(),
+            completion_selected_index: None,
+            next_pane_id: 3,
+            should_quit: false,
+            dialog: None,
+            menu_state: None,
+            menu_selected_index: None,
+            pending_editor_file: None,
+            is_new_task_file: false,
+            pending_preview_file: None,
+            preview_content: String::new(),
+            preview_scroll: 0,
+            command_registry: CommandRegistry::new(),
+            config: Config::default(),
+            show_welcome_dialog: false,
+            saved_layout: None,
+            notification: None,
+            last_column_resize_time: None,
+            list_states: HashMap::new(),
+            search_state: None,
+            status_select_state: None,
+        }
+    }
+
+    fn three_pane_layout() -> SplitNode {
+        SplitNode::Horizontal {
+            left: Box::new(SplitNode::Leaf {
+                id: 0,
+                project_id: Some("alpha".to_string()),
+            }),
+            right: Box::new(SplitNode::Vertical {
+                top: Box::new(SplitNode::Leaf {
+                    id: 1,
+                    project_id: Some("beta".to_string()),
+                }),
+                bottom: Box::new(SplitNode::Leaf {
+                    id: 2,
+                    project_id: Some("gamma".to_string()),
+                }),
+                ratio: 0.5,
+            }),
+            ratio: 0.5,
+        }
+    }
+
+    fn focused_project_id(app: &App) -> Option<String> {
+        match app.split_tree.find_pane(app.focused_pane) {
+            Some(SplitNode::Leaf { project_id, .. }) => project_id.clone(),
+            _ => None,
+        }
+    }
+
+    fn saved_project_id(app: &App, pane_id: usize) -> Option<String> {
+        match app.saved_layout.as_ref()?.find_pane(pane_id) {
+            Some(SplitNode::Leaf { project_id, .. }) => project_id.clone(),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn focus_next_pane_while_maximized_keeps_fullscreen() {
+        let mut app = test_app();
+        app.saved_layout = Some(three_pane_layout());
+
+        assert!(app.focus_next_pane());
+
+        assert_eq!(app.focused_pane, 1);
+        assert_eq!(focused_project_id(&app), Some("beta".to_string()));
+        assert!(app.saved_layout.is_some());
+        assert_eq!(app.split_tree.collect_pane_ids(), vec![1]);
+    }
+
+    #[test]
+    fn focus_adjacent_pane_while_maximized_uses_saved_layout() {
+        let mut app = test_app();
+        app.saved_layout = Some(three_pane_layout());
+
+        assert!(app.focus_adjacent_pane(Direction::Right));
+
+        assert_eq!(app.focused_pane, 1);
+        assert_eq!(focused_project_id(&app), Some("beta".to_string()));
+        assert_eq!(app.split_tree.collect_pane_ids(), vec![1]);
+
+        assert!(app.focus_adjacent_pane(Direction::Down));
+
+        assert_eq!(app.focused_pane, 2);
+        assert_eq!(focused_project_id(&app), Some("gamma".to_string()));
+        assert_eq!(app.split_tree.collect_pane_ids(), vec![2]);
+    }
+
+    #[test]
+    fn focus_adjacent_pane_without_neighbor_keeps_current_maximized_pane() {
+        let mut app = test_app();
+        app.saved_layout = Some(three_pane_layout());
+
+        assert!(!app.focus_adjacent_pane(Direction::Left));
+
+        assert_eq!(app.focused_pane, 0);
+        assert_eq!(focused_project_id(&app), Some("alpha".to_string()));
+        assert_eq!(app.split_tree.collect_pane_ids(), vec![0]);
+    }
+
+    #[test]
+    fn sync_focused_project_updates_saved_layout_while_maximized() {
+        let mut app = test_app();
+        app.saved_layout = Some(three_pane_layout());
+
+        app.sync_focused_project_to_saved_layout(Some("beta".to_string()));
+        if let Some(SplitNode::Leaf { project_id, .. }) =
+            app.split_tree.find_pane_mut(app.focused_pane)
+        {
+            *project_id = Some("beta".to_string());
+        }
+
+        assert_eq!(focused_project_id(&app), Some("beta".to_string()));
+        assert_eq!(saved_project_id(&app, 0), Some("beta".to_string()));
+        assert_eq!(saved_project_id(&app, 2), Some("gamma".to_string()));
+        assert!(app.saved_layout.is_some());
     }
 }
