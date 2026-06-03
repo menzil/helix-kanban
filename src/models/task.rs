@@ -92,6 +92,7 @@ impl Task {
     }
 
     /// 从元数据创建Task（内容需单独加载）
+    #[allow(dead_code)]
     pub fn from_metadata(metadata: TaskMetadata, content: String, file_path: PathBuf) -> Self {
         Self {
             id: metadata.id,

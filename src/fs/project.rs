@@ -5,12 +5,10 @@ use crate::models::{Project, ProjectConfig, ProjectType, Status, StatusConfig};
 use serde::{Deserialize, Serialize};
 
 /// 本地项目索引结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct LocalProjectsIndex {
     local_projects: Vec<String>,
 }
-
 
 /// 获取本地项目索引文件路径
 fn get_local_projects_index_path() -> PathBuf {
@@ -40,8 +38,7 @@ fn save_local_projects_index(index: &LocalProjectsIndex) -> std::io::Result<()> 
         fs::create_dir_all(parent)?;
     }
 
-    let content = toml::to_string_pretty(index)
-        .map_err(std::io::Error::other)?;
+    let content = toml::to_string_pretty(index).map_err(std::io::Error::other)?;
 
     fs::write(&index_path, content)
 }
@@ -264,9 +261,10 @@ pub fn load_project_with_type(
     for status in &project.statuses {
         let status_dir = project_path.join(&status.name);
         if status_dir.exists()
-            && let Ok(tasks) = super::task::load_tasks_from_dir(&status_dir, &status.name) {
-                project.tasks.extend(tasks);
-            }
+            && let Ok(tasks) = super::task::load_tasks_from_dir(&status_dir, &status.name)
+        {
+            project.tasks.extend(tasks);
+        }
     }
 
     Ok(project)
@@ -289,12 +287,13 @@ fn scan_status_directories(project_path: &Path) -> Result<Vec<String>, String> {
 
         // 只处理目录，排除以 . 开头的目录
         if path.is_dir()
-            && let Some(name) = path.file_name() {
-                let name_str = name.to_string_lossy().to_string();
-                if !name_str.starts_with('.') {
-                    dirs.push(name_str);
-                }
+            && let Some(name) = path.file_name()
+        {
+            let name_str = name.to_string_lossy().to_string();
+            if !name_str.starts_with('.') {
+                dirs.push(name_str);
             }
+        }
     }
 
     // 按字母顺序排序

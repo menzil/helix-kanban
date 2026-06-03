@@ -186,8 +186,8 @@ fn extract_title_and_content(content: &str) -> (String, String) {
     for line in content.lines() {
         if !found_title {
             let trimmed = line.trim();
-            if trimmed.starts_with("# ") {
-                let potential_title = trimmed[2..].trim();
+            if let Some(stripped) = trimmed.strip_prefix("# ") {
+                let potential_title = stripped.trim();
                 // 跳过 "# +++" 这样的无效标题（frontmatter 标记）
                 if potential_title == "+++" || potential_title.is_empty() {
                     continue;
@@ -273,7 +273,11 @@ fn strip_embedded_frontmatter(content: &str) -> String {
 }
 
 /// 生成 TOML frontmatter 格式的任务文件内容
-pub fn generate_toml_frontmatter(frontmatter: &TaskFrontmatter, title: &str, content: &str) -> String {
+pub fn generate_toml_frontmatter(
+    frontmatter: &TaskFrontmatter,
+    title: &str,
+    content: &str,
+) -> String {
     let toml_str = toml::to_string_pretty(frontmatter).unwrap_or_default();
 
     let mut output = String::new();
@@ -304,7 +308,10 @@ pub fn parse_toml_frontmatter_with_recovery(
         Ok(parsed) => return Ok(parsed),
         Err(e) => {
             // 记录解析错误到日志
-            log_parse_error(&format!("TOML parsing failed for {}: {}", file_path.display(), e), content);
+            log_parse_error(
+                &format!("TOML parsing failed for {}: {}", file_path.display(), e),
+                content,
+            );
         }
     }
 
@@ -359,8 +366,8 @@ fn recover_from_corrupted_frontmatter(
 fn extract_title_from_content_only(content: &str) -> Option<String> {
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("# ") {
-            return Some(trimmed[2..].trim().to_string());
+        if let Some(stripped) = trimmed.strip_prefix("# ") {
+            return Some(stripped.trim().to_string());
         }
     }
     None
@@ -394,10 +401,8 @@ fn extract_content_after_corrupted_frontmatter(content: &str) -> String {
         }
 
         // 收集内容
-        if found_title || !trimmed.is_empty() {
-            if found_title {
-                content_lines.push(line);
-            }
+        if found_title {
+            content_lines.push(line);
         }
     }
 

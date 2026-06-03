@@ -6,7 +6,6 @@ use crossterm::{
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
-use std::path::Path;
 
 mod app;
 mod cli;
@@ -63,8 +62,7 @@ fn handle_new_task_from_file(app: &mut App, temp_file_path: &str) -> Result<()> 
     };
 
     // 获取项目路径
-    let project_path = if let Some(project) = app.projects.iter().find(|p| p.name == project_name)
-    {
+    let project_path = if let Some(project) = app.projects.iter().find(|p| p.name == project_name) {
         project.path.clone()
     } else {
         anyhow::bail!("在项目列表中找不到项目");
@@ -251,14 +249,15 @@ where
 
         if event::poll(std::time::Duration::from_millis(100))?
             && let Event::Key(key) = event::read()?
-                && !app.handle_key(key) {
-                    // 退出前保存状态
-                    let state = state::extract_state(app);
-                    if let Err(e) = state::save_state(&state) {
-                        eprintln!("保存状态失败: {}", e);
-                    }
-                    return Ok(()); // 退出应用
-                }
+            && !app.handle_key(key)
+        {
+            // 退出前保存状态
+            let state = state::extract_state(app);
+            if let Err(e) = state::save_state(&state) {
+                eprintln!("保存状态失败: {}", e);
+            }
+            return Ok(()); // 退出应用
+        }
     }
 }
 

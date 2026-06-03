@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 
 use crate::fs;
@@ -8,6 +8,8 @@ use crate::models::{ProjectType, Task};
 // MCP Protocol Types
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[serde(rename = "jsonrpc")]
+    #[allow(dead_code)]
     jsonrpc: String,
     id: Option<Value>,
     method: String,
@@ -74,7 +76,8 @@ pub fn start_mcp_server() -> Result<(), String> {
         match serde_json::from_str::<JsonRpcRequest>(&line) {
             Ok(request) => {
                 if let Some(response) = handle_request(request) {
-                    let response_json = serde_json::to_string(&response).map_err(|e| e.to_string())?;
+                    let response_json =
+                        serde_json::to_string(&response).map_err(|e| e.to_string())?;
                     writeln!(stdout, "{}", response_json).map_err(|e| e.to_string())?;
                     stdout.flush().map_err(|e| e.to_string())?;
                 }
@@ -91,7 +94,8 @@ pub fn start_mcp_server() -> Result<(), String> {
                         data: None,
                     }),
                 };
-                let response_json = serde_json::to_string(&error_response).map_err(|e| e.to_string())?;
+                let response_json =
+                    serde_json::to_string(&error_response).map_err(|e| e.to_string())?;
                 writeln!(stdout, "{}", response_json).map_err(|e| e.to_string())?;
                 stdout.flush().map_err(|e| e.to_string())?;
             }
@@ -105,9 +109,7 @@ fn handle_request(request: JsonRpcRequest) -> Option<JsonRpcResponse> {
     let id = request.id.clone();
 
     // Notifications have no id — do not send a response
-    if id.is_none() {
-        return None;
-    }
+    id.as_ref()?;
 
     Some(match request.method.as_str() {
         "initialize" => JsonRpcResponse {
@@ -358,9 +360,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
                 .ok_or("Missing task_id parameter")?
                 .parse()
                 .map_err(|_| "Invalid task_id")?;
-            let new_status = arguments["to"]
-                .as_str()
-                .ok_or("Missing to parameter")?;
+            let new_status = arguments["to"].as_str().ok_or("Missing to parameter")?;
 
             let project_path = find_project_path(project_name)?;
             let mut project = fs::load_project(&project_path)?;
@@ -409,9 +409,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
         }
 
         "helix-kanban_create_project" => {
-            let name = arguments["name"]
-                .as_str()
-                .ok_or("Missing name parameter")?;
+            let name = arguments["name"].as_str().ok_or("Missing name parameter")?;
             let is_local = arguments["local"].as_bool().unwrap_or(false);
 
             let path = if is_local {
@@ -455,9 +453,7 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             let project_name = arguments["project"]
                 .as_str()
                 .ok_or("Missing project parameter")?;
-            let tasks = arguments["tasks"]
-                .as_array()
-                .ok_or("Missing tasks array")?;
+            let tasks = arguments["tasks"].as_array().ok_or("Missing tasks array")?;
 
             let project_path = find_project_path(project_name)?;
             let mut results = Vec::new();
@@ -585,7 +581,10 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
             fs::status::delete_status(&project_path, status_name, move_to)?;
 
             let message = if let Some(target) = move_to {
-                format!("Deleted status '{}' and moved tasks to '{}'", status_name, target)
+                format!(
+                    "Deleted status '{}' and moved tasks to '{}'",
+                    status_name, target
+                )
             } else {
                 format!("Deleted status '{}'", status_name)
             };

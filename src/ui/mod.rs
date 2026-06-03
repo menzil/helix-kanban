@@ -182,21 +182,36 @@ fn render_search_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) 
         Span::styled(" Search: ", Style::default().fg(accent_color).bg(bg_color)),
         Span::styled(
             &state.query,
-            Style::default().fg(fg_color).bg(bg_color).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(fg_color)
+                .bg(bg_color)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(" ", Style::default().bg(bg_color)),
-        Span::styled(&status_text, Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color)),
-        Span::styled(" matches  ", Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color)),
+        Span::styled(
+            &status_text,
+            Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color),
+        ),
+        Span::styled(
+            " matches  ",
+            Style::default().fg(Color::Rgb(76, 86, 106)).bg(bg_color),
+        ),
         Span::styled(tip1, Style::default().fg(accent_color).bg(bg_color)),
     ];
 
     if !tip2.is_empty() {
         spans.push(Span::styled("  ", Style::default().bg(bg_color)));
-        spans.push(Span::styled(tip2, Style::default().fg(accent_color).bg(bg_color)));
+        spans.push(Span::styled(
+            tip2,
+            Style::default().fg(accent_color).bg(bg_color),
+        ));
     }
     if !tip3.is_empty() {
         spans.push(Span::styled("  ", Style::default().bg(bg_color)));
-        spans.push(Span::styled(tip3, Style::default().fg(accent_color).bg(bg_color)));
+        spans.push(Span::styled(
+            tip3,
+            Style::default().fg(accent_color).bg(bg_color),
+        ));
     }
 
     let content = Line::from(spans);
@@ -248,7 +263,13 @@ fn render_status_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mu
 
     let mut spans = vec![
         Span::styled(" Move: ", Style::default().fg(accent_color).bg(bg_color)),
-        Span::styled("s", Style::default().fg(fg_color).bg(bg_color).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "s",
+            Style::default()
+                .fg(fg_color)
+                .bg(bg_color)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("  ", Style::default().bg(bg_color)),
     ];
 
@@ -292,7 +313,9 @@ fn render_status_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mu
         .border_style(Style::default().fg(accent_color).bg(bg_color))
         .style(Style::default().bg(bg_color));
 
-    let paragraph = Paragraph::new(content).block(block).style(Style::default().bg(bg_color));
+    let paragraph = Paragraph::new(content)
+        .block(block)
+        .style(Style::default().bg(bg_color));
 
     f.render_widget(paragraph, bar_area);
 }

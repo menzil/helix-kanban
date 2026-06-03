@@ -114,8 +114,8 @@ pub fn load_state() -> Result<AppState> {
     }
 
     let content = std::fs::read_to_string(state_path)?;
-    let state: AppState = toml::from_str(&content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse state: {}", e))?;
+    let state: AppState =
+        toml::from_str(&content).map_err(|e| anyhow::anyhow!("Failed to parse state: {}", e))?;
 
     Ok(state)
 }

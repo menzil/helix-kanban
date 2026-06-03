@@ -187,9 +187,10 @@ impl App {
         // 创建初始分屏树，如果有项目则自动加载第一个
         let mut split_tree = SplitNode::new_leaf(0);
         if !projects.is_empty()
-            && let Some(SplitNode::Leaf { project_id, .. }) = split_tree.find_pane_mut(0) {
-                *project_id = Some(projects[0].name.clone());
-            }
+            && let Some(SplitNode::Leaf { project_id, .. }) = split_tree.find_pane_mut(0)
+        {
+            *project_id = Some(projects[0].name.clone());
+        }
 
         let mut app = Self {
             projects,
@@ -254,9 +255,10 @@ impl App {
     pub fn get_focused_project(&self) -> Option<&Project> {
         if let Some(SplitNode::Leaf { project_id, .. }) =
             self.split_tree.find_pane(self.focused_pane)
-            && let Some(pid) = project_id {
-                return self.projects.iter().find(|p| &p.name == pid);
-            }
+            && let Some(pid) = project_id
+        {
+            return self.projects.iter().find(|p| &p.name == pid);
+        }
         None
     }
 
@@ -265,9 +267,10 @@ impl App {
     pub fn get_focused_project_mut(&mut self) -> Option<&mut Project> {
         if let Some(SplitNode::Leaf { project_id, .. }) =
             self.split_tree.find_pane(self.focused_pane)
-            && let Some(pid) = project_id.clone() {
-                return self.projects.iter_mut().find(|p| p.name == pid);
-            }
+            && let Some(pid) = project_id.clone()
+        {
+            return self.projects.iter_mut().find(|p| p.name == pid);
+        }
         None
     }
 
@@ -307,20 +310,22 @@ impl App {
     pub fn reload_current_project(&mut self) -> Result<()> {
         if let Some(SplitNode::Leaf { project_id, .. }) =
             self.split_tree.find_pane(self.focused_pane)
-            && let Some(pid) = project_id {
-                // 从项目列表中找到项目路径和类型
-                if let Some(project) = self.projects.iter().find(|p| &p.name == pid) {
-                    let project_path = project.path.clone();
-                    let project_type = project.project_type;
+            && let Some(pid) = project_id
+        {
+            // 从项目列表中找到项目路径和类型
+            if let Some(project) = self.projects.iter().find(|p| &p.name == pid) {
+                let project_path = project.path.clone();
+                let project_type = project.project_type;
 
-                    // 重新加载项目
-                    if let Ok(updated_project) =
-                        crate::fs::load_project_with_type(&project_path, project_type)
-                        && let Some(project) = self.projects.iter_mut().find(|p| &p.name == pid) {
-                            *project = updated_project;
-                        }
+                // 重新加载项目
+                if let Ok(updated_project) =
+                    crate::fs::load_project_with_type(&project_path, project_type)
+                    && let Some(project) = self.projects.iter_mut().find(|p| &p.name == pid)
+                {
+                    *project = updated_project;
                 }
             }
+        }
         Ok(())
     }
 
@@ -453,9 +458,10 @@ impl App {
     /// 清除已过期的通知
     pub fn clear_expired_notification(&mut self) {
         if let Some(ref notification) = self.notification
-            && notification.is_expired() {
-                self.notification = None;
-            }
+            && notification.is_expired()
+        {
+            self.notification = None;
+        }
     }
 
     /// 根据列索引获取状态名称
@@ -483,7 +489,11 @@ mod tests {
     use std::path::PathBuf;
 
     fn test_project(name: &str) -> Project {
-        Project::new(name.to_string(), PathBuf::from("/tmp").join(name), ProjectType::Global)
+        Project::new(
+            name.to_string(),
+            PathBuf::from("/tmp").join(name),
+            ProjectType::Global,
+        )
     }
 
     fn test_app() -> App {

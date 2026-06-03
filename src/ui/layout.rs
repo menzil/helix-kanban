@@ -104,36 +104,40 @@ impl SplitNode {
             SplitNode::Horizontal { left, right, .. } => {
                 // 检查左侧是否包含要关闭的面板
                 if let SplitNode::Leaf { id: left_id, .. } = left.as_ref()
-                    && *left_id == id {
-                        // 关闭左侧，用右侧替换整个节点
-                        *self = *right.clone();
-                        return true;
-                    }
+                    && *left_id == id
+                {
+                    // 关闭左侧，用右侧替换整个节点
+                    *self = *right.clone();
+                    return true;
+                }
                 // 检查右侧是否包含要关闭的面板
                 if let SplitNode::Leaf { id: right_id, .. } = right.as_ref()
-                    && *right_id == id {
-                        // 关闭右侧，用左侧替换整个节点
-                        *self = *left.clone();
-                        return true;
-                    }
+                    && *right_id == id
+                {
+                    // 关闭右侧，用左侧替换整个节点
+                    *self = *left.clone();
+                    return true;
+                }
                 // 递归查找
                 left.close_pane(id) || right.close_pane(id)
             }
             SplitNode::Vertical { top, bottom, .. } => {
                 // 检查上方是否包含要关闭的面板
                 if let SplitNode::Leaf { id: top_id, .. } = top.as_ref()
-                    && *top_id == id {
-                        // 关闭上方，用下方替换整个节点
-                        *self = *bottom.clone();
-                        return true;
-                    }
+                    && *top_id == id
+                {
+                    // 关闭上方，用下方替换整个节点
+                    *self = *bottom.clone();
+                    return true;
+                }
                 // 检查下方是否包含要关闭的面板
                 if let SplitNode::Leaf { id: bottom_id, .. } = bottom.as_ref()
-                    && *bottom_id == id {
-                        // 关闭下方，用上方替换整个节点
-                        *self = *top.clone();
-                        return true;
-                    }
+                    && *bottom_id == id
+                {
+                    // 关闭下方，用上方替换整个节点
+                    *self = *top.clone();
+                    return true;
+                }
                 // 递归查找
                 top.close_pane(id) || bottom.close_pane(id)
             }
@@ -163,9 +167,10 @@ impl SplitNode {
         match self {
             SplitNode::Leaf { project_id, .. } => {
                 if let Some(id) = project_id
-                    && id == project_name {
-                        *project_id = None;
-                    }
+                    && id == project_name
+                {
+                    *project_id = None;
+                }
             }
             SplitNode::Horizontal { left, right, .. } => {
                 left.clear_project_from_all_panes(project_name);

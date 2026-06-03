@@ -143,6 +143,7 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
 }
 
 /// 渲染单个列
+#[allow(clippy::too_many_arguments)]
 fn render_column(
     f: &mut Frame,
     area: Rect,
@@ -177,9 +178,10 @@ fn render_column(
         .search_state
         .as_ref()
         .map(|s| {
-            s.matches.iter().map(|(idx, _)| {
-                project.tasks.get(*idx).map(|t| t.id).unwrap_or(0)
-            }).collect()
+            s.matches
+                .iter()
+                .map(|(idx, _)| project.tasks.get(*idx).map(|t| t.id).unwrap_or(0))
+                .collect()
         })
         .unwrap_or_default();
 
@@ -290,9 +292,7 @@ fn render_column(
         );
 
     // 获取或创建当前面板的 ListState，并设置选中索引
-    let list_state = app.list_states.entry(app.focused_pane).or_insert_with(|| {
-        ratatui::widgets::ListState::default()
-    });
+    let list_state = app.list_states.entry(app.focused_pane).or_default();
 
     // 如果当前列被聚焦，更新 ListState 的选中索引
     if is_column_focused {
