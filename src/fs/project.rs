@@ -256,6 +256,8 @@ pub fn load_project_with_type(
         project_type,
     );
     project.statuses = statuses;
+    project.project_order = config.project_order;
+    project.tags = config.tags.clone();
 
     // Load tasks from all status directories
     for status in &project.statuses {
@@ -370,6 +372,18 @@ pub fn save_project_config(project_path: &Path, config: &ProjectConfig) -> Resul
     Ok(())
 }
 
+pub fn update_project_metadata(
+    project_path: &Path,
+    project_order: Option<i64>,
+    tags: Vec<String>,
+) -> Result<ProjectConfig, String> {
+    let mut config = load_project_config(project_path)?;
+    config.project_order = project_order;
+    config.tags = tags;
+    save_project_config(project_path, &config)?;
+    Ok(config)
+}
+
 /// Create a new project
 pub fn create_project(name: &str) -> Result<PathBuf, String> {
     let project_dir = get_projects_dir().join(name);
@@ -399,6 +413,7 @@ pub fn create_project(name: &str) -> Result<PathBuf, String> {
         concat!(
             "name = \"{}\"\n",
             "created = \"{}\"\n",
+            "tags = []\n",
             "\n",
             "[statuses]\n",
             "order = [\"todo\", \"doing\", \"done\"]\n",
@@ -456,6 +471,7 @@ pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
         concat!(
             "name = \"{}\"\n",
             "created = \"{}\"\n",
+            "tags = []\n",
             "\n",
             "[statuses]\n",
             "order = [\"todo\", \"doing\", \"done\"]\n",
@@ -740,4 +756,68 @@ pub fn ensure_global_ai_config() -> Result<(), String> {
         .map_err(|e| format!("创建 AI 配置文件失败: {}", e))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{load_project_config, save_project_config};
+    use crate::models::project::StatusesConfig;
+    use crate::models::{ProjectConfig, StatusConfig};
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+
+    fn write_config(dir: &TempDir, content: &str) {
+        std::fs::write(dir.path().join(".kanban.toml"), content).unwrap();
+    }
+
+    #[test]
+    fn old_project_config_without_metadata_loads() {
+        let dir = TempDir::new().unwrap();
+        write_config(
+            &dir,
+            r#"name = "legacy"
+created = "1"
+
+[statuses]
+order = ["todo"]
+
+[statuses.todo]
+display = "Todo"
+"#,
+        );
+
+        let config = load_project_config(dir.path()).unwrap();
+
+        assert_eq!(config.name, "legacy");
+        assert_eq!(config.project_order, None);
+        assert!(config.tags.is_empty());
+    }
+
+    #[test]
+    fn project_config_round_trips_metadata() {
+        let dir = TempDir::new().unwrap();
+        let mut statuses = HashMap::new();
+        statuses.insert(
+            "todo".to_string(),
+            StatusConfig {
+                display: "Todo".to_string(),
+            },
+        );
+        let config = ProjectConfig {
+            name: "ordered".to_string(),
+            created: "2".to_string(),
+            project_order: Some(42),
+            tags: vec!["urgent".to_string(), "client".to_string()],
+            statuses: StatusesConfig {
+                order: vec!["todo".to_string()],
+                statuses,
+            },
+        };
+
+        save_project_config(dir.path(), &config).unwrap();
+        let loaded = load_project_config(dir.path()).unwrap();
+
+        assert_eq!(loaded.project_order, Some(42));
+        assert_eq!(loaded.tags, vec!["urgent", "client"]);
+    }
 }

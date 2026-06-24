@@ -1,5 +1,10 @@
-use crate::app::{App, Mode, StatusSelectState};
+use crate::app::{App, Mode, NotificationLevel, StatusSelectState};
 use crate::input::Command;
+use crate::ui::dialogs::{
+    DialogType, ProjectGridNavigation, ProjectGridOrderMove, ProjectGridState,
+    filter_project_grid_items, navigate_project_grid, normalize_project_tags,
+    project_grid_state_from_projects, reordered_project_grid_state, update_project_grid_item_tags,
+};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /// 处理键盘输入
@@ -130,6 +135,10 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
     use crate::ui::dialogs::DialogType;
     use crate::ui::text_input::InputAction;
 
+    if matches!(app.dialog, Some(DialogType::ProjectGrid { .. })) {
+        return handle_project_grid_mode(app, key);
+    }
+
     if let Some(dialog) = &mut app.dialog {
         match dialog {
             DialogType::Input { textarea, .. } => {
@@ -140,7 +149,11 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                         let content = textarea.get_content();
                         let dialog_clone = app.dialog.take().unwrap();
                         handle_dialog_submit(app, dialog_clone, content);
-                        app.mode = Mode::Normal;
+                        if app.dialog.is_some() {
+                            app.mode = Mode::Dialog;
+                        } else {
+                            app.mode = Mode::Normal;
+                        }
                         // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
                         return true;
                     }
@@ -157,70 +170,37 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
                     }
                 }
             }
-            DialogType::Select {
-                items,
-                selected,
-                filter,
-                ..
-            } => {
-                match key.code {
-                    KeyCode::Esc => {
+            DialogType::ProjectTagsInput { textarea, .. } => match textarea.handle_key(key) {
+                InputAction::Submit => {
+                    let content = textarea.get_content();
+                    let dialog_clone = app.dialog.take().unwrap();
+                    handle_dialog_submit(app, dialog_clone, content);
+                    if app.dialog.is_some() {
+                        app.mode = Mode::Dialog;
+                    } else {
+                        app.mode = Mode::Normal;
+                    }
+                    return true;
+                }
+                InputAction::Cancel => {
+                    let dialog_clone = app.dialog.take().unwrap();
+                    if let DialogType::ProjectTagsInput { grid_state, .. } = dialog_clone {
+                        app.dialog = Some(DialogType::ProjectGrid {
+                            title: "快速切换项目...".to_string(),
+                            state: grid_state,
+                        });
+                        app.mode = Mode::Dialog;
+                    } else {
                         app.dialog = None;
                         app.mode = Mode::Normal;
-                        // 退出对话框，保存用户输入法并切换回英文（已禁用）
-                        // app.ime_state.exit_dialog();
                     }
-                    KeyCode::Enter => {
-                        // 选择当前项
-                        let filtered_items: Vec<_> = if filter.is_empty() {
-                            items.clone()
-                        } else {
-                            items
-                                .iter()
-                                .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
-                                .cloned()
-                                .collect()
-                        };
-
-                        if *selected < filtered_items.len() {
-                            let selected_item = filtered_items[*selected].clone();
-                            let dialog_clone = app.dialog.take().unwrap();
-                            app.mode = Mode::Normal;
-                            // app.ime_state.exit_dialog();  // 已禁用输入法自动切换
-                            handle_dialog_submit(app, dialog_clone, selected_item);
-                            return true;
-                        }
-                    }
-                    KeyCode::Up if *selected > 0 => {
-                        // 向上移动选择
-                        *selected -= 1;
-                    }
-                    KeyCode::Down => {
-                        // 向下移动选择
-                        let filtered_count = if filter.is_empty() {
-                            items.len()
-                        } else {
-                            items
-                                .iter()
-                                .filter(|item| item.to_lowercase().contains(&filter.to_lowercase()))
-                                .count()
-                        };
-
-                        if filtered_count > 0 && *selected < filtered_count - 1 {
-                            *selected += 1;
-                        }
-                    }
-                    KeyCode::Backspace => {
-                        filter.pop();
-                        *selected = 0;
-                    }
-                    KeyCode::Char(c) => {
-                        filter.push(c);
-                        *selected = 0;
-                    }
-                    _ => {}
+                    return true;
                 }
-            }
+                InputAction::Continue => {
+                    return true;
+                }
+            },
+            DialogType::ProjectGrid { .. } => {}
             DialogType::Confirm { yes_selected, .. } => {
                 match key.code {
                     KeyCode::Esc | KeyCode::Char('n') => {
@@ -261,6 +241,185 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
     }
 
     true
+}
+
+fn handle_project_grid_mode(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Esc => {
+            app.dialog = None;
+            app.mode = Mode::Normal;
+        }
+        KeyCode::Enter => {
+            if let Some(item) = selected_project_grid_item_from_app(app) {
+                app.dialog = None;
+                app.mode = Mode::Normal;
+                app.open_project(item.name, item.path, item.project_type);
+            }
+        }
+        KeyCode::Left | KeyCode::Char('h') => {
+            navigate_open_project_grid(app, ProjectGridNavigation::Left);
+        }
+        KeyCode::Right | KeyCode::Char('l') => {
+            navigate_open_project_grid(app, ProjectGridNavigation::Right);
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            navigate_open_project_grid(app, ProjectGridNavigation::Up);
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            navigate_open_project_grid(app, ProjectGridNavigation::Down);
+        }
+        KeyCode::Char('H') => {
+            reorder_open_project_grid(app, ProjectGridOrderMove::Left);
+        }
+        KeyCode::Char('L') => {
+            reorder_open_project_grid(app, ProjectGridOrderMove::Right);
+        }
+        KeyCode::Char('K') => {
+            reorder_open_project_grid(app, ProjectGridOrderMove::Up);
+        }
+        KeyCode::Char('J') => {
+            reorder_open_project_grid(app, ProjectGridOrderMove::Down);
+        }
+        KeyCode::Char('t') => {
+            open_project_tags_input(app);
+        }
+        KeyCode::Backspace => {
+            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+                state.filter.pop();
+                state.selected = 0;
+            }
+        }
+        KeyCode::Char(c) => {
+            if (key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT)
+                && let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog
+            {
+                state.filter.push(c);
+                state.selected = 0;
+            }
+        }
+        _ => {}
+    }
+
+    true
+}
+
+fn selected_project_grid_item_from_app(app: &App) -> Option<crate::ui::dialogs::ProjectGridItem> {
+    let DialogType::ProjectGrid { state, .. } = app.dialog.as_ref()? else {
+        return None;
+    };
+
+    selected_project_grid_item(state)
+}
+
+fn selected_project_grid_item(
+    state: &ProjectGridState,
+) -> Option<crate::ui::dialogs::ProjectGridItem> {
+    let filtered_indices = filter_project_grid_items(&state.items, &state.filter);
+    let item_index = filtered_indices.get(state.selected)?;
+    state.items.get(*item_index).cloned()
+}
+
+fn navigate_open_project_grid(app: &mut App, direction: ProjectGridNavigation) {
+    if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+        let filtered_count = filter_project_grid_items(&state.items, &state.filter).len();
+        state.selected =
+            navigate_project_grid(state.selected, filtered_count, state.columns, direction);
+    }
+}
+
+fn reorder_open_project_grid(app: &mut App, direction: ProjectGridOrderMove) {
+    let Some(DialogType::ProjectGrid { title, state }) = app.dialog.take() else {
+        return;
+    };
+
+    let Some(new_state) = reordered_project_grid_state(&state, direction) else {
+        app.dialog = Some(DialogType::ProjectGrid { title, state });
+        return;
+    };
+
+    match persist_project_grid_metadata(app, &new_state) {
+        Ok(()) => {
+            app.dialog = Some(DialogType::ProjectGrid {
+                title,
+                state: new_state,
+            });
+            app.show_notification("项目排序已更新".to_string(), NotificationLevel::Success);
+        }
+        Err(e) => {
+            app.dialog = Some(DialogType::ProjectGrid { title, state });
+            app.show_notification(format!("保存项目排序失败: {}", e), NotificationLevel::Error);
+        }
+    }
+}
+
+fn open_project_tags_input(app: &mut App) {
+    let Some(DialogType::ProjectGrid { state, .. }) = app.dialog.as_ref() else {
+        return;
+    };
+
+    let Some(item) = selected_project_grid_item(state) else {
+        return;
+    };
+    let grid_state = state.clone();
+
+    app.dialog = Some(DialogType::ProjectTagsInput {
+        title: format!("编辑项目标签: {}", item.name),
+        prompt: "请输入项目标签，使用逗号分隔:".to_string(),
+        textarea: Box::new(crate::ui::text_input::HelixTextArea::new(
+            item.tags.join(", "),
+            true,
+            false,
+        )),
+        project_path: item.path,
+        project_name: item.name,
+        grid_state,
+    });
+}
+
+fn persist_project_grid_metadata(app: &mut App, state: &ProjectGridState) -> Result<(), String> {
+    for item in &state.items {
+        crate::fs::update_project_metadata(&item.path, item.project_order, item.tags.clone())?;
+    }
+
+    sync_project_grid_metadata_to_app(app, state);
+    Ok(())
+}
+
+fn persist_selected_project_tags(
+    app: &mut App,
+    state: &ProjectGridState,
+    project_path: &std::path::Path,
+) -> Result<(), String> {
+    let Some(item) = state.items.iter().find(|item| item.path == project_path) else {
+        return Err(format!(
+            "Project path '{}' was not found in the project grid",
+            project_path.display()
+        ));
+    };
+
+    crate::fs::update_project_metadata(&item.path, item.project_order, item.tags.clone())?;
+    sync_project_grid_item_metadata_to_app(app, item);
+    Ok(())
+}
+
+fn sync_project_grid_metadata_to_app(app: &mut App, state: &ProjectGridState) {
+    for item in &state.items {
+        sync_project_grid_item_metadata_to_app(app, item);
+    }
+}
+
+fn sync_project_grid_item_metadata_to_app(
+    app: &mut App,
+    item: &crate::ui::dialogs::ProjectGridItem,
+) {
+    if let Some(project) = app
+        .projects
+        .iter_mut()
+        .find(|project| project.path == item.path)
+    {
+        project.project_order = item.project_order;
+        project.tags = item.tags.clone();
+    }
 }
 
 /// 调试日志辅助函数
@@ -331,7 +490,12 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                                 }
                             }
                             // 在当前面板打开新项目
-                            app.set_focused_project(value);
+                            let project_type = if is_local {
+                                crate::models::ProjectType::Local
+                            } else {
+                                crate::models::ProjectType::Global
+                            };
+                            app.open_project(value, path, project_type);
                         }
                         Err(e) => {
                             log_debug(format!("创建项目失败: {}", e));
@@ -469,23 +633,37 @@ fn handle_dialog_submit(app: &mut App, dialog: crate::ui::dialogs::DialogType, v
                 }
             }
         }
-        DialogType::Select { title, .. } => {
-            if title.contains("选择项目")
-                || title.contains("打开项目")
-                || title.contains("切换项目")
-            {
-                // 从格式化的字符串中提取项目名
-                // 格式: "[G/L] 项目名\n    路径"
-                let project_name = value
-                    .lines()
-                    .next()
-                    .unwrap_or(&value)
-                    .trim_start_matches("[G] ")
-                    .trim_start_matches("[L] ")
-                    .trim();
+        DialogType::ProjectGrid { .. } => {}
+        DialogType::ProjectTagsInput {
+            project_path,
+            project_name,
+            grid_state,
+            ..
+        } => {
+            let tags = normalize_project_tags(&value);
+            let updated_state = update_project_grid_item_tags(&grid_state, &project_path, tags);
 
-                // 打开选中的项目
-                app.set_focused_project(project_name.to_string());
+            match persist_selected_project_tags(app, &updated_state, &project_path) {
+                Ok(()) => {
+                    app.dialog = Some(DialogType::ProjectGrid {
+                        title: "快速切换项目...".to_string(),
+                        state: updated_state,
+                    });
+                    app.show_notification(
+                        format!("已更新项目「{}」标签", project_name),
+                        NotificationLevel::Success,
+                    );
+                }
+                Err(e) => {
+                    app.dialog = Some(DialogType::ProjectGrid {
+                        title: "快速切换项目...".to_string(),
+                        state: grid_state,
+                    });
+                    app.show_notification(
+                        format!("保存项目标签失败: {}", e),
+                        NotificationLevel::Error,
+                    );
+                }
             }
         }
         DialogType::Confirm { action, .. } => {
@@ -834,32 +1012,14 @@ fn execute_command(app: &mut App, cmd: Command) {
         Command::OpenProject => {
             app.mode = Mode::Dialog;
             // app.ime_state.enter_dialog();  // 进入对话框，恢复用户输入法（已禁用）
-            // 生成格式化的项目列表：[G/L] 项目名\n    路径
-            let project_items: Vec<String> = app
-                .projects
-                .iter()
-                .map(|p| {
-                    let type_marker = match p.project_type {
-                        crate::models::ProjectType::Global => "[G]",
-                        crate::models::ProjectType::Local => "[L]",
-                    };
-                    let path = match &p.project_type {
-                        crate::models::ProjectType::Global => {
-                            format!("~/.kanban/projects/{}", p.name)
-                        }
-                        crate::models::ProjectType::Local => {
-                            format!(".kanban/{}", p.name)
-                        }
-                    };
-                    format!("{} {}\n    {}", type_marker, p.name, path)
-                })
-                .collect();
+            let current_project_path = app
+                .get_focused_project()
+                .map(|project| project.path.as_path());
+            let state = project_grid_state_from_projects(&app.projects, current_project_path);
 
-            app.dialog = Some(DialogType::Select {
+            app.dialog = Some(DialogType::ProjectGrid {
                 title: "快速切换项目...".to_string(),
-                items: project_items,
-                selected: 0,
-                filter: String::new(),
+                state,
             });
         }
         Command::RenameProject => {

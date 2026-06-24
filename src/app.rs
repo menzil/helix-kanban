@@ -1,5 +1,5 @@
 use crate::input::CommandRegistry;
-use crate::models::Project;
+use crate::models::{Project, ProjectType};
 use crate::ui::dialogs::DialogType;
 use crate::ui::layout::{Direction, SplitNode};
 use anyhow::Result;
@@ -274,22 +274,45 @@ impl App {
         None
     }
 
-    /// 设置当前聚焦面板的项目
-    pub fn set_focused_project(&mut self, project_name: String) {
+    pub fn open_project(
+        &mut self,
+        project_name: String,
+        project_path: std::path::PathBuf,
+        project_type: ProjectType,
+    ) {
         // 重新从文件系统加载项目数据，确保获取最新的任务列表
-        let projects_dir = crate::fs::get_projects_dir();
-        let project_path = projects_dir.join(&project_name);
-
-        if let Ok(updated_project) = crate::fs::load_project(&project_path) {
+        if let Ok(updated_project) = crate::fs::load_project_with_type(&project_path, project_type)
+        {
             // 更新 projects 列表中的项目数据
-            if let Some(project) = self.projects.iter_mut().find(|p| p.name == project_name) {
+            if let Some(project) = self.projects.iter_mut().find(|p| p.path == project_path) {
                 *project = updated_project;
             } else {
                 // 如果项目不在列表中（新创建的），添加它
                 self.projects.push(updated_project);
             }
         }
+        self.prioritize_project_path_for_name(&project_name, &project_path);
 
+        self.set_focused_project_id(project_name);
+    }
+
+    /// 设置当前聚焦面板的项目
+    pub fn set_focused_project(&mut self, project_name: String) {
+        if let Some(project) = self.projects.iter().find(|p| p.name == project_name) {
+            self.open_project(
+                project.name.clone(),
+                project.path.clone(),
+                project.project_type,
+            );
+            return;
+        }
+
+        // 向后兼容：旧调用只给全局项目名时，尝试从全局目录加载。
+        let project_path = crate::fs::get_projects_dir().join(&project_name);
+        self.open_project(project_name, project_path, ProjectType::Global);
+    }
+
+    fn set_focused_project_id(&mut self, project_name: String) {
         // 设置当前面板的项目
         if let Some(SplitNode::Leaf { project_id, .. }) =
             self.split_tree.find_pane_mut(self.focused_pane)
@@ -304,6 +327,34 @@ impl App {
             let state = crate::state::extract_state(self);
             let _ = crate::state::save_state(&state);
         }
+    }
+
+    fn prioritize_project_path_for_name(
+        &mut self,
+        project_name: &str,
+        project_path: &std::path::Path,
+    ) {
+        let Some(selected_index) = self
+            .projects
+            .iter()
+            .position(|project| project.path == project_path)
+        else {
+            return;
+        };
+        let Some(first_name_index) = self
+            .projects
+            .iter()
+            .position(|project| project.name == project_name)
+        else {
+            return;
+        };
+
+        if first_name_index == selected_index {
+            return;
+        }
+
+        let project = self.projects.remove(selected_index);
+        self.projects.insert(first_name_index, project);
     }
 
     /// 重新加载当前聚焦面板的项目（用于外部编辑器保存后刷新）

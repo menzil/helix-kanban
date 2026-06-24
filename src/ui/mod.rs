@@ -7,6 +7,7 @@ pub mod layout;
 pub mod preview;
 mod sidebar;
 mod statusbar;
+pub mod tags;
 pub mod text_input;
 pub mod welcome;
 

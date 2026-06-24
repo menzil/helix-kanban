@@ -192,6 +192,14 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("     快速切换项目"),
         ]),
         Line::from(vec![
+            Span::styled("H/J/K/L", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("        快速切换中调整项目顺序"),
+        ]),
+        Line::from(vec![
+            Span::styled("t", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          快速切换中编辑项目标签"),
+        ]),
+        Line::from(vec![
             Span::styled("Space r", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("     重新加载当前"),
         ]),

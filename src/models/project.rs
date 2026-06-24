@@ -18,6 +18,10 @@ pub enum ProjectType {
 pub struct ProjectConfig {
     pub name: String,
     pub created: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub project_order: Option<i64>,
+    #[serde(default)]
+    pub tags: Vec<String>,
     pub statuses: StatusesConfig,
 }
 
@@ -47,6 +51,8 @@ pub struct Project {
     pub statuses: Vec<Status>,
     pub tasks: Vec<Task>,
     pub project_type: ProjectType,
+    pub project_order: Option<i64>,
+    pub tags: Vec<String>,
 }
 
 impl Project {
@@ -57,6 +63,8 @@ impl Project {
             statuses: Vec::new(),
             tasks: Vec::new(),
             project_type,
+            project_order: None,
+            tags: Vec::new(),
         }
     }
 
