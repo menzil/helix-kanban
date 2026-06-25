@@ -48,6 +48,9 @@ struct Project {
     #[serde(rename = "type")]
     project_type: String,
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project_order: Option<i64>,
+    tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -197,6 +200,8 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
                         ProjectType::Local => "local".to_string(),
                     },
                     name: p.name.clone(),
+                    project_order: p.project_order,
+                    tags: p.tags.clone(),
                 })
                 .collect();
             Ok(serde_json::to_value(numbered_projects).unwrap())
@@ -411,6 +416,8 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
         "helix-kanban_create_project" => {
             let name = arguments["name"].as_str().ok_or("Missing name parameter")?;
             let is_local = arguments["local"].as_bool().unwrap_or(false);
+            let project_order = parse_optional_project_order(arguments)?;
+            let tags = parse_optional_tags(arguments)?;
 
             let path = if is_local {
                 fs::create_local_project(name)?
@@ -418,10 +425,35 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
                 fs::create_project(name)?
             };
 
+            if project_order.is_some() || !tags.is_empty() {
+                fs::update_project_metadata(&path, project_order, tags)?;
+            }
+
             Ok(json!({
                 "message": format!("Created {} project: {}",
                     if is_local { "local" } else { "global" },
                     path.to_string_lossy())
+            }))
+        }
+
+        "helix-kanban_update_project_metadata" => {
+            let project_name = arguments["project"]
+                .as_str()
+                .ok_or("Missing project parameter")?;
+            let project_path = find_project_path(project_name)?;
+            let project_order = parse_optional_project_order(arguments)?;
+            let tags = parse_optional_tags(arguments)?;
+
+            if project_order.is_none() && tags.is_empty() {
+                return Err("Missing project_order or tags parameter".to_string());
+            }
+
+            let config = fs::update_project_metadata(&project_path, project_order, tags)?;
+
+            Ok(json!({
+                "message": format!("Updated project metadata for '{}'", project_name),
+                "project_order": config.project_order,
+                "tags": config.tags
             }))
         }
 
@@ -664,7 +696,7 @@ fn get_tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "helix-kanban_list_projects".to_string(),
-            description: "List all kanban projects (both global and local). Returns structured JSON with project names, types, and index numbers.".to_string(),
+            description: "List all kanban projects (both global and local). Returns structured JSON with project names, types, index numbers, tags, and project order.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {}
@@ -815,7 +847,7 @@ fn get_tools() -> Vec<Tool> {
         },
         Tool {
             name: "helix-kanban_create_project".to_string(),
-            description: "Create a new kanban project. Can be global (stored in ~/.kanban/projects/) or local (stored in current directory .kanban/).".to_string(),
+            description: "Create a new kanban project. Can be global (stored in ~/.kanban/projects/) or local (stored in current directory .kanban/). Optional metadata can be set at creation time.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -827,9 +859,39 @@ fn get_tools() -> Vec<Tool> {
                         "type": "boolean",
                         "description": "Create as local project (default: false for global)",
                         "default": false
+                    },
+                    "project_order": {
+                        "type": "integer",
+                        "description": "Optional project order used for board sorting"
+                    },
+                    "tags": {
+                        "type": "string",
+                        "description": "Optional comma-separated project tags"
                     }
                 },
                 "required": ["name"]
+            }),
+        },
+        Tool {
+            name: "helix-kanban_update_project_metadata".to_string(),
+            description: "Update a project's tags or order.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "project_order": {
+                        "type": "integer",
+                        "description": "New project order"
+                    },
+                    "tags": {
+                        "type": "string",
+                        "description": "New comma-separated project tags"
+                    }
+                },
+                "required": ["project"]
             }),
         },
         Tool {
@@ -1001,4 +1063,40 @@ fn get_tools() -> Vec<Tool> {
             }),
         },
     ]
+}
+
+fn parse_optional_project_order(arguments: &Value) -> Result<Option<i64>, String> {
+    if arguments.get("project_order").is_none() || arguments["project_order"].is_null() {
+        return Ok(None);
+    }
+
+    arguments["project_order"]
+        .as_i64()
+        .map(Some)
+        .ok_or_else(|| "Invalid project_order parameter".to_string())
+}
+
+fn parse_optional_tags(arguments: &Value) -> Result<Vec<String>, String> {
+    if arguments.get("tags").is_none() || arguments["tags"].is_null() {
+        return Ok(Vec::new());
+    }
+
+    let tags = arguments["tags"]
+        .as_str()
+        .ok_or_else(|| "Invalid tags parameter".to_string())?;
+
+    if tags.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut parsed_tags = Vec::new();
+    for tag in tags.split(',') {
+        let trimmed = tag.trim();
+        if trimmed.is_empty() {
+            return Err("Invalid tags parameter: empty tag values are not allowed".to_string());
+        }
+        parsed_tags.push(trimmed.to_string());
+    }
+
+    Ok(parsed_tags)
 }

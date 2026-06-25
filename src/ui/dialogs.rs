@@ -32,6 +32,7 @@ pub struct ProjectGridState {
     pub items: Vec<ProjectGridItem>,
     pub selected: usize,
     pub filter: String,
+    pub selecting: bool,
     pub columns: usize,
 }
 
@@ -67,6 +68,7 @@ pub fn project_grid_state_from_projects(
         items,
         selected,
         filter: String::new(),
+        selecting: true,
         columns: 1,
     }
 }
@@ -187,6 +189,7 @@ pub fn reordered_project_grid_state(
         items: reassigned_project_grid_orders(&items),
         selected: target_selected,
         filter: state.filter.clone(),
+        selecting: state.selecting,
         columns: state.columns,
     })
 }
@@ -235,6 +238,7 @@ pub fn update_project_grid_item_tags(
         items,
         selected: state.selected,
         filter: state.filter.clone(),
+        selecting: state.selecting,
         columns: state.columns,
     }
 }
@@ -483,7 +487,7 @@ fn render_project_grid_dialog(
         ])
         .split(inner);
 
-    render_project_grid_search(f, chunks[0], &state.filter);
+    render_project_grid_search(f, chunks[0], &state.filter, state.selecting);
 
     let filtered_indices = filter_project_grid_items(&state.items, &state.filter);
     if filtered_indices.is_empty() {
@@ -494,7 +498,13 @@ fn render_project_grid_dialog(
     state.columns = project_grid_columns(chunks[1].width);
 
     render_project_grid_cards(f, chunks[1], state, &filtered_indices);
-    render_project_grid_footer(f, chunks[2], filtered_indices.len(), state.items.len());
+    render_project_grid_footer(
+        f,
+        chunks[2],
+        filtered_indices.len(),
+        state.items.len(),
+        state.selecting,
+    );
 
     let count_text = format!("{}/{}", filtered_indices.len(), state.items.len());
     let count_area = Rect {
@@ -508,8 +518,10 @@ fn render_project_grid_dialog(
     f.render_widget(count_paragraph, count_area);
 }
 
-fn render_project_grid_search(f: &mut Frame, area: Rect, filter: &str) {
+fn render_project_grid_search(f: &mut Frame, area: Rect, filter: &str, selecting: bool) {
+    let title = if selecting { " Select " } else { " Search " };
     let search_block = Block::default()
+        .title(title)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Rgb(136, 192, 208)))
         .border_type(ratatui::widgets::BorderType::Rounded);
@@ -578,11 +590,19 @@ fn render_project_grid_footer(
     area: Rect,
     filtered_count: usize,
     total_count: usize,
+    selecting: bool,
 ) {
-    let help_text = format!(
-        "h/j/k/l select  Enter open  H/J/K/L move card  t tags  Esc close  [{}/{}]",
-        filtered_count, total_count
-    );
+    let help_text = if selecting {
+        format!(
+            "h/j/k/l select  Enter open  H/J/K/L move card  t tags  / search  Esc close  [{}/{}]",
+            filtered_count, total_count
+        )
+    } else {
+        format!(
+            "type to search  Enter select  Backspace delete  Esc select  [{}/{}]",
+            filtered_count, total_count
+        )
+    };
     let help_paragraph = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Rgb(129, 161, 193)))
         .alignment(Alignment::Center);
@@ -841,6 +861,7 @@ mod tests {
             items,
             selected,
             filter: String::new(),
+            selecting: true,
             columns: 2,
         }
     }

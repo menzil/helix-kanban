@@ -14,62 +14,20 @@
 - 🤖 **内置 MCP Server** - 直接与 Claude Code 等 AI 工具集成，让 AI 帮你管理看板
 - 📋 **快速复制** - 一键复制任务到剪贴板 (`Y`)，方便分享给 AI
 - 🪟 **窗口管理** - 垂直/水平分屏、最大化，自动保存和恢复工作区布局
-- ⌨️  **Helix 风格键位** - 符合直觉的键盘快捷键，命令模式支持
+- ⌨️ **Helix 风格键位** - 符合直觉的键盘快捷键，命令模式支持
 - 🎯 **多项目支持** - 全局项目 + 本地项目（`.kanban/`）
 - 📝 **编辑器集成** - 支持外部编辑器 (Vim/Neovim/VSCode/Helix 等)
 - 🔍 **Markdown 预览** - 内置预览和外部预览工具支持
 
 ## 安装
 
-### Homebrew (macOS/Linux) - 推荐
-
-最简单的安装方式，自动下载预编译的二进制文件：
-
-```bash
-brew tap menzil/tap
-brew install helix-kanban
-```
-
-### 预编译二进制文件
-
-从 [GitHub Releases](https://github.com/menzil/helix-kanban/releases) 下载适合你系统的预编译版本：
-
-**macOS**:
-```bash
-# Apple Silicon (M1/M2/M3)
-curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-macos-aarch64.tar.gz | tar xz
-sudo mv hxk-macos-aarch64 /usr/local/bin/hxk
-
-# Intel
-curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-macos-x86_64.tar.gz | tar xz
-sudo mv hxk-macos-x86_64 /usr/local/bin/hxk
-```
-
-**Linux**:
-```bash
-# x86_64
-curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-linux-x86_64.tar.gz | tar xz
-sudo mv hxk-linux-x86_64 /usr/local/bin/hxk
-
-# ARM64
-curl -L https://github.com/menzil/helix-kanban/releases/latest/download/hxk-linux-aarch64.tar.gz | tar xz
-sudo mv hxk-linux-aarch64 /usr/local/bin/hxk
-```
-
-**Windows**:
-直接从 [Releases 页面](https://github.com/menzil/helix-kanban/releases/latest) 下载 `hxk-windows-x86_64.exe`
-
-### 从 crates.io 安装
-
-如果你已经安装了 Rust 工具链：
+如果你更习惯 Rust 工具链：
 
 ```bash
 cargo install helix-kanban --locked
 ```
 
-> 💡 **提示**：使用 `--locked` 参数可以确保使用项目指定的依赖版本，避免版本冲突。
-
-### 从源码构建
+如果你想从源码构建：
 
 ```bash
 git clone https://github.com/menzil/helix-kanban.git
@@ -88,17 +46,20 @@ hxk
 ### 配置管理
 
 查看当前配置：
+
 ```bash
 hxk config show
 ```
 
 设置编辑器：
+
 ```bash
 hxk config editor nvim
 hxk config editor "code --wait"
 ```
 
 设置 Markdown 预览器：
+
 ```bash
 hxk config viewer glow
 hxk config viewer "open -a Marked 2"
@@ -129,6 +90,7 @@ helix-kanban 内置了 MCP (Model Context Protocol) server，可以直接与 Cla
 ### 可用功能
 
 AI 可以通过 MCP 协议：
+
 - 📋 列出所有项目（带序号）
 - 📝 查看和创建任务
 - ✏️ 更新任务属性（标题、优先级、标签）
@@ -140,6 +102,7 @@ AI 可以通过 MCP 协议：
 ### 性能优势
 
 集成版本直接调用内部 API，比独立 MCP server 更快：
+
 - ⚡ 启动速度：~5ms
 - 💾 内存占用：~2MB
 - 🔧 零配置：随 hxk 一起安装
@@ -150,66 +113,66 @@ AI 可以通过 MCP 协议：
 
 ### 基础导航
 
-| 键位 | 功能 |
-|------|------|
-| `j` / `↓` | 下一个任务 |
-| `k` / `↑` | 上一个任务 |
-| `h` / `←` | 左边的列 |
-| `l` / `→` | 右边的列 |
-| `q` | 退出程序 |
-| `ESC` | 取消/返回 |
-| `:` | 命令模式 |
-| `?` | 显示帮助 |
-| `Space` | 打开命令菜单 |
+| 键位      | 功能         |
+| --------- | ------------ |
+| `j` / `↓` | 下一个任务   |
+| `k` / `↑` | 上一个任务   |
+| `h` / `←` | 左边的列     |
+| `l` / `→` | 右边的列     |
+| `q`       | 退出程序     |
+| `ESC`     | 取消/返回    |
+| `:`       | 命令模式     |
+| `?`       | 显示帮助     |
+| `Space`   | 打开命令菜单 |
 
 ### 任务操作
 
-| 键位 | 功能 |
-|------|------|
-| `a` | 创建新任务 |
-| `e` | 编辑任务标题 |
-| `E` | 用外部编辑器编辑任务 |
-| `v` | 预览任务（TUI 内） |
-| `V` | 用外部工具预览任务 |
-| `d` | 删除任务 |
-| `Y` | 复制任务到剪贴板 |
-| `H` | 任务移到左列 |
-| `L` | 任务移到右列 |
-| `J` | 任务在列内下移 |
-| `K` | 任务在列内上移 |
+| 键位 | 功能                 |
+| ---- | -------------------- |
+| `a`  | 创建新任务           |
+| `e`  | 编辑任务标题         |
+| `E`  | 用外部编辑器编辑任务 |
+| `v`  | 预览任务（TUI 内）   |
+| `V`  | 用外部工具预览任务   |
+| `d`  | 删除任务             |
+| `Y`  | 复制任务到剪贴板     |
+| `H`  | 任务移到左列         |
+| `L`  | 任务移到右列         |
+| `J`  | 任务在列内下移       |
+| `K`  | 任务在列内上移       |
 
 ### 项目管理
 
-| 键位 | 功能 |
-|------|------|
-| `n` | 新建本地项目 [L] |
-| `N` | 新建全局项目 [G] |
-| `Space f` | 快速切换项目 |
-| `Space p o` | 打开项目 |
-| `Space p n` | 创建新项目 |
-| `Space p d` | 删除项目 |
-| `Space p r` | 重命名项目 |
-| `Space r` | 重新加载当前项目 |
-| `Space R` | 重新加载所有项目 |
+| 键位        | 功能             |
+| ----------- | ---------------- |
+| `n`         | 新建本地项目 [L] |
+| `N`         | 新建全局项目 [G] |
+| `Space f`   | 快速切换项目     |
+| `Space p o` | 打开项目         |
+| `Space p n` | 创建新项目       |
+| `Space p d` | 删除项目         |
+| `Space p r` | 重命名项目       |
+| `Space r`   | 重新加载当前项目 |
+| `Space R`   | 重新加载所有项目 |
 
 ### 窗口管理
 
-| 键位 | 功能 |
-|------|------|
-| `Space w w` | 下一个窗口 |
-| `Space w v` | 垂直分屏 |
-| `Space w s` | 水平分屏 |
-| `Space w q` | 关闭窗口 |
+| 键位        | 功能            |
+| ----------- | --------------- |
+| `Space w w` | 下一个窗口      |
+| `Space w v` | 垂直分屏        |
+| `Space w s` | 水平分屏        |
+| `Space w q` | 关闭窗口        |
 | `Space w m` | 最大化/恢复窗口 |
-| `Space w h` | 聚焦左面板 |
-| `Space w l` | 聚焦右面板 |
-| `Space w j` | 聚焦下面板 |
-| `Space w k` | 聚焦上面板 |
+| `Space w h` | 聚焦左面板      |
+| `Space w l` | 聚焦右面板      |
+| `Space w j` | 聚焦下面板      |
+| `Space w k` | 聚焦上面板      |
 
 ### 状态管理
 
-| 键位 | 功能 |
-|------|------|
+| 键位        | 功能       |
+| ----------- | ---------- |
 | `Space s a` | 创建新状态 |
 | `Space s r` | 重命名状态 |
 | `Space s e` | 编辑显示名 |
@@ -217,7 +180,7 @@ AI 可以通过 MCP 协议：
 | `Space s l` | 右移状态列 |
 | `Space s H` | 移到最左侧 |
 | `Space s L` | 移到最右侧 |
-| `Space s d` | 删除状态 |
+| `Space s d` | 删除状态   |
 
 ### 命令模式
 
@@ -304,6 +267,7 @@ priority: high
 ```
 
 配置示例：
+
 ```toml
 editor = "nvim"
 markdown_viewer = "glow"
@@ -317,6 +281,7 @@ hidden_projects = ["old-project", "archived-project"]
 应用会自动保存窗口布局和工作状态，下次启动时恢复：
 
 **保存内容**：
+
 - 分屏结构（垂直/水平分割）
 - 每个面板打开的项目
 - 当前选中的列和任务
@@ -325,6 +290,7 @@ hidden_projects = ["old-project", "archived-project"]
 **保存位置**：`~/.kanban/state.json`
 
 **使用场景**：
+
 - 经常需要同时查看多个项目？设置好分屏布局后，下次启动自动恢复
 - 关闭应用后重新打开，无需重新配置窗口布局
 - `Space w m` 最大化窗口专注单个项目，需要时快速恢复多窗口视图
@@ -350,4 +316,3 @@ cargo build --release
 ## 许可证
 
 MIT OR Apache-2.0
-

@@ -244,10 +244,63 @@ fn handle_dialog_mode(app: &mut App, key: KeyEvent) -> bool {
 }
 
 fn handle_project_grid_mode(app: &mut App, key: KeyEvent) -> bool {
+    let selecting = match &app.dialog {
+        Some(DialogType::ProjectGrid { state, .. }) => state.selecting,
+        _ => return true,
+    };
+
+    if selecting {
+        return handle_project_grid_select_mode(app, key);
+    }
+
+    handle_project_grid_search_mode(app, key)
+}
+
+fn handle_project_grid_search_mode(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Esc => {
+            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+                state.selecting = true;
+            }
+        }
+        KeyCode::Enter => {
+            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+                let filtered_count = filter_project_grid_items(&state.items, &state.filter).len();
+                if filtered_count > 0 {
+                    state.selecting = true;
+                }
+            }
+        }
+        KeyCode::Backspace => {
+            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+                state.filter.pop();
+                state.selected = 0;
+            }
+        }
+        KeyCode::Char(c) => {
+            if (key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT)
+                && let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog
+            {
+                state.filter.push(c);
+                state.selected = 0;
+            }
+        }
+        _ => {}
+    }
+
+    true
+}
+
+fn handle_project_grid_select_mode(app: &mut App, key: KeyEvent) -> bool {
     match key.code {
         KeyCode::Esc => {
             app.dialog = None;
             app.mode = Mode::Normal;
+        }
+        KeyCode::Char('/') => {
+            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+                state.selecting = false;
+            }
         }
         KeyCode::Enter => {
             if let Some(item) = selected_project_grid_item_from_app(app) {
@@ -282,20 +335,6 @@ fn handle_project_grid_mode(app: &mut App, key: KeyEvent) -> bool {
         }
         KeyCode::Char('t') => {
             open_project_tags_input(app);
-        }
-        KeyCode::Backspace => {
-            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
-                state.filter.pop();
-                state.selected = 0;
-            }
-        }
-        KeyCode::Char(c) => {
-            if (key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT)
-                && let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog
-            {
-                state.filter.push(c);
-                state.selected = 0;
-            }
         }
         _ => {}
     }
