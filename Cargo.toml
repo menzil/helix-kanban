@@ -1,6 +1,6 @@
 [package]
 name = "helix-kanban"
-version = "0.2.26"
+version = "0.3.0"
 edition = "2024"
 authors = ["Ruzaji Yasin <menzil@live.cn>"]
 description = "A terminal-based kanban board with file-based storage, multi-project support, Helix-style keybindings, and built-in MCP server for AI integration"
@@ -47,5 +47,4 @@ arboard = { version = "3.4", default-features = false, optional = true }  # Clip
 
 [dev-dependencies]
 tempfile = "3.14"
-
 
