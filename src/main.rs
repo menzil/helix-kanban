@@ -247,16 +247,19 @@ where
             resume_terminal(terminal)?;
         }
 
-        if event::poll(std::time::Duration::from_millis(100))?
-            && let Event::Key(key) = event::read()?
-            && !app.handle_key(key)
-        {
-            // 退出前保存状态
-            let state = state::extract_state(app);
-            if let Err(e) = state::save_state(&state) {
-                eprintln!("保存状态失败: {}", e);
+        if event::poll(std::time::Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()?
+                && !app.handle_key(key)
+            {
+                // 退出前保存状态
+                let state = state::extract_state(app);
+                if let Err(e) = state::save_state(&state) {
+                    eprintln!("保存状态失败: {}", e);
+                }
+                return Ok(()); // 退出应用
             }
-            return Ok(()); // 退出应用
+        } else {
+            input::flush_pending_key_sequence(app);
         }
     }
 }

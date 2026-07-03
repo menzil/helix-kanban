@@ -63,15 +63,7 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
 
     // 获取当前项目的列宽配置
     let constraints: Vec<Constraint> =
-        if let Some(widths) = app.config.column_widths.get(&project.name) {
-            // 使用配置的宽度（确保列数匹配）
-            if widths.len() == num_columns {
-                widths.iter().map(|&w| Constraint::Percentage(w)).collect()
-            } else {
-                // 列数不匹配，使用默认等宽
-                vec![Constraint::Fill(1); num_columns]
-            }
-        } else if let Some(Some(max_col)) = app.config.maximized_column.get(&project.name) {
+        if let Some(Some(max_col)) = app.config.maximized_column.get(&project.name) {
             // 最大化模式：一列占 90%，其他列平分 10%
             (0..num_columns)
                 .map(|i| {
@@ -87,6 +79,14 @@ pub fn render(f: &mut Frame, area: Rect, project: &Project, is_focused: bool, ap
                     }
                 })
                 .collect()
+        } else if let Some(widths) = app.config.column_widths.get(&project.name) {
+            // 使用配置的宽度（确保列数匹配）
+            if widths.len() == num_columns {
+                widths.iter().map(|&w| Constraint::Percentage(w)).collect()
+            } else {
+                // 列数不匹配，使用默认等宽
+                vec![Constraint::Fill(1); num_columns]
+            }
         } else {
             // 默认等宽
             vec![Constraint::Fill(1); num_columns]
@@ -234,15 +234,15 @@ fn render_column(
         .unwrap_or(false);
 
     let title_with_count = if show_percentage {
-        if let Some(widths) = app.config.column_widths.get(&project.name) {
-            if column_idx < widths.len() {
-                format!(" {} ({}) [{}%] ", title, tasks.len(), widths[column_idx])
+        if let Some(Some(max_col)) = app.config.maximized_column.get(&project.name) {
+            if column_idx == *max_col {
+                format!(" {} ({}) [MAX] ", title, tasks.len())
             } else {
                 format!(" {} ({}) ", title, tasks.len())
             }
-        } else if let Some(Some(max_col)) = app.config.maximized_column.get(&project.name) {
-            if column_idx == *max_col {
-                format!(" {} ({}) [MAX] ", title, tasks.len())
+        } else if let Some(widths) = app.config.column_widths.get(&project.name) {
+            if column_idx < widths.len() {
+                format!(" {} ({}) [{}%] ", title, tasks.len(), widths[column_idx])
             } else {
                 format!(" {} ({}) ", title, tasks.len())
             }

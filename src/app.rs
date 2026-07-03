@@ -101,6 +101,8 @@ pub struct App {
     pub mode: Mode,
     /// 按键缓冲区（用于键序列匹配）
     pub key_buffer: Vec<char>,
+    /// 按键缓冲区开始等待的时间（用于区分单键和多键序列）
+    pub key_buffer_started_at: Option<std::time::Instant>,
     /// 每个面板选中的任务索引
     pub selected_task_index: HashMap<usize, usize>,
     /// 每个面板选中的列 (0=todo, 1=doing, 2=done)
@@ -198,6 +200,7 @@ impl App {
             focused_pane: 0,
             mode: Mode::Normal,
             key_buffer: Vec::new(),
+            key_buffer_started_at: None,
             selected_task_index: HashMap::new(),
             selected_column: HashMap::new(),
             command_input: String::new(),
@@ -561,6 +564,7 @@ mod tests {
             focused_pane: 0,
             mode: Mode::Normal,
             key_buffer: Vec::new(),
+            key_buffer_started_at: None,
             selected_task_index: HashMap::new(),
             selected_column: HashMap::new(),
             command_input: String::new(),

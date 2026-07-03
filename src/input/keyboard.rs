@@ -6,6 +6,9 @@ use crate::ui::dialogs::{
     project_grid_state_from_projects, reordered_project_grid_state, update_project_grid_item_tags,
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::time::{Duration, Instant};
+
+const KEY_SEQUENCE_TIMEOUT: Duration = Duration::from_millis(350);
 
 /// 处理键盘输入
 /// 返回 false 表示应该退出应用
@@ -34,14 +37,14 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
     // 特殊处理帮助键
     if let KeyCode::Char('?') = key.code {
         app.mode = Mode::Help;
-        app.key_buffer.clear();
+        clear_key_buffer(app);
         return true;
     }
 
     // 特殊处理空格键 - 显示命令菜单
     if let KeyCode::Char(' ') = key.code {
         // 空格键总是清空缓冲区并显示菜单
-        app.key_buffer.clear();
+        clear_key_buffer(app);
         app.mode = Mode::SpaceMenu;
         app.menu_state = Some(crate::app::MenuState::Main);
         app.menu_selected_index = Some(0); // 初始化选中第一项
@@ -50,7 +53,7 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
 
     // 尝试匹配命令（使用当前缓冲区和新按键）
     if let Some(cmd) = match_key_sequence(&app.key_buffer, key) {
-        app.key_buffer.clear();
+        clear_key_buffer(app);
 
         // 特殊处理退出命令
         if cmd == Command::Quit {
@@ -61,11 +64,64 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
-    // 如果没有匹配到命令，清空缓冲区
-    // 因为现在所有多键序列都通过 SpaceMenu 处理，不需要缓冲未匹配的按键
-    app.key_buffer.clear();
+    if is_pending_key_sequence(&app.key_buffer, key) {
+        if let KeyCode::Char(c) = key.code {
+            app.key_buffer.push(c);
+            app.key_buffer_started_at = Some(Instant::now());
+        }
+        return true;
+    }
+
+    if flush_pending_key_sequence_now(app) {
+        return handle_normal_mode(app, key);
+    }
+
+    clear_key_buffer(app);
 
     true
+}
+
+fn clear_key_buffer(app: &mut App) {
+    app.key_buffer.clear();
+    app.key_buffer_started_at = None;
+}
+
+fn is_pending_key_sequence(buffer: &[char], key: KeyEvent) -> bool {
+    matches!(
+        (buffer, key.code, key.modifiers),
+        ([], KeyCode::Char('m'), KeyModifiers::NONE)
+    )
+}
+
+fn pending_key_sequence_command(buffer: &[char]) -> Option<Command> {
+    match buffer {
+        ['m'] => Some(Command::ToggleMaximizeColumn),
+        _ => None,
+    }
+}
+
+fn flush_pending_key_sequence_now(app: &mut App) -> bool {
+    let cmd = pending_key_sequence_command(&app.key_buffer);
+    clear_key_buffer(app);
+
+    if let Some(cmd) = cmd {
+        execute_command(app, cmd);
+        return true;
+    }
+
+    false
+}
+
+pub fn flush_pending_key_sequence(app: &mut App) -> bool {
+    let should_flush = app
+        .key_buffer_started_at
+        .is_some_and(|started_at| started_at.elapsed() >= KEY_SEQUENCE_TIMEOUT);
+
+    if !should_flush {
+        return false;
+    }
+
+    flush_pending_key_sequence_now(app)
 }
 
 // /// 处理命令模式的按键 - 已注释
@@ -889,7 +945,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('+'), KeyModifiers::NONE) => Some(Command::IncreaseColumnWidth),
         ([], KeyCode::Char('-'), KeyModifiers::NONE) => Some(Command::DecreaseColumnWidth),
         ([], KeyCode::Char('='), KeyModifiers::NONE) => Some(Command::ResetColumnWidths),
-        ([], KeyCode::Char('m'), KeyModifiers::NONE) => Some(Command::ToggleMaximizeColumn),
+        (['m'], KeyCode::Char('m'), KeyModifiers::NONE) => Some(Command::ToggleMaximizeColumn),
 
         // 状态列移动 (Ctrl+h/l/H/L)
         ([], KeyCode::Char('h'), KeyModifiers::CONTROL) => Some(Command::MoveStatusLeft),
@@ -3448,6 +3504,7 @@ fn toggle_maximize_column(app: &mut App) {
     } else {
         // 最大化当前列
         log_debug(format!("最大化列 {}", column));
+        app.config.column_widths.remove(&project_name);
         app.config
             .maximized_column
             .insert(project_name.clone(), Some(column));
@@ -3698,5 +3755,31 @@ fn execute_selected_menu_command(app: &mut App, index: usize) {
             }
         }
         None => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
+        KeyEvent::new(code, modifiers)
+    }
+
+    #[test]
+    fn first_m_waits_for_second_key() {
+        assert_eq!(
+            match_key_sequence(&[], key(KeyCode::Char('m'), KeyModifiers::NONE)),
+            None
+        );
+    }
+
+    #[test]
+    fn mm_toggles_column_maximize() {
+        assert_eq!(
+            match_key_sequence(&['m'], key(KeyCode::Char('m'), KeyModifiers::NONE)),
+            Some(Command::ToggleMaximizeColumn)
+        );
     }
 }
