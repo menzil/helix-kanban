@@ -1195,8 +1195,8 @@ fn execute_command(app: &mut App, cmd: Command) {
                 textarea: Box::new(crate::ui::text_input::HelixTextArea::new(
                     String::new(),
                     true,
-                    true,
-                )), // 默认 Normal 模式
+                    false,
+                )), // 默认 Insert 模式
             });
         }
         Command::NewTaskInEditor => {
@@ -2200,29 +2200,30 @@ fn move_task_to_status(app: &mut App, direction: i32) {
         return;
     };
 
-    // 找到任务并修改
-    if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
+    let moved = if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
         && let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id)
     {
-        let old_status = task.status.clone();
-        task.status = new_status.clone();
-
         // 移动文件到新的状态目录（使用项目的实际路径）
         let project_path = project.path.clone();
 
         match crate::fs::move_task(&project_path, task, &new_status) {
-            Ok(new_path) => {
-                // 更新任务的文件路径
-                task.file_path = new_path;
+            Ok(_) => {
                 // 更新界面：移动到新列
                 app.selected_column.insert(app.focused_pane, new_column);
                 app.selected_task_index.insert(app.focused_pane, 0);
+                true
             }
             Err(e) => {
                 log_debug(format!("移动任务文件失败: {}", e));
-                task.status = old_status; // 回滚
+                false
             }
         }
+    } else {
+        false
+    };
+
+    if moved {
+        let _ = app.reload_current_project();
     }
 }
 

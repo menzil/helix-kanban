@@ -555,7 +555,6 @@ fn task_move(project_name: &str, task_id: u32, new_status: &str) -> Result<(), S
         .ok_or_else(|| format!("Task {} not found", task_id))?;
 
     let old_status = task.status.clone();
-    task.status = new_status.to_string();
 
     // Move file and update task
     let new_path = fs::move_task(&project_path, task, new_status)?;

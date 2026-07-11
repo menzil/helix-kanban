@@ -377,7 +377,6 @@ fn handle_tool_call(name: &str, arguments: &Value) -> Result<Value, String> {
                 .ok_or_else(|| format!("Task {} not found", task_id))?;
 
             let old_status = task.status.clone();
-            task.status = new_status.to_string();
 
             let new_path = fs::move_task(&project_path, task, new_status)?;
             task.file_path = new_path;

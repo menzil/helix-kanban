@@ -304,30 +304,71 @@ fn save_task_frontmatter_format(project_path: &Path, task: &Task) -> Result<Path
 }
 
 /// Move a task to a different status
-pub fn move_task(project_path: &Path, task: &Task, new_status: &str) -> Result<PathBuf, String> {
-    let old_path = &task.file_path;
+pub fn move_task(
+    project_path: &Path,
+    task: &mut Task,
+    new_status: &str,
+) -> Result<PathBuf, String> {
+    let old_status = task.status.clone();
+    let old_order = task.order;
+    let old_file_path = task.file_path.clone();
     let new_dir = project_path.join(new_status);
 
     if !new_dir.exists() {
         fs::create_dir_all(&new_dir).map_err(|e| e.to_string())?;
     }
 
-    let filename = old_path
-        .file_name()
-        .ok_or_else(|| "Invalid file path".to_string())?;
-    let new_path = new_dir.join(filename);
-
-    // 移动文件
-    fs::rename(old_path, &new_path).map_err(|e| e.to_string())?;
-
-    // 如果使用 metadata-separated 格式（tasks.toml），迁移为 frontmatter 格式
-    let tasks_toml = project_path.join("tasks.toml");
-    if tasks_toml.exists() {
+    if project_path.join("tasks.toml").exists() {
         migrate_metadata_to_frontmatter(project_path)?;
     }
-    // frontmatter 格式不需要额外操作，status 从目录名推断
 
-    Ok(new_path)
+    let new_order = get_top_order_in_status(project_path, new_status, task.id)?;
+    task.status = new_status.to_string();
+    task.order = new_order;
+
+    match save_task(project_path, task) {
+        Ok(new_path) => {
+            task.file_path = new_path.clone();
+            Ok(new_path)
+        }
+        Err(e) => {
+            task.status = old_status;
+            task.order = old_order;
+            task.file_path = old_file_path;
+            Err(format!(
+                "Failed to move task {} to status '{}': {}",
+                task.id, new_status, e
+            ))
+        }
+    }
+}
+
+fn get_top_order_in_status(
+    project_path: &Path,
+    status: &str,
+    moving_task_id: u32,
+) -> Result<i32, String> {
+    let status_dir = project_path.join(status);
+    if !status_dir.exists() {
+        return Ok(0);
+    }
+
+    let tasks = load_tasks_from_dir(&status_dir, status)?;
+    let min_order = tasks
+        .iter()
+        .filter(|task| task.id != moving_task_id)
+        .map(|task| task.order)
+        .min();
+
+    match min_order {
+        Some(order) => order.checked_sub(1000).ok_or_else(|| {
+            format!(
+                "Cannot move task {} to top of status '{}' because minimum order {} would underflow",
+                moving_task_id, status, order
+            )
+        }),
+        None => Ok(0),
+    }
 }
 
 /// Delete a task (removes file and metadata if using metadata-separated format)
@@ -808,10 +849,10 @@ Content.
 "#;
         fs::write(project_path.join("todo/1.md"), task_content).unwrap();
 
-        let task = load_task(&project_path.join("todo/1.md"), "todo").unwrap();
+        let mut task = load_task(&project_path.join("todo/1.md"), "todo").unwrap();
 
         // 移动任务
-        let result = move_task(project_path, &task, "doing");
+        let result = move_task(project_path, &mut task, "doing");
         assert!(result.is_ok());
 
         // 验证文件已移动
@@ -841,10 +882,10 @@ Content.
         // 重新加载任务以获取正确的 file_path
         // 注意：load_tasks_from_dir 会触发自动迁移到 frontmatter 格式
         let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
-        let task = &tasks[0];
+        let mut task = tasks[0].clone();
 
         // 移动任务
-        let result = move_task(project_path, task, "done");
+        let result = move_task(project_path, &mut task, "done");
         assert!(result.is_ok());
 
         // 验证文件已移动
@@ -1152,11 +1193,11 @@ Another task.
         // 重新加载任务
         let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
         assert!(!tasks.is_empty());
-        let task = &tasks[0];
+        let mut task = tasks[0].clone();
         let original_id = task.id;
 
         // 移动任务到 done 状态
-        move_task(project_path, task, "done").unwrap();
+        move_task(project_path, &mut task, "done").unwrap();
 
         // 验证文件已移动
         assert!(
@@ -1175,6 +1216,34 @@ Another task.
         // 验证任务仍然是 frontmatter 格式
         let content = fs::read_to_string(project_path.join("done/1.md")).unwrap();
         assert!(content.starts_with("+++"));
+    }
+
+    #[test]
+    fn test_move_task_inserts_at_top_of_target_status() {
+        let temp_dir = setup_legacy_project();
+        let project_path = temp_dir.path();
+
+        let mut first_done = Task::new(1, "First Done".to_string(), "done".to_string());
+        first_done.order = 1000;
+        save_task(project_path, &first_done).unwrap();
+
+        let mut second_done = Task::new(2, "Second Done".to_string(), "done".to_string());
+        second_done.order = 2000;
+        save_task(project_path, &second_done).unwrap();
+
+        let mut todo = Task::new(3, "Move Me".to_string(), "todo".to_string());
+        todo.order = 3000;
+        save_task(project_path, &todo).unwrap();
+
+        let tasks = load_tasks_from_dir(&project_path.join("todo"), "todo").unwrap();
+        let mut moving_task = tasks[0].clone();
+        move_task(project_path, &mut moving_task, "done").unwrap();
+
+        let done_tasks = load_tasks_from_dir(&project_path.join("done"), "done").unwrap();
+        assert_eq!(done_tasks[0].id, 3);
+        assert_eq!(done_tasks[0].order, 0);
+        assert_eq!(done_tasks[1].id, 1);
+        assert_eq!(done_tasks[2].id, 2);
     }
 
     #[test]
