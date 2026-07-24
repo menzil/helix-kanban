@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-07-24
+
+### Added
+- Add task marking with `x` for explicit multi-task selection.
+- Add batch status movement through `s` -> status number -> `Enter`.
+- Add mark management mode with `X` and current-column select, clear, and invert actions.
+
+### Changed
+- Block `Shift+H/L` single-task movement while tasks are marked, directing users to the batch flow.
+- Use `Esc` in normal mode to clear the current project's marks; `Esc` in status selection preserves marks.
+- Unify direct and adjacent task movement through the filesystem move operation.
+
 ## [0.2.26] - 2026-06-03
 
 ### Fixed

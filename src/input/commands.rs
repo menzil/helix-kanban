@@ -38,6 +38,8 @@ pub enum Command {
     TaskUp,
     /// 选择下一个任务
     TaskDown,
+    /// 标记或取消标记当前任务
+    ToggleTaskMark,
     /// 切换到左边的列
     ColumnLeft,
     /// 切换到右边的列
@@ -118,8 +120,10 @@ pub enum Command {
     SearchNext,
     /// 搜索模式：上一个匹配
     SearchPrev,
-    /// 进入状态选择模式 (z 快捷)
+    /// 进入状态选择模式 (s 快捷)
     EnterStatusSelect,
+    /// 进入标记管理模式 (X 快捷)
+    EnterMarkSelect,
 
     // ===== 模式切换 =====
     // /// 进入命令模式 - 已注释

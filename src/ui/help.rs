@@ -160,6 +160,38 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("          任务移到右列"),
         ]),
         Line::from(vec![
+            Span::styled("Shift+H/L", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("    无标记时移动当前任务"),
+        ]),
+        Line::from(vec![
+            Span::styled("s", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          选择目标状态"),
+        ]),
+        Line::from(vec![
+            Span::styled("x", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          标记/取消标记任务"),
+        ]),
+        Line::from(vec![
+            Span::styled("X", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          标记管理模式"),
+        ]),
+        Line::from(vec![
+            Span::styled("Esc", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("        清除标记/退出模式"),
+        ]),
+        Line::from(vec![
+            Span::styled("1-9", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("        选择状态"),
+        ]),
+        Line::from(vec![
+            Span::styled("Enter", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("      确认移动"),
+        ]),
+        Line::from(vec![
+            Span::styled("Esc", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("        取消"),
+        ]),
+        Line::from(vec![
             Span::styled("J", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("          任务在列内下移"),
         ]),

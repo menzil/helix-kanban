@@ -274,25 +274,34 @@ fn render_status_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mu
         Span::styled("  ", Style::default().bg(bg_color)),
     ];
 
-    // 添加匹配的状态列表
-    for (i, (_, display)) in state.matches.iter().enumerate() {
-        if i < 5 {
-            // 最多显示 5 个
-            let is_selected = i == state.selected;
-            spans.push(Span::styled(
-                format!(" [{}] {} ", i + 1, display),
-                if is_selected {
-                    Style::default().fg(Color::Black).bg(accent_color)
-                } else {
-                    Style::default().fg(Color::Rgb(129, 161, 193)).bg(bg_color)
-                },
-            ));
-        }
+    // 最多显示 5 个状态，并确保当前高亮项始终可见
+    let visible_count = state.matches.len().min(5);
+    let visible_start = state
+        .selected
+        .saturating_sub(visible_count.saturating_sub(1))
+        .min(state.matches.len().saturating_sub(visible_count));
+    let visible_end = visible_start + visible_count;
+    for (i, (_, display)) in state
+        .matches
+        .iter()
+        .enumerate()
+        .take(visible_end)
+        .skip(visible_start)
+    {
+        let is_selected = i == state.selected;
+        spans.push(Span::styled(
+            format!(" [{}] {} ", i + 1, display),
+            if is_selected {
+                Style::default().fg(Color::Black).bg(accent_color)
+            } else {
+                Style::default().fg(Color::Rgb(129, 161, 193)).bg(bg_color)
+            },
+        ));
     }
 
-    if state.matches.len() > 5 {
+    if visible_end < state.matches.len() {
         spans.push(Span::styled(
-            format!(" +{} more", state.matches.len() - 5),
+            format!(" +{} more", state.matches.len() - visible_end),
             Style::default().fg(Color::Gray).bg(bg_color),
         ));
     }
@@ -303,7 +312,7 @@ fn render_status_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mu
     ));
 
     spans.push(Span::styled(
-        "  h/l:nav enter:go esc:quit",
+        "  1-9: 选择状态  Enter: 确认移动  Esc: 取消",
         Style::default().fg(accent_color).bg(bg_color),
     ));
 

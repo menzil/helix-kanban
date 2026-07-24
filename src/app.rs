@@ -3,7 +3,7 @@ use crate::models::{Project, ProjectType};
 use crate::ui::dialogs::DialogType;
 use crate::ui::layout::{Direction, SplitNode};
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 /// 调试日志辅助函数
@@ -70,8 +70,10 @@ pub enum Mode {
     Preview,
     /// 搜索模式 - 搜索任务
     Search,
-    /// 状态选择模式 - z 快捷
+    /// 状态选择模式 - s 快捷
     StatusSelect,
+    /// 标记管理模式 - X 快捷
+    MarkSelect,
 }
 
 /// 空格菜单状态
@@ -105,6 +107,8 @@ pub struct App {
     pub key_buffer_started_at: Option<std::time::Instant>,
     /// 每个面板选中的任务索引
     pub selected_task_index: HashMap<usize, usize>,
+    /// 已标记的任务（项目名、任务 ID）
+    pub marked_tasks: HashSet<(String, u32)>,
     /// 每个面板选中的列 (0=todo, 1=doing, 2=done)
     pub selected_column: HashMap<usize, usize>,
     /// 命令输入缓冲
@@ -149,7 +153,7 @@ pub struct App {
     pub list_states: HashMap<usize, ratatui::widgets::ListState>,
     /// 搜索状态
     pub search_state: Option<SearchState>,
-    /// 状态选择状态 (z 快捷)
+    /// 状态选择状态 (s 快捷)
     pub status_select_state: Option<StatusSelectState>,
 }
 
@@ -166,7 +170,7 @@ pub struct SearchState {
     pub selecting: bool,
 }
 
-/// 状态选择状态 (z 快捷)
+/// 状态选择状态 (s 快捷)
 #[derive(Debug, Clone)]
 pub struct StatusSelectState {
     /// 输入的字符（用于匹配状态名）
@@ -202,6 +206,7 @@ impl App {
             key_buffer: Vec::new(),
             key_buffer_started_at: None,
             selected_task_index: HashMap::new(),
+            marked_tasks: HashSet::new(),
             selected_column: HashMap::new(),
             command_input: String::new(),
             completion_selected_index: None,
@@ -566,6 +571,7 @@ mod tests {
             key_buffer: Vec::new(),
             key_buffer_started_at: None,
             selected_task_index: HashMap::new(),
+            marked_tasks: HashSet::new(),
             selected_column: HashMap::new(),
             command_input: String::new(),
             completion_selected_index: None,

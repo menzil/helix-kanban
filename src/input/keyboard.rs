@@ -29,6 +29,7 @@ pub fn handle_key_input(app: &mut App, key: KeyEvent) -> bool {
         Mode::Preview => handle_preview_mode(app, key),
         Mode::Search => handle_search_mode(app, key),
         Mode::StatusSelect => handle_status_select_mode(app, key),
+        Mode::MarkSelect => handle_mark_select_mode(app, key),
     }
 }
 
@@ -48,6 +49,10 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
         app.mode = Mode::SpaceMenu;
         app.menu_state = Some(crate::app::MenuState::Main);
         app.menu_selected_index = Some(0); // 初始化选中第一项
+        return true;
+    }
+
+    if key.code == KeyCode::Esc && clear_focused_project_marks(app) {
         return true;
     }
 
@@ -918,6 +923,8 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         // 注意：移除了 'q' 键退出，改用 ':q' 命令或 Space q
         ([], KeyCode::Char('j'), KeyModifiers::NONE) => Some(Command::TaskDown),
         ([], KeyCode::Char('k'), KeyModifiers::NONE) => Some(Command::TaskUp),
+        ([], KeyCode::Char('x'), KeyModifiers::NONE) => Some(Command::ToggleTaskMark),
+        ([], KeyCode::Char('X'), KeyModifiers::SHIFT) => Some(Command::EnterMarkSelect),
         ([], KeyCode::Char('h'), KeyModifiers::NONE) => Some(Command::ColumnLeft),
         ([], KeyCode::Char('l'), KeyModifiers::NONE) => Some(Command::ColumnRight),
         ([], KeyCode::Char('H'), KeyModifiers::SHIFT) => Some(Command::MoveTaskLeft),
@@ -1038,6 +1045,12 @@ fn execute_command(app: &mut App, cmd: Command) {
                     *idx = (*idx + 1).min(task_count - 1);
                 }
             }
+        }
+        Command::ToggleTaskMark => {
+            toggle_selected_task_mark(app);
+        }
+        Command::EnterMarkSelect => {
+            app.mode = Mode::MarkSelect;
         }
         Command::TaskUp => {
             let idx = app.selected_task_index.entry(app.focused_pane).or_insert(0);
@@ -1277,10 +1290,10 @@ fn execute_command(app: &mut App, cmd: Command) {
             }
         }
         Command::MoveTaskLeft => {
-            move_task_to_status(app, -1);
+            move_task_to_status_if_unmarked(app, -1);
         }
         Command::MoveTaskRight => {
-            move_task_to_status(app, 1);
+            move_task_to_status_if_unmarked(app, 1);
         }
         Command::MoveTaskUp => {
             move_task_in_column(app, -1);
@@ -2162,6 +2175,24 @@ fn get_selected_task_id(app: &App) -> Option<u32> {
 }
 
 /// 移动任务到相邻状态
+fn move_task_to_status_if_unmarked(app: &mut App, direction: i32) {
+    if let Some(project_name) = get_focused_project_name(app)
+        && app
+            .marked_tasks
+            .iter()
+            .any(|(name, _)| name == &project_name)
+    {
+        app.show_notification(
+            "已有标记任务，请使用 s 选择目标状态后按 Enter 批量移动".to_string(),
+            NotificationLevel::Warning,
+        );
+        return;
+    }
+
+    move_task_to_status(app, direction);
+}
+
+/// 移动任务到相邻状态
 fn move_task_to_status(app: &mut App, direction: i32) {
     let column = app
         .selected_column
@@ -2175,56 +2206,13 @@ fn move_task_to_status(app: &mut App, direction: i32) {
         return; // 已经在边界
     }
 
-    // 获取任务 ID
-    let task_id = if let Some(id) = get_selected_task_id(app) {
-        id
-    } else {
-        return;
-    };
-
-    // 获取项目名称和路径
-    let project_name = if let Some(crate::ui::layout::SplitNode::Leaf {
-        project_id: Some(name),
-        ..
-    }) = app.split_tree.find_pane(app.focused_pane)
-    {
-        name.clone()
-    } else {
-        return;
-    };
-
-    // 获取新状态名称
     let new_status = if let Some(status) = app.get_status_name_by_column(new_column) {
         status
     } else {
         return;
     };
 
-    let moved = if let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name)
-        && let Some(task) = project.tasks.iter_mut().find(|t| t.id == task_id)
-    {
-        // 移动文件到新的状态目录（使用项目的实际路径）
-        let project_path = project.path.clone();
-
-        match crate::fs::move_task(&project_path, task, &new_status) {
-            Ok(_) => {
-                // 更新界面：移动到新列
-                app.selected_column.insert(app.focused_pane, new_column);
-                app.selected_task_index.insert(app.focused_pane, 0);
-                true
-            }
-            Err(e) => {
-                log_debug(format!("移动任务文件失败: {}", e));
-                false
-            }
-        }
-    } else {
-        false
-    };
-
-    if moved {
-        let _ = app.reload_current_project();
-    }
+    move_selected_task_to_status(app, new_column, &new_status);
 }
 
 /// 在列内上下移动任务
@@ -3166,13 +3154,10 @@ fn update_status_matches(app: &mut App) {
 
 /// 处理状态选择模式的按键
 fn handle_status_select_mode(app: &mut App, key: KeyEvent) -> bool {
-    let state = match &mut app.status_select_state {
-        Some(s) => s,
-        None => {
-            app.mode = Mode::Normal;
-            return true;
-        }
-    };
+    if app.status_select_state.is_none() {
+        app.mode = Mode::Normal;
+        return true;
+    }
 
     match key.code {
         KeyCode::Esc => {
@@ -3182,94 +3167,381 @@ fn handle_status_select_mode(app: &mut App, key: KeyEvent) -> bool {
         }
         KeyCode::Enter => {
             // 确认移动任务到选中的状态
-            if state.matches.is_empty() {
+            let target_status = app.status_select_state.as_ref().and_then(|state| {
+                state
+                    .matches
+                    .get(state.selected)
+                    .map(|(name, _)| name.clone())
+            });
+            let Some(target_status) = target_status else {
                 app.mode = Mode::Normal;
                 app.status_select_state = None;
                 return true;
-            }
-            let target_status = state.matches[state.selected].0.clone();
+            };
             app.mode = Mode::Normal;
             app.status_select_state = None;
             // 执行任务移动
-            move_task_to_status_by_name(app, &target_status);
+            let target_column = app.get_focused_project().and_then(|project| {
+                project
+                    .statuses
+                    .iter()
+                    .position(|status| status.name == target_status)
+            });
+            let Some(target_column) = target_column else {
+                app.show_notification(
+                    format!("无法移动任务：找不到目标状态 '{}'", target_status),
+                    NotificationLevel::Error,
+                );
+                return true;
+            };
+            move_marked_tasks_to_status(app, target_column, &target_status);
         }
-        KeyCode::Char('l') | KeyCode::Right if !state.matches.is_empty() => {
+        KeyCode::Char(number) if number.is_ascii_digit() => {
+            let result = app
+                .status_select_state
+                .as_mut()
+                .map(|state| select_status_by_number(state, number));
+            if let Some(Err(message)) = result {
+                app.show_notification(message, NotificationLevel::Warning);
+            }
+        }
+        KeyCode::Char('l') | KeyCode::Right
+            if app
+                .status_select_state
+                .as_ref()
+                .is_some_and(|state| !state.matches.is_empty()) =>
+        {
             // 右：下一个匹配
-            state.selected = (state.selected + 1) % state.matches.len();
+            if let Some(state) = &mut app.status_select_state {
+                state.selected = (state.selected + 1) % state.matches.len();
+            }
         }
-        KeyCode::Char('h') | KeyCode::Left if !state.matches.is_empty() => {
+        KeyCode::Char('h') | KeyCode::Left
+            if app
+                .status_select_state
+                .as_ref()
+                .is_some_and(|state| !state.matches.is_empty()) =>
+        {
             // 左：上一个匹配
-            state.selected = state.selected.saturating_sub(1);
+            if let Some(state) = &mut app.status_select_state {
+                state.selected = state.selected.saturating_sub(1);
+            }
         }
         _ => {}
     }
     true
 }
 
+fn select_status_by_number(state: &mut StatusSelectState, number: char) -> Result<(), String> {
+    let selected = number
+        .to_digit(10)
+        .ok_or_else(|| format!("状态编号必须是 1-9，收到 '{}'", number))?
+        as usize;
+
+    if selected == 0 || selected > 9 || selected > state.matches.len() {
+        return Err(format!(
+            "状态编号 {} 无效：当前只有 {} 个状态",
+            selected,
+            state.matches.len()
+        ));
+    }
+
+    state.selected = selected - 1;
+    Ok(())
+}
+
 /// 将当前选中的任务移动到指定状态（按状态名）
 fn move_task_to_status_by_name(app: &mut App, target_status: &str) {
-    let pane = app.focused_pane;
-    let column_idx = *app.selected_column.get(&pane).unwrap_or(&0);
-    let task_idx = *app.selected_task_index.get(&pane).unwrap_or(&0);
-
-    // 获取当前状态名
-    let current_status = match app.get_status_name_by_column(column_idx) {
-        Some(s) => s.clone(),
-        None => return,
-    };
-
-    // 已经是目标状态
-    if current_status == target_status {
+    let target_column = app.get_focused_project().and_then(|project| {
+        project
+            .statuses
+            .iter()
+            .position(|status| status.name == target_status)
+    });
+    let Some(target_column) = target_column else {
+        app.show_notification(
+            format!("无法移动任务：找不到目标状态 '{}'", target_status),
+            NotificationLevel::Error,
+        );
         return;
-    }
-
-    // 获取任务全局索引
-    let project = match app.get_focused_project() {
-        Some(p) => p,
-        None => return,
     };
 
-    let tasks_in_column: Vec<usize> = project
-        .tasks
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| t.status == current_status)
-        .map(|(idx, _)| idx)
-        .collect();
+    move_selected_task_to_status(app, target_column, target_status);
+}
 
-    if task_idx >= tasks_in_column.len() {
+fn toggle_selected_task_mark(app: &mut App) {
+    let Some(task_id) = get_selected_task_id(app) else {
+        app.show_notification(
+            "当前没有可标记的任务".to_string(),
+            NotificationLevel::Warning,
+        );
         return;
-    }
-
-    let task_global_idx = tasks_in_column[task_idx];
-
-    // 重新获取可变引用来修改任务
-    let project_path = {
-        let project = match app.get_focused_project() {
-            Some(p) => p,
-            None => return,
-        };
-        project.path.clone()
     };
-
-    if let Some(task) = app
-        .get_focused_project_mut()
-        .and_then(|p| p.tasks.get_mut(task_global_idx))
-    {
-        task.status = target_status.to_string();
-        if let Err(e) = crate::fs::task::save_task(&project_path, task) {
-            app.notification = Some(crate::app::Notification {
-                message: format!("保存失败: {}", e),
-                level: crate::app::NotificationLevel::Error,
-                created_at: std::time::Instant::now(),
-            });
+    let Some(project_name) = get_focused_project_name(app) else {
+        app.show_notification(
+            "当前面板没有打开项目".to_string(),
+            NotificationLevel::Warning,
+        );
+        return;
+    };
+    let key = (project_name, task_id);
+    let marked = if app.marked_tasks.remove(&key) {
+        false
+    } else {
+        app.marked_tasks.insert(key);
+        true
+    };
+    app.show_notification(
+        if marked {
+            format!("已标记任务 {}", task_id)
         } else {
-            app.notification = Some(crate::app::Notification {
-                message: format!("已移动到 {}", target_status),
-                level: crate::app::NotificationLevel::Success,
-                created_at: std::time::Instant::now(),
-            });
+            format!("已取消标记任务 {}", task_id)
+        },
+        NotificationLevel::Info,
+    );
+}
+
+fn clear_focused_project_marks(app: &mut App) -> bool {
+    let Some(project_name) = get_focused_project_name(app) else {
+        return false;
+    };
+    let before = app.marked_tasks.len();
+    app.marked_tasks.retain(|(name, _)| name != &project_name);
+    let cleared = before != app.marked_tasks.len();
+    if cleared {
+        app.show_notification(
+            "已清除当前项目的全部任务标记".to_string(),
+            NotificationLevel::Info,
+        );
+    }
+    cleared
+}
+
+fn handle_mark_select_mode(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Esc => {
+            app.mode = Mode::Normal;
         }
+        KeyCode::Char('a') => update_focused_column_marks(app, MarkOperation::SelectAll),
+        KeyCode::Char('n') => update_focused_column_marks(app, MarkOperation::ClearAll),
+        KeyCode::Char('i') => update_focused_column_marks(app, MarkOperation::Invert),
+        KeyCode::Char('h') | KeyCode::Left => execute_command(app, Command::ColumnLeft),
+        KeyCode::Char('l') | KeyCode::Right => execute_command(app, Command::ColumnRight),
+        KeyCode::Char('j') | KeyCode::Down => execute_command(app, Command::TaskDown),
+        KeyCode::Char('k') | KeyCode::Up => execute_command(app, Command::TaskUp),
+        _ => {}
+    }
+    true
+}
+
+#[derive(Clone, Copy)]
+enum MarkOperation {
+    SelectAll,
+    ClearAll,
+    Invert,
+}
+
+fn update_focused_column_marks(app: &mut App, operation: MarkOperation) {
+    let Some(project_name) = get_focused_project_name(app) else {
+        app.show_notification(
+            "当前面板没有打开项目".to_string(),
+            NotificationLevel::Warning,
+        );
+        return;
+    };
+    let Some(status) = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .and_then(|column| app.get_status_name_by_column(column))
+    else {
+        app.show_notification(
+            "当前没有可操作的状态列".to_string(),
+            NotificationLevel::Warning,
+        );
+        return;
+    };
+    let task_ids: Vec<u32> = app
+        .get_focused_project()
+        .map(|project| {
+            project
+                .tasks
+                .iter()
+                .filter(|task| task.status == status)
+                .map(|task| task.id)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    match operation {
+        MarkOperation::SelectAll => {
+            for task_id in task_ids {
+                app.marked_tasks.insert((project_name.clone(), task_id));
+            }
+        }
+        MarkOperation::ClearAll => {
+            for task_id in task_ids {
+                app.marked_tasks.remove(&(project_name.clone(), task_id));
+            }
+        }
+        MarkOperation::Invert => {
+            for task_id in task_ids {
+                let key = (project_name.clone(), task_id);
+                if !app.marked_tasks.remove(&key) {
+                    app.marked_tasks.insert(key);
+                }
+            }
+        }
+    }
+}
+
+fn move_marked_tasks_to_status(app: &mut App, target_column: usize, target_status: &str) {
+    let Some(project_name) = get_focused_project_name(app) else {
+        move_task_to_status_by_name(app, target_status);
+        return;
+    };
+    let marked_ids: Vec<u32> = app
+        .marked_tasks
+        .iter()
+        .filter(|(name, _)| name == &project_name)
+        .map(|(_, task_id)| *task_id)
+        .collect();
+    if marked_ids.is_empty() {
+        move_task_to_status_by_name(app, target_status);
+        return;
+    }
+
+    let Some(project) = app.projects.iter_mut().find(|p| p.name == project_name) else {
+        app.show_notification(
+            format!("无法批量移动：找不到项目 '{}'", project_name),
+            NotificationLevel::Error,
+        );
+        return;
+    };
+    let project_path = project.path.clone();
+    let mut moved = 0usize;
+    let mut skipped = 0usize;
+    let mut failures = Vec::new();
+    for task_id in marked_ids.iter().copied() {
+        let Some(task) = project.tasks.iter_mut().find(|task| task.id == task_id) else {
+            failures.push(format!("任务 {} 不存在", task_id));
+            continue;
+        };
+        if task.status == target_status {
+            skipped += 1;
+            continue;
+        }
+        match crate::fs::move_task(&project_path, task, target_status) {
+            Ok(_) => moved += 1,
+            Err(error) => failures.push(format!("任务 {}: {}", task_id, error)),
+        }
+    }
+
+    for task_id in marked_ids {
+        app.marked_tasks.remove(&(project_name.clone(), task_id));
+    }
+    app.selected_column.insert(app.focused_pane, target_column);
+    app.selected_task_index.insert(app.focused_pane, 0);
+    if let Err(error) = app.reload_current_project() {
+        failures.push(format!("重新加载项目失败: {}", error));
+    }
+
+    let message = if failures.is_empty() {
+        format!(
+            "批量移动完成：{} 个任务已移动，{} 个任务已在目标状态",
+            moved, skipped
+        )
+    } else {
+        format!(
+            "批量移动完成：{} 个成功，{} 个已在目标状态，{} 个失败: {}",
+            moved,
+            skipped,
+            failures.len(),
+            failures.join("；")
+        )
+    };
+    app.show_notification(
+        message,
+        if failures.is_empty() {
+            NotificationLevel::Success
+        } else {
+            NotificationLevel::Error
+        },
+    );
+}
+
+fn move_selected_task_to_status(app: &mut App, target_column: usize, target_status: &str) {
+    let current_column = app
+        .selected_column
+        .get(&app.focused_pane)
+        .copied()
+        .unwrap_or(0);
+    if current_column == target_column {
+        return;
+    }
+
+    let Some(task_id) = get_selected_task_id(app) else {
+        return;
+    };
+    let Some(project_name) = get_focused_project_name(app) else {
+        return;
+    };
+
+    let move_result = app
+        .projects
+        .iter_mut()
+        .find(|project| project.name == project_name)
+        .and_then(|project| {
+            let project_path = project.path.clone();
+            project
+                .tasks
+                .iter_mut()
+                .find(|task| task.id == task_id)
+                .map(|task| {
+                    let result = crate::fs::move_task(&project_path, task, target_status);
+                    (project_path, result)
+                })
+        });
+
+    match move_result {
+        Some((project_path, Ok(_))) => {
+            app.selected_column.insert(app.focused_pane, target_column);
+            app.selected_task_index.insert(app.focused_pane, 0);
+            if let Err(error) = app.reload_current_project() {
+                app.show_notification(
+                    format!(
+                        "任务 {} 已移动到状态 '{}'，但重新加载项目 '{}' 失败: {}",
+                        task_id,
+                        target_status,
+                        project_path.display(),
+                        error
+                    ),
+                    NotificationLevel::Error,
+                );
+                return;
+            }
+            app.show_notification(
+                format!("已移动到 {}", target_status),
+                NotificationLevel::Success,
+            );
+        }
+        Some((project_path, Err(error))) => app.show_notification(
+            format!(
+                "移动任务 {} 到状态 '{}' 失败（项目 '{}'）: {}",
+                task_id,
+                target_status,
+                project_path.display(),
+                error
+            ),
+            NotificationLevel::Error,
+        ),
+        None => app.show_notification(
+            format!(
+                "无法移动任务 {}：在项目 '{}' 中找不到该任务",
+                task_id, project_name
+            ),
+            NotificationLevel::Error,
+        ),
     }
 }
 
@@ -3777,10 +4049,54 @@ mod tests {
     }
 
     #[test]
+    fn x_toggles_task_mark_command() {
+        assert_eq!(
+            match_key_sequence(&[], key(KeyCode::Char('x'), KeyModifiers::NONE)),
+            Some(Command::ToggleTaskMark)
+        );
+    }
+
+    #[test]
     fn mm_toggles_column_maximize() {
         assert_eq!(
             match_key_sequence(&['m'], key(KeyCode::Char('m'), KeyModifiers::NONE)),
             Some(Command::ToggleMaximizeColumn)
         );
+    }
+
+    #[test]
+    fn status_number_only_updates_one_based_selection() {
+        let mut state = StatusSelectState {
+            input: String::new(),
+            matches: vec![
+                ("todo".to_string(), "Todo".to_string()),
+                ("doing".to_string(), "Doing".to_string()),
+                ("done".to_string(), "Done".to_string()),
+            ],
+            selected: 0,
+        };
+
+        assert_eq!(select_status_by_number(&mut state, '3'), Ok(()));
+        assert_eq!(state.selected, 2);
+        assert_eq!(state.matches[0].0, "todo");
+    }
+
+    #[test]
+    fn invalid_status_number_keeps_current_selection() {
+        let mut state = StatusSelectState {
+            input: String::new(),
+            matches: vec![
+                ("todo".to_string(), "Todo".to_string()),
+                ("doing".to_string(), "Doing".to_string()),
+                ("done".to_string(), "Done".to_string()),
+            ],
+            selected: 1,
+        };
+
+        assert_eq!(
+            select_status_by_number(&mut state, '4'),
+            Err("状态编号 4 无效：当前只有 3 个状态".to_string())
+        );
+        assert_eq!(state.selected, 1);
     }
 }
