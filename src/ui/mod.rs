@@ -51,6 +51,11 @@ pub fn render(f: &mut Frame, app: &mut App) {
         render_status_select_bar(f, f.area(), app);
     }
 
+    // 渲染标记管理条（如果处于标记管理模式）
+    if app.mode == crate::app::Mode::MarkSelect {
+        render_mark_select_bar(f, f.area(), app);
+    }
+
     // 渲染命令菜单（如果处于空格菜单模式）
     if app.mode == crate::app::Mode::SpaceMenu {
         command_menu::render(f, f.area(), app);
@@ -328,6 +333,91 @@ fn render_status_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mu
         .style(Style::default().bg(bg_color));
 
     f.render_widget(paragraph, bar_area);
+}
+
+/// 渲染标记管理条
+fn render_mark_select_bar(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
+    use ratatui::layout::Rect;
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::{Block, Borders, Clear, Paragraph};
+
+    let bar_height = 3;
+    let bar_area = Rect {
+        x: 0,
+        y: area.height.saturating_sub(bar_height),
+        width: area.width,
+        height: bar_height,
+    };
+    f.render_widget(Clear, bar_area);
+
+    let bg_color = Color::Rgb(46, 52, 64);
+    let accent_color = Color::Rgb(235, 203, 139);
+    let marked_count = app
+        .get_focused_project()
+        .and_then(|project| {
+            let column = app
+                .selected_column
+                .get(&app.focused_pane)
+                .copied()
+                .unwrap_or(0);
+            let status = project.statuses.get(column)?.name.as_str();
+            Some(
+                project
+                    .tasks
+                    .iter()
+                    .filter(|task| task.status == status)
+                    .filter(|task| app.marked_tasks.contains(&(project.name.clone(), task.id)))
+                    .count(),
+            )
+        })
+        .unwrap_or(0);
+    let total_count = app
+        .get_focused_project()
+        .and_then(|project| {
+            let column = app
+                .selected_column
+                .get(&app.focused_pane)
+                .copied()
+                .unwrap_or(0);
+            let status = project.statuses.get(column)?.name.as_str();
+            Some(
+                project
+                    .tasks
+                    .iter()
+                    .filter(|task| task.status == status)
+                    .count(),
+            )
+        })
+        .unwrap_or(0);
+
+    let content = Line::from(vec![
+        Span::styled(
+            " MARK ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(accent_color)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("  当前列: {}/{} 已标记  ", marked_count, total_count),
+            Style::default().fg(Color::Rgb(236, 239, 244)).bg(bg_color),
+        ),
+        Span::styled(
+            "a:全选  n:清除  i:反选  h/l:切换列  j/k:浏览  s:移动  Esc:退出",
+            Style::default().fg(accent_color).bg(bg_color),
+        ),
+    ]);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(accent_color).bg(bg_color))
+        .style(Style::default().bg(bg_color));
+    f.render_widget(
+        Paragraph::new(content)
+            .block(block)
+            .style(Style::default().bg(bg_color)),
+        bar_area,
+    );
 }
 
 /// 递归渲染分屏树

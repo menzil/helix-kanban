@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-07-24
+
+### Fixed
+- Accept both terminal key event modifier formats for entering mark management with `X`.
+- Allow `s` in mark management mode to enter status selection without automatic mode changes.
+
 ## [0.3.3] - 2026-07-24
 
 ### Added

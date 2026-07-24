@@ -20,6 +20,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
         Mode::Preview => ("PREVIEW", Color::Blue),
         Mode::Search => ("SEARCH", Color::Yellow),
         Mode::StatusSelect => ("MOVE", Color::Magenta),
+        Mode::MarkSelect => ("MARK", Color::Yellow),
     };
 
     // 显示键序列

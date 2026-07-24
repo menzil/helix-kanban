@@ -925,6 +925,7 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('k'), KeyModifiers::NONE) => Some(Command::TaskUp),
         ([], KeyCode::Char('x'), KeyModifiers::NONE) => Some(Command::ToggleTaskMark),
         ([], KeyCode::Char('X'), KeyModifiers::SHIFT) => Some(Command::EnterMarkSelect),
+        ([], KeyCode::Char('X'), KeyModifiers::NONE) => Some(Command::EnterMarkSelect),
         ([], KeyCode::Char('h'), KeyModifiers::NONE) => Some(Command::ColumnLeft),
         ([], KeyCode::Char('l'), KeyModifiers::NONE) => Some(Command::ColumnRight),
         ([], KeyCode::Char('H'), KeyModifiers::SHIFT) => Some(Command::MoveTaskLeft),
@@ -3325,6 +3326,8 @@ fn handle_mark_select_mode(app: &mut App, key: KeyEvent) -> bool {
         KeyCode::Char('a') => update_focused_column_marks(app, MarkOperation::SelectAll),
         KeyCode::Char('n') => update_focused_column_marks(app, MarkOperation::ClearAll),
         KeyCode::Char('i') => update_focused_column_marks(app, MarkOperation::Invert),
+        KeyCode::Char('x') => toggle_selected_task_mark(app),
+        KeyCode::Char('s') => execute_command(app, Command::EnterStatusSelect),
         KeyCode::Char('h') | KeyCode::Left => execute_command(app, Command::ColumnLeft),
         KeyCode::Char('l') | KeyCode::Right => execute_command(app, Command::ColumnRight),
         KeyCode::Char('j') | KeyCode::Down => execute_command(app, Command::TaskDown),
@@ -4053,6 +4056,18 @@ mod tests {
         assert_eq!(
             match_key_sequence(&[], key(KeyCode::Char('x'), KeyModifiers::NONE)),
             Some(Command::ToggleTaskMark)
+        );
+    }
+
+    #[test]
+    fn uppercase_x_enters_mark_mode_with_or_without_shift_modifier() {
+        assert_eq!(
+            match_key_sequence(&[], key(KeyCode::Char('X'), KeyModifiers::SHIFT)),
+            Some(Command::EnterMarkSelect)
+        );
+        assert_eq!(
+            match_key_sequence(&[], key(KeyCode::Char('X'), KeyModifiers::NONE)),
+            Some(Command::EnterMarkSelect)
         );
     }
 
