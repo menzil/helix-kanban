@@ -21,11 +21,68 @@
 
 ## 安装
 
-如果你更习惯 Rust 工具链：
+### 预编译二进制
+
+从 [GitHub Releases](https://github.com/menzil/helix-kanban/releases/latest) 下载对应平台的压缩包，无需安装 Rust：
+
+| 平台 | 下载目标 |
+| --- | --- |
+| macOS Apple Silicon | `aarch64-apple-darwin` |
+| macOS Intel | `x86_64-apple-darwin` |
+| Linux ARM64 | `aarch64-unknown-linux-musl` |
+| Linux x86_64 | `x86_64-unknown-linux-musl` |
+| Windows x86_64 | `x86_64-pc-windows-msvc` |
+
+macOS 和 Linux 以 x86_64 Linux 为例：
+
+```bash
+version=v0.3.4
+target=x86_64-unknown-linux-musl
+archive="hxk-${version}-${target}.tar.gz"
+curl -LO "https://github.com/menzil/helix-kanban/releases/download/${version}/${archive}"
+curl -LO "https://github.com/menzil/helix-kanban/releases/download/${version}/${archive}.sha256"
+sha256sum --check "${archive}.sha256"
+tar -xzf "$archive"
+chmod +x hxk
+sudo mv hxk /usr/local/bin/hxk
+hxk --version
+```
+
+macOS 请将校验命令替换为：
+
+```bash
+shasum -a 256 --check "${archive}.sha256"
+```
+
+Windows PowerShell 以 `v0.3.4` 为例：
+
+```powershell
+$version = "v0.3.4"
+$target = "x86_64-pc-windows-msvc"
+$archive = "hxk-$version-$target.zip"
+$baseUrl = "https://github.com/menzil/helix-kanban/releases/download/$version"
+Invoke-WebRequest "$baseUrl/$archive" -OutFile $archive
+Invoke-WebRequest "$baseUrl/$archive.sha256" -OutFile "$archive.sha256"
+$expected = (Get-Content "$archive.sha256").Split()[0].ToLowerInvariant()
+$actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw "SHA-256 mismatch: expected $expected, got $actual" }
+Expand-Archive $archive -DestinationPath .\hxk
+.\hxk\hxk.exe --version
+```
+
+将解压后的 `hxk.exe` 所在目录加入 `PATH` 即可全局使用。
+
+这些二进制暂未进行代码签名。macOS Gatekeeper 拦截时，请先验证 SHA-256，再在 Finder 中右键 `hxk` 选择“打开”，或在“系统设置 -> 隐私与安全性”中确认打开。Windows SmartScreen 提示时，请先验证 SHA-256，再选择“更多信息 -> 仍要运行”。
+
+### Cargo
+
+开发者也可以使用 Rust 工具链安装：
 
 ```bash
 cargo install helix-kanban --locked
 ```
+
+### 从源码构建
 
 如果你想从源码构建：
 
