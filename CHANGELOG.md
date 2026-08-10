@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-08-10
+
+### Added
+- Add Helix-style `g w` two-character label jumping for tasks and project cards.
+- Add `f` task fuzzy search and project fuzzy search through `/`.
+
+### Changed
+- Use `nucleo-matcher` for case-insensitive, non-contiguous matching with relevance ordering.
+- Show jump labels and active input state while quick-jump mode is open.
+
 ## [0.3.4] - 2026-07-24
 
 ### Fixed

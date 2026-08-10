@@ -175,6 +175,9 @@ fn render_column(
                 .unwrap_or(0);
             let is_selected = is_column_focused && i == selected_idx;
             let is_marked = app.marked_tasks.contains(&(project.name.clone(), task.id));
+            let jump_label = app.goto_state.as_ref().and_then(|state| {
+                crate::goto::label_for_task(state, app.focused_pane, column_idx, i)
+            });
 
             // 检查是否是搜索匹配项（用任务ID匹配）
             let is_search_match = search_match_ids.contains(&task.id);
@@ -205,6 +208,14 @@ fn render_column(
             // 构建任务项内容
             let mut spans = vec![
                 Span::raw(" "),
+                Span::styled(
+                    jump_label
+                        .map(|label| format!("{} ", label))
+                        .unwrap_or_default(),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(
                     if is_marked { "✓ " } else { "  " },
                     Style::default().fg(Color::Yellow),

@@ -28,7 +28,7 @@ pub fn render(f: &mut Frame, app: &mut App) {
 
     // 渲染对话框（如果有）
     if let Some(dialog) = &mut app.dialog {
-        dialogs::render_dialog(f, dialog);
+        dialogs::render_dialog(f, dialog, app.goto_state.as_ref());
     }
 
     // 渲染帮助面板（如果处于帮助模式）
@@ -56,6 +56,10 @@ pub fn render(f: &mut Frame, app: &mut App) {
         render_mark_select_bar(f, f.area(), app);
     }
 
+    if let Some(goto_state) = &app.goto_state {
+        render_goto_bar(f, f.area(), goto_state);
+    }
+
     // 渲染命令菜单（如果处于空格菜单模式）
     if app.mode == crate::app::Mode::SpaceMenu {
         command_menu::render(f, f.area(), app);
@@ -75,6 +79,38 @@ pub fn render(f: &mut Frame, app: &mut App) {
     if let Some(ref notification) = app.notification {
         render_notification(f, f.area(), notification);
     }
+}
+
+fn render_goto_bar(f: &mut Frame, area: ratatui::layout::Rect, state: &crate::app::GotoState) {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+    use ratatui::widgets::Paragraph;
+
+    if area.height == 0 {
+        return;
+    }
+
+    let bar_area = ratatui::layout::Rect {
+        x: area.x,
+        y: area.y + area.height - 1,
+        width: area.width,
+        height: 1,
+    };
+    let line = Line::from(vec![
+        Span::styled(
+            " GOTO ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!(" {} ", state.input),
+            Style::default().fg(Color::Yellow),
+        ),
+        Span::raw("输入两字符标签定位  Esc 取消"),
+    ]);
+    f.render_widget(Paragraph::new(line), bar_area);
 }
 
 /// 渲染通知栏

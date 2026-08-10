@@ -1,4 +1,4 @@
-use crate::app::{App, Mode, NotificationLevel, StatusSelectState};
+use crate::app::{App, GotoState, GotoTarget, Mode, NotificationLevel, StatusSelectState};
 use crate::input::Command;
 use crate::ui::dialogs::{
     DialogType, ProjectGridNavigation, ProjectGridOrderMove, ProjectGridState,
@@ -17,6 +17,10 @@ pub fn handle_key_input(app: &mut App, key: KeyEvent) -> bool {
     if app.show_welcome_dialog {
         app.show_welcome_dialog = false;
         return true;
+    }
+
+    if app.goto_state.is_some() {
+        return handle_goto_mode(app, key);
     }
 
     match app.mode {
@@ -77,7 +81,8 @@ fn handle_normal_mode(app: &mut App, key: KeyEvent) -> bool {
         return true;
     }
 
-    if flush_pending_key_sequence_now(app) {
+    if !app.key_buffer.is_empty() {
+        flush_pending_key_sequence_now(app);
         return handle_normal_mode(app, key);
     }
 
@@ -94,7 +99,7 @@ fn clear_key_buffer(app: &mut App) {
 fn is_pending_key_sequence(buffer: &[char], key: KeyEvent) -> bool {
     matches!(
         (buffer, key.code, key.modifiers),
-        ([], KeyCode::Char('m'), KeyModifiers::NONE)
+        ([], KeyCode::Char('m'), KeyModifiers::NONE) | ([], KeyCode::Char('g'), KeyModifiers::NONE)
     )
 }
 
@@ -353,15 +358,35 @@ fn handle_project_grid_search_mode(app: &mut App, key: KeyEvent) -> bool {
 }
 
 fn handle_project_grid_select_mode(app: &mut App, key: KeyEvent) -> bool {
+    if is_project_grid_goto_trigger(&app.key_buffer, key) {
+        clear_key_buffer(app);
+        start_project_grid_goto(app);
+        return true;
+    }
+
+    if is_project_grid_search_trigger(&app.key_buffer, key) {
+        clear_key_buffer(app);
+        if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+            state.selecting = false;
+        }
+        return true;
+    }
+
+    if !app.key_buffer.is_empty() {
+        clear_key_buffer(app);
+        return handle_project_grid_select_mode(app, key);
+    }
+
+    if key.code == KeyCode::Char('g') && key.modifiers == KeyModifiers::NONE {
+        app.key_buffer.push('g');
+        app.key_buffer_started_at = Some(Instant::now());
+        return true;
+    }
+
     match key.code {
         KeyCode::Esc => {
             app.dialog = None;
             app.mode = Mode::Normal;
-        }
-        KeyCode::Char('/') => {
-            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
-                state.selecting = false;
-            }
         }
         KeyCode::Enter => {
             if let Some(item) = selected_project_grid_item_from_app(app) {
@@ -401,6 +426,145 @@ fn handle_project_grid_select_mode(app: &mut App, key: KeyEvent) -> bool {
     }
 
     true
+}
+
+fn is_project_grid_search_trigger(buffer: &[char], key: KeyEvent) -> bool {
+    matches!(
+        (buffer, key.code, key.modifiers),
+        ([], KeyCode::Char('/'), KeyModifiers::NONE)
+    )
+}
+
+fn is_project_grid_goto_trigger(buffer: &[char], key: KeyEvent) -> bool {
+    matches!(
+        (buffer, key.code, key.modifiers),
+        (['g'], KeyCode::Char('w'), KeyModifiers::NONE)
+    )
+}
+
+fn start_task_goto(app: &mut App) {
+    let Some(project) = app.get_focused_project() else {
+        return;
+    };
+
+    let pane_id = app.focused_pane;
+    let mut targets = Vec::new();
+    for (column, status) in project.statuses.iter().enumerate() {
+        for (task_index, _) in project
+            .tasks
+            .iter()
+            .filter(|task| task.status == status.name)
+            .enumerate()
+        {
+            targets.push(GotoTarget::Task {
+                pane_id,
+                column,
+                task_index,
+            });
+        }
+    }
+
+    let labels = crate::goto::labels(targets.len());
+    app.goto_state = Some(GotoState {
+        labels: labels.into_iter().zip(targets).collect(),
+        input: String::new(),
+    });
+}
+
+fn start_project_grid_goto(app: &mut App) {
+    let Some(DialogType::ProjectGrid { state, .. }) = app.dialog.as_ref() else {
+        return;
+    };
+    let filtered_indices = filter_project_grid_items(&state.items, &state.filter);
+    let targets: Vec<GotoTarget> = filtered_indices
+        .into_iter()
+        .map(|item_index| GotoTarget::Project { item_index })
+        .collect();
+    let labels = crate::goto::labels(targets.len());
+    app.goto_state = Some(GotoState {
+        labels: labels.into_iter().zip(targets).collect(),
+        input: String::new(),
+    });
+}
+
+fn handle_goto_mode(app: &mut App, key: KeyEvent) -> bool {
+    if key.code == KeyCode::Esc {
+        app.goto_state = None;
+        return true;
+    }
+
+    if key.code == KeyCode::Backspace {
+        if let Some(state) = &mut app.goto_state {
+            state.input.pop();
+        }
+        return true;
+    }
+
+    let KeyCode::Char(character) = key.code else {
+        return true;
+    };
+    if !(key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT)
+        || !character.is_ascii_alphabetic()
+    {
+        return true;
+    }
+
+    let normalized = character.to_ascii_lowercase();
+    let (target, invalid) = {
+        let Some(state) = app.goto_state.as_mut() else {
+            return true;
+        };
+        state.input.push(normalized);
+        let target = state
+            .labels
+            .iter()
+            .find(|(label, _)| label == &state.input)
+            .map(|(_, target)| target.clone());
+        let invalid = target.is_none()
+            && (state.input.len() >= 2
+                || !state
+                    .labels
+                    .iter()
+                    .any(|(label, _)| label.starts_with(&state.input)));
+        (target, invalid)
+    };
+
+    if let Some(target) = target {
+        app.goto_state = None;
+        apply_goto_target(app, target);
+    } else if invalid {
+        app.goto_state = None;
+        app.show_notification(
+            "无效的跳转标签，请重新按 g w".to_string(),
+            NotificationLevel::Warning,
+        );
+    }
+
+    true
+}
+
+fn apply_goto_target(app: &mut App, target: GotoTarget) {
+    match target {
+        GotoTarget::Task {
+            pane_id,
+            column,
+            task_index,
+        } => {
+            app.selected_column.insert(pane_id, column);
+            app.selected_task_index.insert(pane_id, task_index);
+        }
+        GotoTarget::Project { item_index } => {
+            if let Some(DialogType::ProjectGrid { state, .. }) = &mut app.dialog {
+                let filtered_indices = filter_project_grid_items(&state.items, &state.filter);
+                if let Some(selected) = filtered_indices
+                    .iter()
+                    .position(|index| *index == item_index)
+                {
+                    state.selected = selected;
+                }
+            }
+        }
+    }
 }
 
 fn selected_project_grid_item_from_app(app: &App) -> Option<crate::ui::dialogs::ProjectGridItem> {
@@ -946,7 +1110,8 @@ pub fn match_key_sequence(buffer: &[char], key: KeyEvent) -> Option<Command> {
         ([], KeyCode::Char('V'), KeyModifiers::SHIFT) => Some(Command::ViewTaskExternal),
         ([], KeyCode::Char('Y'), KeyModifiers::SHIFT) => Some(Command::CopyTask), // 复制任务到剪贴板
         ([], KeyCode::Char('t'), KeyModifiers::NONE) => Some(Command::EditTags),  // 编辑标签
-        ([], KeyCode::Char('f'), KeyModifiers::NONE) => Some(Command::EnterSearch), // 搜索任务
+        ([], KeyCode::Char('f'), KeyModifiers::NONE) => Some(Command::EnterSearch), // 模糊搜索任务
+        (['g'], KeyCode::Char('w'), KeyModifiers::NONE) => Some(Command::EnterGoto), // Helix 风格两字符跳转
         ([], KeyCode::Char('s'), KeyModifiers::NONE) => Some(Command::EnterStatusSelect), // 状态选择
 
         // 列宽调整
@@ -1587,6 +1752,9 @@ fn execute_command(app: &mut App, cmd: Command) {
                 selected: 0,
                 selecting: false,
             });
+        }
+        Command::EnterGoto => {
+            start_task_goto(app);
         }
         Command::SearchNext => {
             // 搜索模式：下一个匹配
@@ -3036,8 +3204,6 @@ fn run_search(app: &mut App) {
         return;
     }
 
-    let query_lower = query.to_lowercase();
-
     // 获取当前聚焦的项目
     let project = match app.get_focused_project() {
         Some(p) => p,
@@ -3052,17 +3218,15 @@ fn run_search(app: &mut App) {
         .map(|(i, s)| (s.name.as_str(), i))
         .collect();
 
-    // 先按 status 收集任务在该列中的位置，然后按视觉顺序排序
-    // 结构: (column_index, task_in_column_index, task_global_index, status)
-    let mut raw_matches: Vec<(usize, usize, usize, String)> = Vec::new();
+    // 先按 status 收集任务在该列中的位置，然后按相关性和视觉顺序排序
+    // 结构: (score, column_index, task_in_column_index, task_global_index, status)
+    let mut raw_matches: Vec<(u16, usize, usize, usize, String)> = Vec::new();
 
     // 按列收集任务
     for (idx, task) in project.tasks.iter().enumerate() {
-        let task_text = format!("{} {}", task.id, task.title).to_lowercase();
-        let task_id_str = task.id.to_string();
-
-        // 匹配 ID 或标题
-        if task_text.contains(&query_lower) || task_id_str == query_lower {
+        let task_id = task.id.to_string();
+        let fields = vec![task_id.as_str(), task.title.as_str()];
+        if let Some(score) = crate::search::fuzzy_match_best_score(&query, &fields) {
             let column_idx = status_to_column
                 .get(task.status.as_str())
                 .copied()
@@ -3077,24 +3241,34 @@ fn run_search(app: &mut App) {
                 .position(|(i, _)| i == idx)
                 .unwrap_or(0);
 
-            raw_matches.push((column_idx, task_pos_in_column, idx, task.status.clone()));
+            raw_matches.push((
+                score,
+                column_idx,
+                task_pos_in_column,
+                idx,
+                task.status.clone(),
+            ));
         }
     }
 
-    // 按视觉顺序排序：从左到右，从上到下
+    // 先按匹配相关性，再按视觉顺序排序。
     raw_matches.sort_by(|a, b| {
-        let col_cmp = a.0.cmp(&b.0);
+        let score_cmp = b.0.cmp(&a.0);
+        if score_cmp != std::cmp::Ordering::Equal {
+            return score_cmp;
+        }
+        let col_cmp = a.1.cmp(&b.1);
         if col_cmp != std::cmp::Ordering::Equal {
             col_cmp
         } else {
-            a.1.cmp(&b.1)
+            a.2.cmp(&b.2)
         }
     });
 
     // 转换为 (task_index, status)
     let matches: Vec<(usize, String)> = raw_matches
         .iter()
-        .map(|(_, _, idx, status)| (*idx, status.clone()))
+        .map(|(_, _, _, idx, status)| (*idx, status.clone()))
         .collect();
 
     // 更新搜索状态
@@ -4049,6 +4223,46 @@ mod tests {
             match_key_sequence(&[], key(KeyCode::Char('m'), KeyModifiers::NONE)),
             None
         );
+    }
+
+    #[test]
+    fn f_immediately_enters_fuzzy_search() {
+        assert_eq!(
+            match_key_sequence(&[], key(KeyCode::Char('f'), KeyModifiers::NONE)),
+            Some(Command::EnterSearch)
+        );
+    }
+
+    #[test]
+    fn g_w_enters_two_character_goto_mode() {
+        let g = key(KeyCode::Char('g'), KeyModifiers::NONE);
+
+        assert_eq!(match_key_sequence(&[], g), None);
+        assert!(is_pending_key_sequence(&[], g));
+        assert_eq!(
+            match_key_sequence(&['g'], key(KeyCode::Char('w'), KeyModifiers::NONE)),
+            Some(Command::EnterGoto)
+        );
+        assert_eq!(
+            match_key_sequence(&['g'], key(KeyCode::Char('j'), KeyModifiers::NONE)),
+            None
+        );
+    }
+
+    #[test]
+    fn project_grid_search_accepts_slash_and_g_w() {
+        assert!(is_project_grid_search_trigger(
+            &[],
+            key(KeyCode::Char('/'), KeyModifiers::NONE)
+        ));
+        assert!(is_project_grid_goto_trigger(
+            &['g'],
+            key(KeyCode::Char('w'), KeyModifiers::NONE)
+        ));
+        assert!(!is_project_grid_goto_trigger(
+            &['g'],
+            key(KeyCode::Char('j'), KeyModifiers::NONE)
+        ));
     }
 
     #[test]

@@ -13,9 +13,11 @@ mod config;
 mod core;
 mod error;
 mod fs;
+mod goto;
 mod input;
 mod mcp;
 mod models;
+mod search;
 mod state;
 mod ui;
 

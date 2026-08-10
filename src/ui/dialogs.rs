@@ -1,4 +1,6 @@
+use crate::app::GotoState;
 use crate::models::{Project, ProjectType};
+use crate::search::fuzzy_match_best_score;
 use crate::ui::tags::tag_color;
 use ratatui::{
     Frame,
@@ -104,22 +106,28 @@ pub fn sort_project_grid_items(items: &mut [ProjectGridItem]) {
 }
 
 pub fn filter_project_grid_items(items: &[ProjectGridItem], filter: &str) -> Vec<usize> {
-    let query = filter.trim().to_lowercase();
-    if query.is_empty() {
+    if filter.trim().is_empty() {
         return (0..items.len()).collect();
     }
 
-    items
+    let mut matches: Vec<(usize, u16)> = items
         .iter()
         .enumerate()
         .filter_map(|(index, item)| {
-            if project_grid_item_matches(item, &query) {
-                Some(index)
-            } else {
-                None
-            }
+            let path = item.path.to_string_lossy();
+            let mut fields = vec![item.name.as_str(), item.path_label.as_str(), path.as_ref()];
+            fields.extend(item.tags.iter().map(String::as_str));
+            fuzzy_match_best_score(filter, &fields).map(|score| (index, score))
         })
-        .collect()
+        .collect();
+
+    matches.sort_by(|(left_index, left_score), (right_index, right_score)| {
+        right_score
+            .cmp(left_score)
+            .then_with(|| left_index.cmp(right_index))
+    });
+
+    matches.into_iter().map(|(index, _)| index).collect()
 }
 
 pub fn navigate_project_grid(
@@ -243,16 +251,6 @@ pub fn update_project_grid_item_tags(
     }
 }
 
-fn project_grid_item_matches(item: &ProjectGridItem, query: &str) -> bool {
-    item.name.to_lowercase().contains(query)
-        || item.path_label.to_lowercase().contains(query)
-        || item.path.to_string_lossy().to_lowercase().contains(query)
-        || item
-            .tags
-            .iter()
-            .any(|tag| tag.to_lowercase().contains(query))
-}
-
 fn project_order_sort_key(project_order: Option<i64>) -> (u8, i64) {
     match project_order {
         Some(order) => (0, order),
@@ -338,7 +336,7 @@ pub enum DialogType {
 }
 
 /// 渲染居中的对话框
-pub fn render_dialog(f: &mut Frame, dialog: &mut DialogType) {
+pub fn render_dialog(f: &mut Frame, dialog: &mut DialogType, goto_state: Option<&GotoState>) {
     // 渲染半透明背景遮罩
     render_backdrop(f, f.area());
 
@@ -373,7 +371,7 @@ pub fn render_dialog(f: &mut Frame, dialog: &mut DialogType) {
             ..
         } => render_input_dialog(f, area, title, prompt, textarea),
         DialogType::ProjectGrid { title, state } => {
-            render_project_grid_dialog(f, area, title, state)
+            render_project_grid_dialog(f, area, title, state, goto_state)
         }
         DialogType::Confirm {
             title,
@@ -466,6 +464,7 @@ fn render_project_grid_dialog(
     area: Rect,
     title: &str,
     state: &mut ProjectGridState,
+    goto_state: Option<&GotoState>,
 ) {
     let block = Block::default()
         .title(format!("  {}  ", title))
@@ -497,7 +496,7 @@ fn render_project_grid_dialog(
     }
     state.columns = project_grid_columns(chunks[1].width);
 
-    render_project_grid_cards(f, chunks[1], state, &filtered_indices);
+    render_project_grid_cards(f, chunks[1], state, &filtered_indices, goto_state);
     render_project_grid_footer(
         f,
         chunks[2],
@@ -519,7 +518,11 @@ fn render_project_grid_dialog(
 }
 
 fn render_project_grid_search(f: &mut Frame, area: Rect, filter: &str, selecting: bool) {
-    let title = if selecting { " Select " } else { " Search " };
+    let title = if selecting {
+        " Select "
+    } else {
+        " Fuzzy Search "
+    };
     let search_block = Block::default()
         .title(title)
         .borders(Borders::ALL)
@@ -529,9 +532,9 @@ fn render_project_grid_search(f: &mut Frame, area: Rect, filter: &str, selecting
     f.render_widget(search_block, area);
 
     let search_text = if filter.is_empty() {
-        "Search projects...".to_string()
+        "Fuzzy search projects...".to_string()
     } else {
-        format!("Search: {}", filter)
+        format!("Fuzzy: {}", filter)
     };
 
     let search_style = if filter.is_empty() {
@@ -551,6 +554,7 @@ fn render_project_grid_cards(
     area: Rect,
     state: &ProjectGridState,
     filtered_indices: &[usize],
+    goto_state: Option<&GotoState>,
 ) {
     if area.height == 0 {
         return;
@@ -580,7 +584,14 @@ fn render_project_grid_cards(
         }
 
         if let Some(item) = state.items.get(*item_index) {
-            render_project_grid_card(f, card_area, item, filtered_index == state.selected);
+            render_project_grid_card(
+                f,
+                card_area,
+                item,
+                filtered_index == state.selected,
+                *item_index,
+                goto_state,
+            );
         }
     }
 }
@@ -594,7 +605,7 @@ fn render_project_grid_footer(
 ) {
     let help_text = if selecting {
         format!(
-            "h/j/k/l select  Enter open  H/J/K/L move card  t tags  / search  Esc close  [{}/{}]",
+            "h/j/k/l select  Enter open  g w jump  H/J/K/L move card  t tags  / search  Esc close  [{}/{}]",
             filtered_count, total_count
         )
     } else {
@@ -609,7 +620,14 @@ fn render_project_grid_footer(
     f.render_widget(help_paragraph, area);
 }
 
-fn render_project_grid_card(f: &mut Frame, area: Rect, item: &ProjectGridItem, is_selected: bool) {
+fn render_project_grid_card(
+    f: &mut Frame,
+    area: Rect,
+    item: &ProjectGridItem,
+    is_selected: bool,
+    item_index: usize,
+    goto_state: Option<&GotoState>,
+) {
     let border_color = if is_selected {
         Color::Rgb(136, 192, 208)
     } else {
@@ -634,9 +652,18 @@ fn render_project_grid_card(f: &mut Frame, area: Rect, item: &ProjectGridItem, i
         ProjectType::Local => "[L]",
     };
     let current_marker = if item.is_current { " *" } else { "" };
+    let jump_label = goto_state.and_then(|state| crate::goto::label_for_project(state, item_index));
 
     let mut lines = vec![
         Line::from(vec![
+            Span::styled(
+                jump_label
+                    .map(|label| format!("{} ", label))
+                    .unwrap_or_default(),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 type_marker,
                 Style::default()
@@ -913,12 +940,39 @@ mod tests {
         ];
 
         assert_eq!(filter_project_grid_items(&items, "front"), vec![0]);
+        assert_eq!(filter_project_grid_items(&items, "FED"), vec![0]);
         assert_eq!(filter_project_grid_items(&items, "api"), vec![1]);
         assert_eq!(filter_project_grid_items(&items, "urgent"), vec![0]);
         assert_eq!(
             filter_project_grid_items(&items, "missing"),
             Vec::<usize>::new()
         );
+    }
+
+    #[test]
+    fn fuzzy_filter_preserves_visual_order_for_equal_scores() {
+        let items = vec![
+            item("same", ProjectType::Global, "/same", None, vec![]),
+            item("same", ProjectType::Global, "/same", None, vec![]),
+        ];
+
+        assert_eq!(filter_project_grid_items(&items, "same"), vec![0, 1]);
+    }
+
+    #[test]
+    fn fuzzy_filter_orders_projects_by_relevance() {
+        let items = vec![
+            item(
+                "feature notes",
+                ProjectType::Global,
+                "/feature-notes",
+                None,
+                vec![],
+            ),
+            item("frontend", ProjectType::Global, "/frontend", None, vec![]),
+        ];
+
+        assert_eq!(filter_project_grid_items(&items, "fnt"), vec![1, 0]);
     }
 
     #[test]

@@ -224,12 +224,20 @@ pub fn render(f: &mut Frame, area: Rect) {
             Span::raw("     快速切换项目"),
         ]),
         Line::from(vec![
+            Span::styled("f", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          任务模糊搜索"),
+        ]),
+        Line::from(vec![
             Span::styled("Enter", Style::default().fg(Color::Rgb(136, 192, 208))),
             Span::raw("      快速切换中进入选择"),
         ]),
         Line::from(vec![
             Span::styled("/", Style::default().fg(Color::Rgb(136, 192, 208))),
-            Span::raw("          选择时返回搜索"),
+            Span::raw("          选择时进入项目搜索"),
+        ]),
+        Line::from(vec![
+            Span::styled("g w", Style::default().fg(Color::Rgb(136, 192, 208))),
+            Span::raw("          两字符标签快捷跳转"),
         ]),
         Line::from(vec![
             Span::styled("H/J/K/L", Style::default().fg(Color::Rgb(136, 192, 208))),

@@ -36,7 +36,7 @@
 macOS 和 Linux 以 x86_64 Linux 为例：
 
 ```bash
-version=v0.3.4
+version=v0.3.5
 target=x86_64-unknown-linux-musl
 archive="hxk-${version}-${target}.tar.gz"
 curl -LO "https://github.com/menzil/helix-kanban/releases/download/${version}/${archive}"
@@ -54,10 +54,10 @@ macOS 请将校验命令替换为：
 shasum -a 256 --check "${archive}.sha256"
 ```
 
-Windows PowerShell 以 `v0.3.4` 为例：
+Windows PowerShell 以 `v0.3.5` 为例：
 
 ```powershell
-$version = "v0.3.4"
+$version = "v0.3.5"
 $target = "x86_64-pc-windows-msvc"
 $archive = "hxk-$version-$target.zip"
 $baseUrl = "https://github.com/menzil/helix-kanban/releases/download/$version"
@@ -198,6 +198,7 @@ AI 可以通过 MCP 协议：
 | `x`  | 标记/取消标记任务    |
 | `X`  | 进入标记管理模式    |
 | `s`  | 选择任务的目标状态   |
+| `f`  | 任务模糊搜索         |
 | `1-9`（选择中） | 选择状态     |
 | `Enter`（选择中） | 确认移动    |
 | `Esc`（选择中） | 取消，不移动任务 |
@@ -217,12 +218,16 @@ AI 可以通过 MCP 协议：
 | `n`         | 新建本地项目 [L] |
 | `N`         | 新建全局项目 [G] |
 | `Space f`   | 快速切换项目     |
+| `g w`       | 两字符标签快捷跳转 |
+| `/`         | 项目模糊搜索     |
 | `Space p o` | 打开项目         |
 | `Space p n` | 创建新项目       |
 | `Space p d` | 删除项目         |
 | `Space p r` | 重命名项目       |
 | `Space r`   | 重新加载当前项目 |
 | `Space R`   | 重新加载所有项目 |
+
+在看板或项目切换界面按 `g w`，再输入对象旁显示的两字符标签，可快速跳转；项目切换界面仍可按 `/` 进行模糊搜索。
 
 ### 窗口管理
 

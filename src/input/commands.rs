@@ -116,6 +116,8 @@ pub enum Command {
     EditStatusDisplay,
     /// 进入搜索模式
     EnterSearch,
+    /// 进入两字符快捷跳转模式
+    EnterGoto,
     /// 搜索模式：下一个匹配
     SearchNext,
     /// 搜索模式：上一个匹配

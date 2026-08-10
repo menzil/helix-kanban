@@ -76,6 +76,24 @@ pub enum Mode {
     MarkSelect,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GotoTarget {
+    Task {
+        pane_id: usize,
+        column: usize,
+        task_index: usize,
+    },
+    Project {
+        item_index: usize,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GotoState {
+    pub labels: Vec<(String, GotoTarget)>,
+    pub input: String,
+}
+
 /// 空格菜单状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuState {
@@ -153,6 +171,8 @@ pub struct App {
     pub list_states: HashMap<usize, ratatui::widgets::ListState>,
     /// 搜索状态
     pub search_state: Option<SearchState>,
+    /// Helix 风格两字符跳转状态
+    pub goto_state: Option<GotoState>,
     /// 状态选择状态 (s 快捷)
     pub status_select_state: Option<StatusSelectState>,
 }
@@ -228,6 +248,7 @@ impl App {
             last_column_resize_time: None,
             list_states: HashMap::new(),
             search_state: None,
+            goto_state: None,
             status_select_state: None,
         };
 
@@ -593,6 +614,7 @@ mod tests {
             last_column_resize_time: None,
             list_states: HashMap::new(),
             search_state: None,
+            goto_state: None,
             status_select_state: None,
         }
     }
