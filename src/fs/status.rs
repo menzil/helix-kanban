@@ -117,7 +117,7 @@ pub fn rename_status(
         let mut metadata_map = crate::fs::task::load_tasks_metadata(project_path)?;
         let mut updated = false;
 
-        for (_id, metadata) in metadata_map.iter_mut() {
+        for metadata in metadata_map.values_mut() {
             if metadata.status == old_name {
                 metadata.status = new_name.to_string();
                 updated = true;

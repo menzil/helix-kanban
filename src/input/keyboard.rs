@@ -1838,14 +1838,15 @@ fn execute_command(app: &mut App, cmd: Command) {
                     };
 
                     let kanban_path = project.path.to_string_lossy();
-                    // CLAUDE.md 路径（全局数据目录）
-                    let claude_md_path = crate::fs::get_data_dir().join("CLAUDE.md");
-                    let claude_md_str = claude_md_path.to_string_lossy().to_string();
 
                     // 格式化项目信息
                     let project_info = format!(
-                        "{} {}\n看板路径: {}\n文档: {}",
-                        project_type_label, project.name, kanban_path, claude_md_str
+                        "{} {}\n看板路径：{}\n\n\
+                        请使用 helix-kanban MCP 工具处理这个项目的待办任务。\n\
+                        每次调用都显式传入 project 参数，值为上面的项目名，不要使用其他项目或默认项目。\n\
+                        先用 helix-kanban_list_tasks 查看待办，按需用 helix-kanban_show_task 获取详情；创建、更新和移动任务也通过 MCP 工具完成。\n\
+                        如果客户端尚未加载这些工具，请先配置并连接 hxk mcp 服务，再处理任务。不要直接扫描或修改看板 Markdown 文件来代替工具调用。",
+                        project_type_label, project.name, kanban_path
                     );
 
                     match arboard::Clipboard::new() {

@@ -1,9 +1,8 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui_textarea::{CursorMove, TextArea, WrapMode};
 use std::time::Instant;
-use tui_textarea::{CursorMove, TextArea};
 
 // 导入用于渲染的类型
-// 注意：tui-textarea 使用自己的 ratatui 版本，我们需要使用兼容的方式
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
@@ -49,6 +48,8 @@ pub struct HelixTextArea {
     show_line_numbers: bool,
     /// 是否最大化
     is_maximized: bool,
+    /// 与文本组件的光标跟随滚动同步，用于绘制右侧预留的行尾光标。
+    screen_scroll_top: u16,
 }
 
 impl HelixTextArea {
@@ -65,7 +66,9 @@ impl HelixTextArea {
             TextArea::from(initial_value.lines().map(|s| s.to_string()))
         };
 
-        // 配置 Nord 主题样式 - tui-textarea 使用 ratatui 的 Style
+        textarea.set_wrap_mode(WrapMode::WordOrGlyph);
+
+        // 配置 Nord 主题样式
         textarea.set_style(
             RatatuiStyle::default()
                 .fg(RatatuiColor::Rgb(236, 239, 244)) // Nord snow storm
@@ -100,6 +103,7 @@ impl HelixTextArea {
             last_key_time: Instant::now(),
             show_line_numbers,
             is_maximized: false, // 默认不最大化
+            screen_scroll_top: 0,
         }
     }
 
@@ -298,8 +302,8 @@ impl HelixTextArea {
                 // 扩展选择到行边界（选择整行包括换行符）
                 self.textarea.move_cursor(CursorMove::Head);
                 self.textarea.start_selection();
-                self.textarea.move_cursor(CursorMove::Down);
-                self.textarea.move_cursor(CursorMove::Head);
+                self.textarea.move_cursor(CursorMove::End);
+                self.textarea.move_cursor(CursorMove::Forward);
                 InputAction::Continue
             }
             KeyCode::Delete => {
@@ -440,14 +444,49 @@ impl HelixTextArea {
 
     /// 渲染文本区域
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
-        // 如果显示行号，启用行号
-        if self.show_line_numbers {
-            self.textarea
-                .set_line_number_style(RatatuiStyle::default().fg(RatatuiColor::Rgb(76, 86, 106)));
+        if area.is_empty() {
+            return;
+        }
+        if area.width <= 2 {
+            // 宽度不足以同时显示双宽字符和光标，只保留一个可见光标。
+            f.render_widget(Paragraph::new("").style(self.textarea.style()), area);
+            f.buffer_mut()[(area.x, area.y)]
+                .set_symbol(" ")
+                .set_style(self.textarea.cursor_style());
+            return;
         }
 
-        // 渲染 TextArea - 直接传递引用
-        f.render_widget(&self.textarea, area);
+        // 为满行末尾的插入光标留一格，不能让软换行占满全部显示宽度。
+        let text_area = Rect {
+            width: area.width - 1,
+            ..area
+        };
+        let number_width = self.textarea.lines().len().ilog10() as u16 + 3;
+        let show_numbers = self.show_line_numbers && text_area.width >= number_width + 2;
+        if show_numbers && self.textarea.line_number_style().is_none() {
+            self.textarea
+                .set_line_number_style(RatatuiStyle::default().fg(RatatuiColor::Rgb(76, 86, 106)));
+        } else if !show_numbers && self.textarea.line_number_style().is_some() {
+            self.textarea.remove_line_number();
+        }
+        f.render_widget(Paragraph::new("").style(self.textarea.style()), area);
+        f.render_widget(&self.textarea, text_area);
+
+        // ratatui-textarea 0.9.2 不公开 viewport；本组件没有独立滚动，
+        // 这里只同步它的光标跟随规则，折行与字符宽度仍由文本组件计算。
+        let cursor = self.textarea.screen_cursor();
+        let row = cursor.row as u16;
+        self.screen_scroll_top = self
+            .screen_scroll_top
+            .min(row)
+            .max(row.saturating_sub(area.height - 1));
+        let gutter = if show_numbers { number_width } else { 0 };
+        if cursor.char.is_none() && cursor.col + usize::from(gutter) == usize::from(text_area.width)
+        {
+            f.buffer_mut()[(area.right() - 1, area.y + row - self.screen_scroll_top)]
+                .set_symbol(" ")
+                .set_style(self.textarea.cursor_style());
+        }
     }
 
     /// 渲染模式指示器
@@ -487,5 +526,90 @@ impl HelixTextArea {
                 .alignment(Alignment::Right);
             f.render_widget(paragraph, area);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::{Terminal, backend::TestBackend};
+
+    fn render_rows(input: &mut HelixTextArea, width: u16, height: u16) -> Vec<String> {
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        terminal
+            .draw(|frame| input.render(frame, frame.area()))
+            .unwrap();
+        let buffer = terminal.backend().buffer();
+        (0..height)
+            .map(|y| (0..width).map(|x| buffer[(x, y)].symbol()).collect())
+            .collect()
+    }
+
+    #[test]
+    fn wraps_chinese_without_changing_content_and_reflows_on_resize() {
+        let text = "一二三四五六七八九十";
+        let mut input = HelixTextArea::new(text.into(), true, false);
+        let rows = render_rows(&mut input, 12, 4);
+        assert!(rows[0].contains("一 二 三 四"));
+        assert!(rows[1].contains("五 六 七 八"));
+        assert!(rows[2].contains("九 十"));
+        let rows = render_rows(&mut input, 24, 4);
+        assert!(rows[0].contains("一 二 三 四 五 六 七 八 九 十"));
+        assert!(rows[1].trim().is_empty());
+        assert_eq!(input.get_content(), text);
+    }
+
+    #[test]
+    fn edits_wrapped_rows_and_keeps_cursor_visible_when_scrolling() {
+        let mut input = HelixTextArea::new("abcdefghijklmnopqrstuvwx".into(), true, false);
+        render_rows(&mut input, 12, 2);
+        input.handle_key(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+        input.handle_key(KeyEvent::new(KeyCode::Char('!'), KeyModifiers::NONE));
+        assert_eq!(input.get_content(), "abcdefgh!ijklmnopqrstuvwx");
+        for _ in 0..30 {
+            input.handle_key(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+        }
+        input.handle_key(KeyEvent::new(KeyCode::Char('Z'), KeyModifiers::NONE));
+        let rows = render_rows(&mut input, 12, 2);
+        assert!(rows[0].contains("qrstuvwx"));
+        assert!(rows[1].contains('Z'));
+        input.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        input.handle_key(KeyEvent::new(KeyCode::Char('尾'), KeyModifiers::NONE));
+        assert_eq!(input.get_content(), "abcdefgh!ijklmnopqrstuvwxZ\n尾");
+    }
+
+    #[test]
+    fn selects_and_deletes_a_wrapped_logical_line() {
+        let mut input = HelixTextArea::new("abcdefghijklmnop\nnext".into(), true, true);
+        render_rows(&mut input, 12, 4);
+        input.handle_key(KeyEvent::new(KeyCode::Char('X'), KeyModifiers::NONE));
+        input.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE));
+        assert_eq!(input.get_content(), "next");
+        input.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
+        assert_eq!(input.get_content(), "abcdefghijklmnop\nnext");
+    }
+
+    #[test]
+    fn end_cursor_stays_visible_across_resize_and_vertical_scroll() {
+        let mut input = HelixTextArea::new("一二三四五六七八九十一二".into(), true, false);
+        input.handle_key(KeyEvent::new(KeyCode::End, KeyModifiers::NONE));
+        for width in [12, 11, 16, 5, 2, 1, 12] {
+            let mut terminal = Terminal::new(TestBackend::new(width, 2)).unwrap();
+            terminal
+                .draw(|frame| input.render(frame, frame.area()))
+                .unwrap();
+            let cursor_cells = terminal
+                .backend()
+                .buffer()
+                .content
+                .iter()
+                .filter(|cell| cell.bg == RatatuiColor::Rgb(136, 192, 208))
+                .count();
+            assert_eq!(
+                cursor_cells, 1,
+                "missing or duplicated cursor at width {width}"
+            );
+        }
+        assert_eq!(input.get_content(), "一二三四五六七八九十一二");
     }
 }

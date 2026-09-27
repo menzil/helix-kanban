@@ -5,7 +5,7 @@ pub mod task;
 
 pub use project::{
     create_local_project, create_project, delete_project_by_path, ensure_global_ai_config,
-    ensure_global_claude_md, get_data_dir, get_local_kanban_dir, get_projects_dir, init_data_dir,
+    ensure_global_claude_md, get_local_kanban_dir, get_projects_dir, init_data_dir,
     list_local_project_dirs, list_project_dirs, load_project, load_project_config,
     load_project_with_type, save_project_config, update_project_metadata,
 };

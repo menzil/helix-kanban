@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-09-27
+
+### Fixed
+- Soft-wrap task and other dialog inputs, including Chinese text and long words, while preserving logical lines in saved content.
+- Preserve whole-line selection across wrapped rows and keep the insertion cursor visible at full-width line endings.
+
+### Changed
+- Replace `tui-textarea` with `ratatui-textarea` 0.9.2 and upgrade Ratatui to 0.30.2.
+- Update direct and transitive dependencies, including TOML 1.1, and declare Rust 1.88 as the minimum supported version.
+- Include MCP-first agent instructions when copying project information, instead of directing agents to the Markdown operation guide.
+
 ## [0.3.5] - 2026-08-10
 
 ### Added

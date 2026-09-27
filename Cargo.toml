@@ -1,7 +1,8 @@
 [package]
 name = "helix-kanban"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2024"
+rust-version = "1.88"
 authors = ["Ruzaji Yasin <menzil@live.cn>"]
 description = "A terminal-based kanban board with file-based storage, multi-project support, Helix-style keybindings, and built-in MCP server for AI integration"
 readme = "README.md"
@@ -31,20 +32,20 @@ clipboard = ["arboard"]
 
 [dependencies]
 # TUI framework
-ratatui = "0.29.0"
-crossterm = "0.29"
-tui-textarea = "0.7.0"  # Text editor widget with Helix-style keybindings
+ratatui = "0.30.2"
+crossterm = "0.29.0"
+ratatui-textarea = "0.9.2"  # Text editor widget with Helix-style keybindings
 
 # Data serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-toml = "0.9.8"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+toml = "1.1.6"
 
 # Utilities
-chrono = "0.4"
-anyhow = "1.0"
+chrono = "0.4.45"
+anyhow = "1.0.104"
 nucleo-matcher = "0.3.1"
-arboard = { version = "3.4", default-features = false, optional = true }  # Clipboard support (text only)
+arboard = { version = "3.6.1", default-features = false, optional = true }  # Clipboard support (text only)
 
 [dev-dependencies]
-tempfile = "3.14"
+tempfile = "3.27.0"
