@@ -2580,12 +2580,13 @@ fn create_new_task(app: &mut App, input: String) {
     };
 
     // 获取项目路径（支持本地和全局项目）
-    let project_path = if let Some(project) = app.projects.iter().find(|p| p.name == project_name) {
-        project.path.clone()
-    } else {
-        log_debug("调试: 在项目列表中找不到项目".to_string());
-        return;
-    };
+    let (project_path, project_type) =
+        if let Some(project) = app.projects.iter().find(|p| p.name == project_name) {
+            (project.path.clone(), project.project_type)
+        } else {
+            log_debug("调试: 在项目列表中找不到项目".to_string());
+            return;
+        };
 
     // 获取下一个任务 ID
     if let Ok(next_id) = crate::fs::get_next_task_id(&project_path) {
@@ -2623,7 +2624,7 @@ fn create_new_task(app: &mut App, input: String) {
         }
 
         // 重新加载项目以确保任务列表是最新的
-        match crate::fs::load_project(&project_path) {
+        match crate::fs::load_project_with_type(&project_path, project_type) {
             Ok(updated_project) => {
                 log_debug(format!(
                     "调试: 重新加载项目，共 {} 个任务",
@@ -2679,24 +2680,9 @@ fn rename_current_project(app: &mut App, new_name: String) {
 
     // 找到项目
     if let Some(project) = app.projects.iter().find(|p| p.name == old_name).cloned() {
-        let old_path = project.path.clone();
-        let new_path = old_path.parent().unwrap().join(&new_name);
-
-        // 重命名目录
-        if let Err(e) = std::fs::rename(&old_path, &new_path) {
-            log_debug(format!("重命名项目目录失败: {}", e));
+        if let Err(e) = crate::fs::project::rename_project(&project, &new_name) {
+            app.show_notification(format!("重命名项目失败: {}", e), NotificationLevel::Error);
             return;
-        }
-
-        // 更新配置文件中的项目名
-        let config_path = new_path.join(".kanban.toml");
-        if let Ok(mut content) = std::fs::read_to_string(&config_path) {
-            // 简单替换项目名（第一行）
-            let lines: Vec<&str> = content.lines().collect();
-            if !lines.is_empty() {
-                content = format!("name = \"{}\"\n{}", new_name, lines[1..].join("\n"));
-                let _ = std::fs::write(&config_path, content);
-            }
         }
 
         // 重新加载所有项目
@@ -2707,7 +2693,7 @@ fn rename_current_project(app: &mut App, new_name: String) {
                 app.set_focused_project(new_name);
             }
             Err(e) => {
-                log_debug(format!("重新加载项目失败: {}", e));
+                app.show_notification(format!("重新加载项目失败: {}", e), NotificationLevel::Error);
             }
         }
     }

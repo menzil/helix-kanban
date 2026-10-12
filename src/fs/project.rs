@@ -502,42 +502,74 @@ pub fn create_local_project(name: &str) -> Result<PathBuf, String> {
     Ok(project_dir)
 }
 
-/// Rename a project
-#[allow(dead_code)]
-pub fn rename_project(old_name: &str, new_name: &str) -> Result<(), String> {
-    let projects_dir = get_projects_dir();
-    let old_path = projects_dir.join(old_name);
-    let new_path = projects_dir.join(new_name);
-
-    if !old_path.exists() {
-        return Err(format!("Project '{}' does not exist", old_name));
-    }
-
-    if new_path.exists() {
-        return Err(format!("Project '{}' already exists", new_name));
-    }
-
-    // Rename the directory
-    fs::rename(&old_path, &new_path)
-        .map_err(|e| format!("Failed to rename project directory: {}", e))?;
-
-    // Update the name in .kanban.toml
-    let config_path = new_path.join(".kanban.toml");
-    let content =
-        fs::read_to_string(&config_path).map_err(|e| format!("Failed to read config: {}", e))?;
-
-    // Parse and update the config
-    let mut config: ProjectConfig =
-        toml::from_str(&content).map_err(|e| format!("Failed to parse TOML: {}", e))?;
-
+/// Rename a project, keeping local board paths stable for discovery and indexing.
+pub fn rename_project(project: &Project, new_name: &str) -> Result<PathBuf, String> {
+    let mut config = load_project_config(&project.path)?;
     config.name = new_name.to_string();
 
-    let new_content =
-        toml::to_string(&config).map_err(|e| format!("Failed to serialize TOML: {}", e))?;
+    let new_path = match project.project_type {
+        ProjectType::Local => project.path.clone(),
+        ProjectType::Global => project
+            .path
+            .parent()
+            .ok_or_else(|| format!("Project path '{}' has no parent", project.path.display()))?
+            .join(new_name),
+    };
 
-    fs::write(config_path, new_content).map_err(|e| format!("Failed to write config: {}", e))?;
+    if new_path != project.path {
+        if new_path.exists() {
+            let existing_path = fs::canonicalize(&new_path).map_err(|e| {
+                format!(
+                    "Failed to resolve project path '{}': {}",
+                    new_path.display(),
+                    e
+                )
+            })?;
+            let current_path = fs::canonicalize(&project.path).map_err(|e| {
+                format!(
+                    "Failed to resolve project path '{}': {}",
+                    project.path.display(),
+                    e
+                )
+            })?;
+            if existing_path != current_path {
+                return Err(format!(
+                    "Project path '{}' already exists",
+                    new_path.display()
+                ));
+            }
+        }
 
-    Ok(())
+        fs::rename(&project.path, &new_path).map_err(|e| {
+            format!(
+                "Failed to rename project directory '{}' to '{}': {}",
+                project.path.display(),
+                new_path.display(),
+                e
+            )
+        })?;
+    }
+
+    if let Err(error) = save_project_config(&new_path, &config) {
+        if new_path != project.path
+            && let Err(restore_error) = fs::rename(&new_path, &project.path)
+        {
+            return Err(format!(
+                "Failed to save renamed project at '{}': {}; failed to restore directory to '{}': {}",
+                new_path.display(),
+                error,
+                project.path.display(),
+                restore_error
+            ));
+        }
+        return Err(format!(
+            "Failed to save renamed project at '{}': {}",
+            new_path.display(),
+            error
+        ));
+    }
+
+    Ok(new_path)
 }
 
 /// 删除项目（包括所有任务）
@@ -760,9 +792,9 @@ pub fn ensure_global_ai_config() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{load_project_config, save_project_config};
+    use super::{load_project_config, load_project_with_type, rename_project, save_project_config};
     use crate::models::project::StatusesConfig;
-    use crate::models::{ProjectConfig, StatusConfig};
+    use crate::models::{ProjectConfig, ProjectType, StatusConfig, Task};
     use std::collections::HashMap;
     use tempfile::TempDir;
 
@@ -819,5 +851,111 @@ display = "Todo"
 
         assert_eq!(loaded.project_order, Some(42));
         assert_eq!(loaded.tags, vec!["urgent", "client"]);
+    }
+
+    #[test]
+    fn renaming_local_project_keeps_board_and_tasks_at_indexed_path() {
+        let dir = TempDir::new().unwrap();
+        let board_path = dir.path().join(".kanban");
+        std::fs::create_dir_all(board_path.join("todo")).unwrap();
+        std::fs::write(
+            board_path.join(".kanban.toml"),
+            "created = \"1\"\nname = \".本地APP\"\nproject_order = 42\ntags = [\"client\"]\n\n[statuses]\norder = [\"todo\"]\n\n[statuses.todo]\ndisplay = \"Todo\"\n",
+        )
+        .unwrap();
+        let task = Task::new(1, "Existing task".to_string(), "todo".to_string());
+        crate::fs::save_task(&board_path, &task).unwrap();
+        let project = load_project_with_type(&board_path, ProjectType::Local).unwrap();
+        let task_path = project.tasks[0].file_path.clone();
+        let task_content = std::fs::read(&task_path).unwrap();
+
+        assert_eq!(rename_project(&project, "本地APP").unwrap(), board_path);
+
+        let renamed = load_project_with_type(&board_path, ProjectType::Local).unwrap();
+        assert_eq!(renamed.name, "本地APP");
+        assert_eq!(renamed.project_type, ProjectType::Local);
+        assert_eq!(renamed.project_order, Some(42));
+        assert_eq!(renamed.tags, vec!["client"]);
+        assert_eq!(renamed.tasks.len(), 1);
+        assert_eq!(renamed.tasks[0].file_path, task_path);
+        assert_eq!(std::fs::read(task_path).unwrap(), task_content);
+        assert!(!dir.path().join("本地APP").exists());
+
+        rename_project(&renamed, "本地 \"APP\"").unwrap();
+        assert_eq!(
+            load_project_config(&board_path).unwrap().name,
+            "本地 \"APP\""
+        );
+    }
+
+    #[test]
+    fn renaming_global_project_moves_board_without_overwriting_existing_directory() {
+        let dir = TempDir::new().unwrap();
+        let board_path = dir.path().join("old");
+        std::fs::create_dir_all(&board_path).unwrap();
+        std::fs::write(
+            board_path.join(".kanban.toml"),
+            "name = \"old\"\ncreated = \"1\"\n[statuses]\norder = []\n",
+        )
+        .unwrap();
+        let project = load_project_with_type(&board_path, ProjectType::Global).unwrap();
+        let new_path = dir.path().join("new");
+        std::fs::create_dir(&new_path).unwrap();
+
+        assert!(rename_project(&project, "new").is_err());
+        assert_eq!(load_project_config(&board_path).unwrap().name, "old");
+
+        let renamed_path = rename_project(&project, "renamed").unwrap();
+        assert_eq!(renamed_path, dir.path().join("renamed"));
+        assert!(!board_path.exists());
+        let renamed = load_project_with_type(&renamed_path, ProjectType::Global).unwrap();
+        assert_eq!(renamed.name, "renamed");
+        assert_eq!(renamed.project_type, ProjectType::Global);
+    }
+
+    #[test]
+    fn renaming_global_project_accepts_case_only_changes() {
+        let dir = TempDir::new().unwrap();
+        let board_path = dir.path().join("demo");
+        std::fs::create_dir(&board_path).unwrap();
+        std::fs::write(
+            board_path.join(".kanban.toml"),
+            "name = \"demo\"\ncreated = \"1\"\n[statuses]\norder = []\n",
+        )
+        .unwrap();
+        let project = load_project_with_type(&board_path, ProjectType::Global).unwrap();
+
+        let renamed_path = rename_project(&project, "Demo").unwrap();
+
+        assert_eq!(renamed_path, dir.path().join("Demo"));
+        assert_eq!(load_project_config(&renamed_path).unwrap().name, "Demo");
+        let entry = std::fs::read_dir(dir.path())
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        assert_eq!(entry.file_name(), "Demo");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_global_rename_preserves_original_project_path() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = TempDir::new().unwrap();
+        let board_path = dir.path().join("original");
+        std::fs::create_dir(&board_path).unwrap();
+        let config_path = board_path.join(".kanban.toml");
+        let content = "name = \"original\"\ncreated = \"1\"\n[statuses]\norder = []\n";
+        std::fs::write(&config_path, content).unwrap();
+        std::fs::set_permissions(&config_path, std::fs::Permissions::from_mode(0o444)).unwrap();
+        let project = load_project_with_type(&board_path, ProjectType::Global).unwrap();
+
+        let result = rename_project(&project, "renamed");
+
+        assert!(result.is_err());
+        assert!(board_path.is_dir());
+        assert!(!dir.path().join("renamed").exists());
+        assert_eq!(std::fs::read_to_string(config_path).unwrap(), content);
     }
 }

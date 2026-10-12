@@ -640,6 +640,41 @@ mod tests {
         }
     }
 
+    fn local_project_app(dir: &std::path::Path) -> App {
+        let board_path = dir.join(".kanban");
+        std::fs::create_dir_all(board_path.join("todo")).unwrap();
+        std::fs::write(
+            board_path.join(".kanban.toml"),
+            "name = \"alpha\"\ncreated = \"1\"\n[statuses]\norder = [\"todo\"]\n[statuses.todo]\ndisplay = \"Todo\"\n",
+        )
+        .unwrap();
+        let mut app = test_app();
+        app.projects =
+            vec![crate::fs::load_project_with_type(&board_path, ProjectType::Local).unwrap()];
+        app
+    }
+
+    #[test]
+    fn new_task_preserves_local_project_for_rename() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut app = local_project_app(dir.path());
+        for character in "aNew task".chars() {
+            app.handle_key(KeyEvent::new(KeyCode::Char(character), KeyModifiers::NONE));
+        }
+        app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL));
+
+        let project = app.get_focused_project().unwrap();
+        assert_eq!(project.tasks.len(), 1);
+        assert_eq!(project.tasks[0].title, "New task");
+        assert_eq!(project.project_type, ProjectType::Local);
+        assert_eq!(
+            crate::fs::project::rename_project(project, "renamed").unwrap(),
+            dir.path().join(".kanban")
+        );
+    }
+
     fn focused_project_id(app: &App) -> Option<String> {
         match app.split_tree.find_pane(app.focused_pane) {
             Some(SplitNode::Leaf { project_id, .. }) => project_id.clone(),

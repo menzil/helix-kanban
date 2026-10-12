@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-10-12
+
+### Fixed
+- Keep local boards discoverable after renaming, including after creating a task.
+- Preserve project metadata and names containing quotes when renaming projects.
+- Show rename failures in the TUI and restore global board directories if saving the configuration fails.
+
 ## [0.3.6] - 2026-09-27
 
 ### Fixed
